@@ -10,7 +10,7 @@ name: iOS IPA
 # For a signed .ipa you can install directly (needs a paid Apple Developer account), add these repository secrets:
 #   IOS_CERT_P12_BASE64            signing certificate (.p12), base64-encoded   (base64 -i cert.p12)
 #   IOS_CERT_PASSWORD              the .p12 password
-#   IOS_PROVISION_PROFILE_BASE64   the .mobileprovision for com.aihat.app, base64-encoded
+#   IOS_PROVISION_PROFILE_BASE64   the .mobileprovision for com.amanm.aihat, base64-encoded
 #   IOS_TEAM_ID                    your 10-character Apple team id
 # and optionally these repository variables:
 #   IOS_EXPORT_METHOD              ad-hoc (default) | development | app-store-connect | enterprise

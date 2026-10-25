@@ -149,7 +149,7 @@ With no setup the APK is signed with a debug key (fine for your own phone) and t
 | `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | A signed APK with your own key |
 | `IOS_CERT_P12_BASE64`, `IOS_CERT_PASSWORD`, `IOS_PROVISION_PROFILE_BASE64`, `IOS_TEAM_ID` | A signed IPA (needs a paid Apple Developer account) |
 
-Optional variables: `IOS_EXPORT_METHOD` (`ad-hoc` by default) and `IOS_CODE_SIGN_IDENTITY`. The app and bundle id is `com.aihat.app`; change it in `app.json` before publishing anywhere.
+Optional variables: `IOS_EXPORT_METHOD` (`ad-hoc` by default) and `IOS_CODE_SIGN_IDENTITY`. The app and bundle id is `com.amanm.aihat`; change it in `app.json` before publishing anywhere.
 
 ## Run it from source
 

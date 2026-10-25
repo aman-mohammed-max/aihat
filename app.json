@@ -9,7 +9,7 @@
     "userInterfaceStyle": "dark",
     "ios": {
       "icon": "./assets/images/icon.png",
-      "bundleIdentifier": "com.aihat.app",
+      "bundleIdentifier": "com.amanm.aihat",
       "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
@@ -24,7 +24,7 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.aihat.app",
+      "package": "com.amanm.aihat",
       "versionCode": 1
     },
     "web": {
