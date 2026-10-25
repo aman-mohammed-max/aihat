@@ -41,9 +41,20 @@ function requireSafe(address: string, mcpUrl: string, what: string) {
   throw new OAuthError('unsupported', `The ${what} isn’t on https, so the app won’t use it.`);
 }
 
+/** fetch that gives up after `ms`, so a server that never answers can't leave the screen waiting. */
+async function timedFetch(url: string, init: RequestInit = {}, ms = 12_000) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), ms);
+  try {
+    return await fetch(url, { ...init, signal: ctl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 async function getJson(url: string): Promise<any | null> {
   try {
-    const res = await fetch(url, { headers: { Accept: 'application/json' } });
+    const res = await timedFetch(url, { headers: { Accept: 'application/json' } }, 8_000);
     return res.ok ? await res.json() : null;
   } catch {
     return null;
@@ -86,12 +97,13 @@ export async function discover(mcpUrl: string): Promise<Discovery> {
     return await findSignIn(mcpUrl);
   } catch (e) {
     if (e instanceof OAuthError) throw e;
-    throw new OAuthError('failed', e instanceof TypeError ? 'Couldn’t reach the server. Check the address and your connection.' : (e as Error)?.message ?? 'Sign-in could not be set up.');
+    const gone = e instanceof TypeError || (e as Error)?.name === 'AbortError';
+    throw new OAuthError('failed', gone ? 'Couldn’t reach the server. Check the address and your connection.' : (e as Error)?.message ?? 'Sign-in could not be set up.');
   }
 }
 
 async function findSignIn(mcpUrl: string): Promise<Discovery> {
-  const res = await fetch(mcpUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: INIT });
+  const res = await timedFetch(mcpUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: INIT }, 10_000);
   if (res.status !== 401) throw new OAuthError('unsupported', res.ok ? 'This server doesn’t ask for a sign-in.' : `The server answered ${res.status}.`);
   const challenge = parseChallenge(res.headers.get('WWW-Authenticate'));
   const origin = new URL(mcpUrl).origin;
@@ -142,12 +154,16 @@ async function findSignIn(mcpUrl: string): Promise<Discovery> {
 
 /** What a server needs before the app can use it: nothing, a browser sign-in, or an access token you paste. */
 export async function probeAuth(mcpUrl: string): Promise<'none' | 'oauth' | 'token' | 'unknown'> {
+  let res: Response;
   try {
-    const res = await fetch(mcpUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: INIT });
-    if (res.ok) return 'none';
-    if (res.status !== 401) return 'unknown';
-    const d = await discover(mcpUrl);
-    return d.registrationEndpoint ? 'oauth' : 'token';
+    res = await timedFetch(mcpUrl, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json, text/event-stream' }, body: INIT }, 10_000);
+  } catch {
+    return 'unknown'; // unreachable: the add step will say so
+  }
+  if (res.ok) return 'none';
+  if (res.status !== 401) return 'unknown';
+  try {
+    return (await findSignIn(mcpUrl)).registrationEndpoint ? 'oauth' : 'token';
   } catch {
     return 'token';
   }
@@ -206,7 +222,7 @@ async function tokenRequest(meta: Pick<Meta, 'clientId' | 'method' | 'tokenEndpo
   const headers: Record<string, string> = { 'Content-Type': 'application/x-www-form-urlencoded', Accept: 'application/json' };
   if (secret && meta.method === 'post') body.set('client_secret', secret);
   if (secret && meta.method === 'basic') headers.Authorization = `Basic ${btoa(`${encodeURIComponent(meta.clientId)}:${encodeURIComponent(secret)}`)}`;
-  const res = await fetch(meta.tokenEndpoint, { method: 'POST', headers, body: body.toString() });
+  const res = await timedFetch(meta.tokenEndpoint, { method: 'POST', headers, body: body.toString() }, 20_000);
   const data: TokenReply = await res.json().catch(() => ({}));
   if (!res.ok || !data.access_token) {
     throw new OAuthError(data.error === 'invalid_grant' ? 'expired' : 'failed', data.error_description || data.error || `The sign-in service answered ${res.status}.`);
@@ -255,7 +271,7 @@ async function register(d: Discovery, redirect: string) {
     throw new OAuthError('unsupported', 'This service doesn’t let apps sign themselves up, so browser sign-in isn’t possible here. Use an access token instead.');
   }
   const method = !d.authMethods.length || d.authMethods.includes('none') ? 'none' : d.authMethods.includes('client_secret_post') ? 'client_secret_post' : 'client_secret_basic';
-  const res = await fetch(d.registrationEndpoint, {
+  const res = await timedFetch(d.registrationEndpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({ client_name: 'AI Hat', redirect_uris: [redirect], grant_types: ['authorization_code', 'refresh_token'], response_types: ['code'], token_endpoint_auth_method: method }),

@@ -78,12 +78,24 @@ export async function connect(c: Conn) {
   await rpc(c, 'notifications/initialized', undefined, true);
 }
 
-const guessKind = (name: string, annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean }): McpTool['kind'] => {
+const words = (name: string) => name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+const READ_FIRST = new Set('get list read search find fetch query describe show view lookup check count resolve ask retrieve browse explain inspect preview validate compare calculate convert translate summarize summarise analyze analyse echo ping whoami'.split(' '));
+const DELETE_WORDS = new Set('delete remove drop destroy purge wipe erase truncate unlink uninstall revoke terminate kill'.split(' '));
+const WRITE_WORDS = new Set(
+  'create update write send post set insert edit put patch add save upload import publish push commit merge apply deploy install run exec execute eval shell bash python command script code spawn start stop restart transfer pay charge purchase order invite share grant approve reset migrate rename move copy cancel submit'.split(' '),
+);
+
+/**
+ * How careful to be with a tool, from the server's own hints and its name. Anything that changes things or runs code is
+ * "write" (asks first); tools named like a lookup (`get_…`, `search_…`) read freely.
+ */
+export function guessKind(name: string, annotations?: { readOnlyHint?: boolean; destructiveHint?: boolean }): McpTool['kind'] {
   if (annotations?.readOnlyHint) return 'read';
-  if (annotations?.destructiveHint || /delete|remove|drop|destroy/i.test(name)) return 'delete';
-  if (/create|update|write|send|post|set|insert|edit/i.test(name)) return 'write';
-  return 'read';
-};
+  const w = words(name);
+  if (annotations?.destructiveHint || w.some((x) => DELETE_WORDS.has(x))) return 'delete';
+  if (READ_FIRST.has(w[0])) return 'read';
+  return w.some((x) => WRITE_WORDS.has(x)) ? 'write' : 'read';
+}
 
 export async function listTools(c: Conn, previous: McpTool[] = []): Promise<McpTool[]> {
   // Servers with many tools hand them out a page at a time.
