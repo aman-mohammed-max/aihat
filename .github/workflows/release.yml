@@ -1,43 +1,95 @@
-name: Release
+name: Build & Release
 
-# Push a version tag to build both apps and publish ONE GitHub Release with the files attached:
+# Builds the Android APK and the iOS IPA and puts them on the Releases page.
 #
-#   git tag v0.1.0-beta.2
-#   git push origin v0.1.0-beta.2
+#   Push to main        → the "latest beta build" pre-release (tag beta-latest) is replaced with fresh files.
+#   Push a version tag  → a permanent release for that version:
+#                           git tag v0.1.0-beta.2 && git push origin v0.1.0-beta.2
+#                         A tag with a hyphen (-beta.2, -rc.1) is marked as a pre-release; v1.0.0 is a normal release.
+#   Run it by hand      → Actions → "Build & Release" → Run workflow (optionally type a version tag).
 #
-# A tag with a hyphen (v0.1.0-beta.2, v1.0.0-rc.1) is published as a PRE-RELEASE, i.e. marked as beta.
-# A plain tag (v1.0.0) is published as a normal release.
-# If one platform fails, the other is still published and the notes say which files are included.
+# If one platform fails, the other is still published and the notes list only the files that exist.
+# Changes that only touch docs or the design files don't start a build.
 
 on:
   push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - 'LICENSE'
+      - 'handoff/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.gitignore'
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release tag to publish, for example v0.1.0-beta.2. Leave empty to update the "latest beta build".'
+        required: false
+        default: ''
 
 concurrency:
-  group: release-${{ github.ref }}
-  cancel-in-progress: false
+  group: build-release-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type == 'branch' }}
 
 jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.p.outputs.tag }}
+      rolling: ${{ steps.p.outputs.rolling }}
+      prerelease: ${{ steps.p.outputs.prerelease }}
+    steps:
+      - id: p
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then TAG="$GITHUB_REF_NAME"
+          elif [[ -n "$INPUT_VERSION" ]]; then TAG="$INPUT_VERSION"
+          else TAG="beta-latest"; fi
+
+          if [[ "$TAG" != "beta-latest" && ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$ ]]; then
+            echo "::error::'$TAG' is not a version tag. Use something like v0.1.0 or v0.1.0-beta.2."
+            exit 1
+          fi
+          ROLLING=false; [[ "$TAG" == "beta-latest" ]] && ROLLING=true
+          PRERELEASE=false; [[ "$TAG" == *-* ]] && PRERELEASE=true
+          {
+            echo "tag=$TAG"
+            echo "rolling=$ROLLING"
+            echo "prerelease=$PRERELEASE"
+          } >> "$GITHUB_OUTPUT"
+          echo "Publishing as $TAG (rolling=$ROLLING, prerelease=$PRERELEASE)"
+
   android:
+    needs: plan
     uses: ./.github/workflows/android-apk.yml
     with:
-      label: ${{ github.ref_name }}
+      label: ${{ needs.plan.outputs.tag }}
     secrets: inherit
 
   ios:
+    needs: plan
     uses: ./.github/workflows/ios-ipa.yml
     with:
-      label: ${{ github.ref_name }}
+      label: ${{ needs.plan.outputs.tag }}
     secrets: inherit
 
   publish:
-    needs: [android, ios]
-    if: ${{ always() && (needs.android.result == 'success' || needs.ios.result == 'success') }}
+    needs: [plan, android, ios]
+    if: ${{ always() && needs.plan.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ needs.plan.outputs.tag }}
+      ROLLING: ${{ needs.plan.outputs.rolling }}
+      PRERELEASE: ${{ needs.plan.outputs.prerelease }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - uses: actions/download-artifact@v4
         with:
@@ -47,38 +99,56 @@ jobs:
 
       - name: Write the release notes
         run: |
-          cd dist
           {
-            if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            if [[ "$PRERELEASE" == true ]]; then
               echo '> **Beta.** AI Hat is still in beta. Expect rough edges, and please report problems under Issues.'
+              echo
+            fi
+            if [[ "$ROLLING" == true ]]; then
+              echo "**Latest beta build** of \`main\` at commit \`${GITHUB_SHA::7}\`, built $(date -u '+%Y-%m-%d %H:%M UTC'). This release is replaced by a fresh build on every push. For a fixed version, use a numbered release."
               echo
             fi
             echo '## Install'
             echo
-            for f in *.apk; do [ -e "$f" ] || continue; cat <<NOTE
-          **Android:** download \`$f\`, open it on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
+            for f in dist/*.apk; do [ -e "$f" ] || continue; cat <<NOTE
+          **Android:** download \`$(basename "$f")\`, open it on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
 
           NOTE
             done
-            for f in *.ipa; do [ -e "$f" ] || continue; cat <<NOTE
-          **iPhone / iPad:** \`$f\` is **unsigned**, so it will not install by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
+            for f in dist/*.ipa; do [ -e "$f" ] || continue; cat <<NOTE
+          **iPhone / iPad:** \`$(basename "$f")\` is **unsigned**, so it will not install by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
 
           NOTE
             done
+            echo '## What changed'
+            echo
+            PREV=$(git describe --tags --abbrev=0 --match 'v*' "${GITHUB_SHA}^" 2>/dev/null || true)
+            if [[ "$ROLLING" != true && -n "$PREV" && "$PREV" != "$TAG" ]]; then
+              git log --no-merges --pretty='- %s (%h)' "$PREV..$GITHUB_SHA" | head -40
+            else
+              git log --no-merges --pretty='- %s (%h)' -10 "$GITHUB_SHA"
+            fi
+            echo
             echo '## Checksums (SHA-256)'
             echo
             echo '```'
-            sha256sum *
+            (cd dist && sha256sum *)
             echo '```'
-          } > ../notes.md
-          cat ../notes.md
+          } > notes.md
+          cat notes.md
 
-      - name: Publish
-        uses: softprops/action-gh-release@v2
-        with:
-          name: AI Hat ${{ github.ref_name }}
-          prerelease: ${{ contains(github.ref_name, '-') }}
-          body_path: notes.md
-          generate_release_notes: true
-          fail_on_unmatched_files: true
-          files: dist/*
+      - name: Publish the release
+        run: |
+          if [[ "$ROLLING" == true ]]; then TITLE="AI Hat: latest beta build"; else TITLE="AI Hat $TAG"; fi
+          FLAGS=()
+          [[ "$PRERELEASE" == true ]] && FLAGS+=(--prerelease)
+          [[ "$ROLLING" == true ]] && FLAGS+=(--latest=false)
+
+          # Replace an existing release of the same tag (a re-run, or the rolling beta). The rolling tag is
+          # deleted too so it moves to this commit; a version tag you pushed stays where it is.
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            if [[ "$ROLLING" == true ]]; then gh release delete "$TAG" --yes --cleanup-tag
+            else gh release delete "$TAG" --yes; fi
+          fi
+          gh release create "$TAG" dist/* --title "$TITLE" --notes-file notes.md --target "$GITHUB_SHA" "${FLAGS[@]}"
+          echo "Published: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$TAG"

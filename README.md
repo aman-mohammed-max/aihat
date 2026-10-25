@@ -22,16 +22,20 @@ Chat, draw images, talk, search the web, read PDFs and build small UIs, all from
 
 ## Download
 
-Get the latest build from the **[Releases page](https://github.com/aman-mohammed-max/aihat/releases)**. Every release lists its files and their checksums.
+Every change to `main` is built automatically and published on the **[Releases page](https://github.com/aman-mohammed-max/aihat/releases)**:
 
-| Platform | File | How to install |
+| | Android | iPhone / iPad |
 |---|---|---|
-| **Android** | `AI-Hat-vX.Y.Z.apk` | 1. Download it on your phone. 2. Open it and allow "Install unknown apps" for your browser or Files app. 3. Tap Install. |
-| **iPhone / iPad** | `AI-Hat-vX.Y.Z-unsigned.ipa` | The IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. A free Apple ID's apps expire after 7 days and need re-signing. |
+| **Latest beta build** (updated on every change) | [**AI-Hat-beta-latest.apk**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest.apk) | [**AI-Hat-beta-latest-unsigned.ipa**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-unsigned.ipa) |
+| **Numbered releases** (fixed versions) | `AI-Hat-v0.1.0-beta.1.apk` and so on, [on the releases page](https://github.com/aman-mohammed-max/aihat/releases) | `AI-Hat-v0.1.0-beta.1-unsigned.ipa` and so on |
 
-Android may warn that the app isn't from the Play Store. That's expected: it's a beta distributed here, not through a store.
+If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
-Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself), which takes one click on GitHub.
+**Install on Android:** download the APK on your phone, open it, allow "Install unknown apps" for your browser or Files app, then tap Install. Android may warn that the app isn't from the Play Store. That's expected for a beta distributed here.
+
+**Install on iPhone / iPad:** the IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
+
+Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself).
 
 ## What it does
 
@@ -119,20 +123,22 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 
 ## Build the apps yourself
 
-You don't need a Mac or Android Studio. GitHub builds both (free on a public repository):
+You don't need a Mac or Android Studio: GitHub builds both (free on a public repository), using the **Build & Release** workflow.
 
-1. **Fork** this repository (or use your own copy).
-2. Open the **Actions** tab, choose **Android APK** or **iOS IPA**, and press **Run workflow**.
-3. When it finishes, download the file from the run's **Artifacts**.
+| You do this | What happens |
+|---|---|
+| **Push to `main`** | Both apps are built and the **latest beta build** pre-release is replaced with the new files. (Changes that only touch docs or the design files don't start a build.) |
+| **Push a version tag** | Both apps are built and a **permanent release** is created for that version. |
+| **Actions → Build & Release → Run workflow** | The same, started by hand. Type a version to make a numbered release, or leave it empty to refresh the latest beta build. |
 
-To publish a **release** with both files attached, push a version tag:
+To make a numbered release:
 
 ```bash
 git tag v0.1.0-beta.2
 git push origin v0.1.0-beta.2
 ```
 
-The **Release** workflow builds the APK and IPA, then creates one GitHub Release with the files, install notes and checksums. A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the other is still published.
+A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the other is still published. You can also run **Android APK** or **iOS IPA** alone from the Actions tab to get just one file as a downloadable artifact.
 
 ### Signing (optional)
 

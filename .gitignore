@@ -48,3 +48,6 @@ handoff/*.zip
 # misc
 .DS_Store
 out/
+
+# editor settings
+.vscode/
