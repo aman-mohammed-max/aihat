@@ -4,6 +4,7 @@ import { Alert, KeyboardAvoidingView, Pressable, View } from 'react-native';
 
 import { pickFiles } from '@/lib/attach';
 import { runCommandText } from '@/lib/commands';
+import { setViewing } from '@/lib/notify';
 import { submit } from '@/lib/send';
 import { useChats } from '@/store/chats';
 import { useDraft } from '@/store/draft';
@@ -42,6 +43,11 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
 
   useEffect(() => {
     if (chatId) useChats.getState().loadMessages(chatId);
+  }, [chatId]);
+
+  useEffect(() => {
+    setViewing(chatId ?? null);
+    return () => setViewing(null);
   }, [chatId]);
 
   useEffect(() => {

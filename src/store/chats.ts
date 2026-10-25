@@ -1,13 +1,16 @@
+import { Alert } from 'react-native';
 import { create } from 'zustand';
 
 import { callTool } from '@/api/mcp';
 import { streamChat, type ChatMessage, type Params, type ToolCall, type ToolDef } from '@/api/openai';
 import { formatHits, webSearch } from '@/lib/search';
+import { mergeLoaded } from '@/lib/merge';
 import { clearIndex, indexFile, retrieve, shouldIndex } from '@/lib/rag';
 import { generateImages, type ImageOverrides } from '@/lib/imagegen';
 import { quickComplete } from '@/lib/llm';
 import { speak } from '@/lib/tts';
 import * as haptic from '@/lib/haptics';
+import { ensureNotifyPermission, notifyReply, previewOf } from '@/lib/notify';
 import { cleanTitle, initialTitle, isTrivial, shouldRetitle, titleMessages } from '@/lib/titles';
 import { getDb, json } from '@/db';
 import { now, uid } from '@/lib/id';
@@ -29,6 +32,10 @@ export type Message = {
   uiSpec?: object | null; tokens?: number | null; ms?: number | null; createdAt: number; error?: string;
   /** Transient progress line shown while a reply is being prepared (not saved), e.g. "Improving your prompt…". */
   status?: string;
+  /** A second line under the status: the query, the improved prompt, the tool's arguments… */
+  statusDetail?: string;
+  /** When the current status began, for the running timer. */
+  statusSince?: number;
 };
 export type Chat = {
   id: string; title: string; pinned: boolean; providerId: string | null; modelId: string | null; promptId: string | null;
@@ -49,7 +56,7 @@ type State = {
   create: (init?: Partial<Chat>) => Promise<string>;
   patch: (id: string, patch: Partial<Chat>) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: { title: string; url: string }[]; ui?: boolean }) => Promise<void>;
+  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: { title: string; url: string }[]; ui?: boolean; search?: boolean }) => Promise<void>;
   /** Delete temporary chats and archive chats older than the "archive after" setting. Run once at startup. */
   housekeeping: () => Promise<void>;
   sendImage: (chatId: string, prompt: string, opts?: ImageSendOptions) => Promise<void>;
@@ -161,7 +168,7 @@ export const useChats = create<State>((set, get) => ({
   async loadMessages(chatId) {
     const db = await getDb();
     const rows = await db.getAllAsync('SELECT * FROM messages WHERE chat_id=? ORDER BY created_at', chatId);
-    set((s) => ({ messages: { ...s.messages, [chatId]: rows.map(msgRow) } }));
+    set((s) => ({ messages: { ...s.messages, [chatId]: mergeLoaded(rows.map(msgRow), s.messages[chatId] ?? []) } }));
   },
 
   async create(init = {}) {
@@ -226,6 +233,7 @@ export const useChats = create<State>((set, get) => ({
   },
 
   stop(chatId) {
+    if (aborts.has(chatId)) haptic.warning();
     aborts.get(chatId)?.abort();
   },
 
@@ -241,13 +249,19 @@ export const useChats = create<State>((set, get) => ({
     setMsgs((l) => [...l, userMsg, reply]);
     await saveMessage(userMsg);
     if (get().messages[chatId].length === 2) await get().patch(chatId, { title: initialTitle(idea) });
+    const ctl = new AbortController();
+    aborts.set(chatId, ctl);
     set((s) => ({ streaming: { ...s.streaming, [chatId]: true } }));
-    const show = (status?: string) => setMsgs((l) => l.map((m) => (m.id === reply.id ? { ...reply, status } : m)));
+    void ensureNotifyPermission();
+    const show = (status?: string, detail?: string) => {
+      Object.assign(reply, { status, statusDetail: detail, statusSince: status ? now() : undefined });
+      setMsgs((l) => l.map((m) => (m.id === reply.id ? { ...reply } : m)));
+    };
     const started = now();
     try {
       let prompt = idea;
       if (opts.refine) {
-        show('Improving your prompt…');
+        show('Improving your prompt…', `“${idea.slice(0, 120)}”`);
         try {
           const improved = (await quickComplete({ chat, system: IMAGE_PROMPT_SYSTEM, user: idea, maxTokens: 200, temperature: 0.8 })).replace(/^["'“]+|["'”]+$/g, '').trim();
           if (improved) prompt = improved;
@@ -255,20 +269,30 @@ export const useChats = create<State>((set, get) => ({
           /* fall back to the idea as typed */
         }
       }
-      show('Generating image…');
-      const uris = await generateImages(prompt, { model: opts.model, aspect: opts.aspect, n: opts.n });
+      if (ctl.signal.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
+      show('Generating image…', prompt.slice(0, 220));
+      const uris = await Promise.race([
+        generateImages(prompt, { model: opts.model, aspect: opts.aspect, n: opts.n }),
+        new Promise<never>((_, reject) => ctl.signal.addEventListener('abort', () => reject(Object.assign(new Error('Stopped'), { name: 'AbortError' })))),
+      ]);
       reply.attachments = uris.map((uri, i) => ({ id: uid(), kind: 'image' as const, name: `image-${i + 1}.png`, uri }));
       if (prompt !== idea) reply.content = `*Prompt used:* ${prompt}`;
       reply.ms = now() - started;
     } catch (e: any) {
-      reply.error = e?.message ?? 'Image generation failed.';
+      if (e?.name === 'AbortError') reply.content = '*Stopped before the image finished.*';
+      else reply.error = e?.message ?? 'Image generation failed.';
     }
+    aborts.delete(chatId);
     set((s) => ({ streaming: { ...s.streaming, [chatId]: false } }));
-    setMsgs((l) => l.map((m) => (m.id === reply.id ? { ...reply, status: undefined } : m)));
+    setMsgs((l) => l.map((m) => (m.id === reply.id ? { ...reply, status: undefined, statusDetail: undefined, statusSince: undefined } : m)));
     await saveMessage(reply);
     if (reply.error) haptic.error();
     else haptic.success();
     await get().patch(chatId, {});
+    if (!ctl.signal.aborted) {
+      const title = get().chats.find((c) => c.id === chatId)?.title ?? '';
+      void notifyReply(chatId, title, reply.error ? 'Couldn’t make the image. Tap to see why.' : reply.attachments.length > 1 ? `${reply.attachments.length} images are ready.` : 'Your image is ready.');
+    }
   },
 
   /** Remove every message from a chat (the chat itself stays). */
@@ -303,103 +327,125 @@ export const useChats = create<State>((set, get) => ({
     const setMsgs = (fn: (l: Message[]) => Message[]) => set((s) => ({ messages: { ...s.messages, [chatId]: fn(s.messages[chatId] ?? []) } }));
 
     const userMsg: Message = { id: uid(), chatId, role: 'user', content: text, attachments, toolCalls: [], citations: [], createdAt: now() };
-    setMsgs((l) => [...l, userMsg]);
-
-    // Long text files go into the search index (embeddings endpoint); short ones are sent whole.
-    let indexError = '';
-    for (const a of userMsg.attachments) {
-      if (a.kind === 'file' && a.text && !a.indexed && !a.inline && shouldIndex(a.text)) {
-        try {
-          await indexFile(chatId, a.name, a.text);
-          a.indexed = true;
-          a.text = undefined;
-        } catch (e: any) {
-          indexError = e?.message ?? 'Could not index the file';
-        }
-      }
-    }
-    await saveMessage(userMsg);
-    if (get().messages[chatId].length === 1) await get().patch(chatId, { title: initialTitle(text) });
-
     const assistant: Message = { id: uid(), chatId, role: 'assistant', content: '', attachments: [], toolCalls: [], citations: opts.citations ?? [], createdAt: now() + 1 };
-    setMsgs((l) => [...l, assistant]);
+    // Both bubbles appear at once, so progress is visible from the first moment.
+    setMsgs((l) => [...l, userMsg, assistant]);
+    const isFirst = (get().messages[chatId] ?? []).length === 2;
 
-    if (!provider || !chat.modelId) {
-      assistant.error = 'No model selected. Add an endpoint in Providers.';
-      setMsgs((l) => l.map((m) => (m.id === assistant.id ? { ...assistant } : m)));
-      return;
-    }
-
-    const lib = useLibrary.getState();
-    const prompt = lib.prompts.find((p) => p.id === chat.promptId);
-    const skills = lib.skills.filter((s) => s.enabled && s.mode !== 'onAsk');
-    let ragContext = '';
-    try {
-      const hits = await retrieve(chatId, text);
-      if (hits.length) ragContext = `Relevant excerpts from the user's attached files:\n${hits.map((h) => `[${h.file}]\n${h.text}`).join('\n\n')}`;
-    } catch (e: any) {
-      indexError ||= e?.message ?? '';
-    }
-    const system = [
-      prompt ? applyVariables(prompt.body, prompt.variables, chat.modelId) : '',
-      ...skills.map((s) => `## Skill: ${s.name}\n${s.description}\n${s.body}`),
-      genUiOn(chat.modelId, text, opts.ui) ? genUiSystemPrompt() : '',
-      ragContext,
-    ].filter(Boolean).join('\n\n');
-
-    // Gather tools from the MCP servers enabled for this chat.
-    const servers = lib.servers.filter((s) => chat.toolIds.includes(s.id) && s.connected);
-    const toolMap = new Map<string, { server: McpServer; tool: McpServer['tools'][number] }>();
-    const tools: ToolDef[] = [];
-    for (const server of servers) {
-      for (const tool of server.tools) {
-        if (tool.policy === 'off') continue;
-        const fname = sanitize(`${server.name}__${tool.name}`);
-        toolMap.set(fname, { server, tool });
-        tools.push({ type: 'function', function: { name: fname, description: tool.description, parameters: tool.schema ?? { type: 'object', properties: {} } } });
-      }
-    }
-
-    if (useSettings.getState().searchMode === 'auto') {
-      tools.push({ type: 'function', function: { name: WEB_SEARCH, description: 'Search the web for current information. Returns numbered results with URLs; cite them as [n].', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } });
-    }
-
-    const toWire = (m: Message): ChatMessage => {
-      // Whole files are capped so one big document can't overflow the model's context window.
-      const inlineText = (a: Attachment) =>
-        a.text && a.text.length > MAX_INLINE_CHARS
-          ? `${a.text.slice(0, MAX_INLINE_CHARS)}\n[… ${(a.text.length - MAX_INLINE_CHARS).toLocaleString()} more characters not sent. Turn on “Search inside” in Files & documents to use the whole file.]`
-          : a.text;
-      const files = m.attachments.filter((a) => a.kind === 'file' && (a.text || a.indexed)).map((a) => (a.indexed ? `\n\n[File: ${a.name} — attached; relevant excerpts are in the system message]` : `\n\n[File: ${a.name}]\n${inlineText(a)}`)).join('');
-      const imgs = m.attachments.filter((a) => a.kind === 'image');
-      if (m.role === 'user' && imgs.length) {
-        return { role: 'user', content: [{ type: 'text', text: m.content + files }, ...imgs.map((i) => ({ type: 'image_url' as const, image_url: { url: i.uri } }))] };
-      }
-      return { role: m.role, content: m.content + files };
-    };
-
-    const wire: ChatMessage[] = [
-      ...(system ? [{ role: 'system' as const, content: system }] : []),
-      ...get().messages[chatId].filter((m) => m.id !== assistant.id && !m.error).map(toWire),
-    ];
-
-    const ctl = new AbortController();
-    aborts.set(chatId, ctl);
-    set((s) => ({ streaming: { ...s.streaming, [chatId]: true } }));
     const update = (patch: Partial<Message>) => {
       Object.assign(assistant, patch);
       setMsgs((l) => l.map((m) => (m.id === assistant.id ? { ...assistant } : m)));
     };
+    /** What the app is doing right now. Shown in the activity box until the first words arrive. */
+    const act = (status?: string, detail?: string) =>
+      update({ status, statusDetail: status ? detail : undefined, statusSince: status ? (assistant.status === status ? assistant.statusSince : now()) : undefined });
+
+    if (!provider || !chat.modelId) {
+      await saveMessage(userMsg);
+      update({ error: 'No model selected. Add an endpoint in Providers.' });
+      return;
+    }
+
+    const ctl = new AbortController();
+    aborts.set(chatId, ctl);
+    set((s) => ({ streaming: { ...s.streaming, [chatId]: true } }));
+    void ensureNotifyPermission();
+    let indexError = '';
 
     try {
+      // Long text files go into the search index (embeddings endpoint); short ones are sent whole.
+      for (const a of userMsg.attachments) {
+        if (a.kind === 'file' && a.text && !a.indexed && !a.inline && shouldIndex(a.text)) {
+          try {
+            act(`Reading “${a.name}”…`, 'Splitting it into passages and indexing them for search');
+            await indexFile(chatId, a.name, a.text);
+            a.indexed = true;
+            a.text = undefined;
+          } catch (e: any) {
+            indexError = e?.message ?? 'Could not index the file';
+          }
+        }
+      }
+
+      // The web-search chip / /search: look it up first and hand the results to the model.
+      if (opts.search) {
+        act('Searching the web…', `“${text.slice(0, 100)}”`);
+        try {
+          const hits = await webSearch(text);
+          userMsg.attachments = [...userMsg.attachments, { id: uid(), kind: 'file', name: 'Web results', uri: '', inline: true, text: `Use these web results to answer; cite them as [n].\n\n${formatHits(hits)}` }];
+          setMsgs((l) => l.map((m) => (m.id === userMsg.id ? { ...userMsg } : m)));
+          update({ citations: hits.map((h) => ({ title: h.title, url: h.url })) });
+        } catch (e: any) {
+          Alert.alert('Web search failed', `${e?.message ?? 'Unknown error'}\n\nThe model will answer without it.`);
+        }
+      }
+      await saveMessage(userMsg);
+      if (isFirst) await get().patch(chatId, { title: initialTitle(text) });
+
+      const lib = useLibrary.getState();
+      const prompt = lib.prompts.find((p) => p.id === chat.promptId);
+      const skills = lib.skills.filter((s) => s.enabled && s.mode !== 'onAsk');
+      let ragContext = '';
+      try {
+        if ((get().messages[chatId] ?? []).some((m) => m.attachments.some((a) => a.indexed))) act('Searching your files…', 'Finding the passages that match your question');
+        const hits = await retrieve(chatId, text);
+        if (hits.length) ragContext = `Relevant excerpts from the user's attached files:\n${hits.map((h) => `[${h.file}]\n${h.text}`).join('\n\n')}`;
+      } catch (e: any) {
+        indexError ||= e?.message ?? '';
+      }
+      const system = [
+        prompt ? applyVariables(prompt.body, prompt.variables, chat.modelId) : '',
+        ...skills.map((s) => `## Skill: ${s.name}\n${s.description}\n${s.body}`),
+        genUiOn(chat.modelId, text, opts.ui) ? genUiSystemPrompt() : '',
+        ragContext,
+      ].filter(Boolean).join('\n\n');
+
+      // Gather tools from the MCP servers enabled for this chat.
+      const servers = lib.servers.filter((s) => chat.toolIds.includes(s.id) && s.connected);
+      const toolMap = new Map<string, { server: McpServer; tool: McpServer['tools'][number] }>();
+      const tools: ToolDef[] = [];
+      for (const server of servers) {
+        for (const tool of server.tools) {
+          if (tool.policy === 'off') continue;
+          const fname = sanitize(`${server.name}__${tool.name}`);
+          toolMap.set(fname, { server, tool });
+          tools.push({ type: 'function', function: { name: fname, description: tool.description, parameters: tool.schema ?? { type: 'object', properties: {} } } });
+        }
+      }
+
+      if (useSettings.getState().searchMode === 'auto') {
+        tools.push({ type: 'function', function: { name: WEB_SEARCH, description: 'Search the web for current information. Returns numbered results with URLs; cite them as [n].', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } });
+      }
+
+      const toWire = (m: Message): ChatMessage => {
+        // Whole files are capped so one big document can't overflow the model's context window.
+        const inlineText = (a: Attachment) =>
+          a.text && a.text.length > MAX_INLINE_CHARS
+            ? `${a.text.slice(0, MAX_INLINE_CHARS)}\n[… ${(a.text.length - MAX_INLINE_CHARS).toLocaleString()} more characters not sent. Turn on “Search inside” in Files & documents to use the whole file.]`
+            : a.text;
+        const files = m.attachments.filter((a) => a.kind === 'file' && (a.text || a.indexed)).map((a) => (a.indexed ? `\n\n[File: ${a.name} — attached; relevant excerpts are in the system message]` : `\n\n[File: ${a.name}]\n${inlineText(a)}`)).join('');
+        const imgs = m.attachments.filter((a) => a.kind === 'image');
+        if (m.role === 'user' && imgs.length) {
+          return { role: 'user', content: [{ type: 'text', text: m.content + files }, ...imgs.map((i) => ({ type: 'image_url' as const, image_url: { url: i.uri } }))] };
+        }
+        return { role: m.role, content: m.content + files };
+      };
+
+      const wire: ChatMessage[] = [
+        ...(system ? [{ role: 'system' as const, content: system }] : []),
+        ...get().messages[chatId].filter((m) => m.id !== assistant.id && !m.error).map(toWire),
+      ];
+
       // Tool loop: model -> (tool calls -> results) -> model, capped to avoid runaway.
       for (let round = 0; round < 6; round++) {
         let pending: ToolCall[] = [];
         let roundText = '';
+        act('Thinking…', round === 0 ? `Waiting for ${chat.modelId}` : 'Reading the tool results');
         for await (const ev of streamChat(provider, { model: chat.modelId, messages: wire, tools, params: chat.params, signal: ctl.signal })) {
           if (ev.type === 'delta') {
             roundText += ev.text;
-            update({ content: assistant.content + ev.text });
+            if (!assistant.content) haptic.soft();
+            update({ content: assistant.content + ev.text, ...(assistant.status ? { status: undefined, statusDetail: undefined, statusSince: undefined } : {}) });
           } else if (ev.type === 'tool_calls') pending = ev.calls;
           else update({ tokens: (assistant.tokens ?? 0) + (ev.tokens ?? 0), ms: (assistant.ms ?? 0) + ev.ms });
         }
@@ -413,6 +459,7 @@ export const useChats = create<State>((set, get) => ({
             const done = (patch: Partial<ToolRun>) => update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, ...patch } : t)) });
             try {
               const q = (JSON.parse(call.function.arguments || '{}').query as string) ?? text;
+              act('Searching the web…', `“${q.slice(0, 100)}”`);
               const hits = await webSearch(q);
               const offset = assistant.citations.length;
               update({ citations: [...assistant.citations, ...hits.map((h) => ({ title: h.title, url: h.url }))] });
@@ -436,6 +483,7 @@ export const useChats = create<State>((set, get) => ({
             continue;
           }
           if (entry.tool.policy === 'ask') {
+            act('Waiting for your OK', `${entry.server.name}.${entry.tool.name}`);
             finish({ status: 'pending' });
             const ok = await new Promise<boolean>((resolve) => set({ approval: { chatId, run, resolve } }));
             set({ approval: null });
@@ -447,6 +495,7 @@ export const useChats = create<State>((set, get) => ({
             finish({ status: 'running' });
           }
           try {
+            act(`Running ${entry.server.name}.${entry.tool.name}…`, call.function.arguments.slice(0, 120));
             const args = call.function.arguments ? JSON.parse(call.function.arguments) : {};
             const result = await callTool({ url: entry.server.url, id: entry.server.id }, entry.tool.name, args);
             finish({ status: 'done', result });
@@ -476,6 +525,11 @@ export const useChats = create<State>((set, get) => ({
       else if (assistant.content) {
         haptic.success();
         void maybeRetitle(chatId);
+      }
+      if (!ctl.signal.aborted) {
+        const title = get().chats.find((c) => c.id === chatId)?.title ?? '';
+        if (assistant.error) void notifyReply(chatId, title, 'Couldn’t get a reply. Tap to see why.');
+        else if (assistant.content) void notifyReply(chatId, title, previewOf(assistant.content) || 'Your reply is ready.');
       }
     }
   },

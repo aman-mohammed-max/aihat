@@ -27,6 +27,8 @@ export type Settings = {
   showStats: boolean;
   showReasoning: boolean;
   haptics: boolean;
+  /** A notification when a reply finishes and you are not looking at that chat. */
+  notifyReplies: boolean;
   archiveDays: number;
   tempByDefault: boolean;
   // Audio
@@ -97,6 +99,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showStats: true,
   showReasoning: true,
   haptics: true,
+  notifyReplies: true,
   archiveDays: 0,
   tempByDefault: false,
   routes: {

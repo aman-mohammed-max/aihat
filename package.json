@@ -25,6 +25,7 @@
     "expo-image-picker": "~58.0.10",
     "expo-linking": "~58.0.14",
     "expo-local-authentication": "~58.0.2",
+    "expo-notifications": "~58.1.6",
     "expo-router": "~58.0.26",
     "expo-secure-store": "~58.0.2",
     "expo-sharing": "~58.0.20",
@@ -57,8 +58,8 @@
   "scripts": {
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
-    "android": "expo start --android",
-    "ios": "expo start --ios",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint"
   },

@@ -43,6 +43,12 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "color": "#C6F46B"
+        }
+      ],
       "expo-sharing",
       [
         "expo-audio",

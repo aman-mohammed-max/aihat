@@ -48,6 +48,8 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 - **Generative UI**: ask for a checklist, form or dashboard and get an interactive one in the chat, drawn with the app's own components ([json-render](https://json-render.dev)).
 - **Tools**: system prompt library with variables, skills, and MCP servers (HTTP) with a per-tool Auto / Ask / Off setting.
 - **Reasoning effort** (`low` to `high`), temperature and other model settings, per chat.
+- **Always shows what it's doing**: a small activity box names the current step (searching the web, reading a file, improving your prompt, drawing, running a tool) with a timer and the query or prompt behind it.
+- **Reply-ready notifications**: get a notification when a reply or image finishes while you're in another app or another chat. Switch it off in Settings › Chat defaults.
 - **Yours to keep**: chats are stored on the phone in SQLite, API keys in the OS keystore (never backed up), JSON backup and restore, optional app lock with Face ID or fingerprint.
 - **Looks**: dark by default, light theme, six accent colours, text size, button shape, and haptics tuned for iPhone and Android.
 
@@ -119,6 +121,7 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 - **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
 - **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
 - **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
+- **Notifications only arrive while the app is still running.** iPhone pauses apps shortly after you leave them, so a very long reply may not notify. Android is more forgiving but battery savers can also stop it.
 - Not available on the web.
 
 ## Build the apps yourself

@@ -27,6 +27,10 @@ export default function Voice() {
   const started = useRef(false);
 
   useEffect(() => {
+    // iOS plays no haptics while the audio session is in recording mode, so always hand it back when leaving.
+    const release = () => {
+      setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+    };
     (async () => {
       const perm = await requestRecordingPermissionsAsync();
       if (!perm.granted) return Alert.alert('Microphone access is needed', 'Allow it in Settings to dictate.', [{ text: 'OK', onPress: () => router.back() }]);
@@ -35,6 +39,7 @@ export default function Voice() {
       recorder.record();
       started.current = true;
     })();
+    return release;
   }, [recorder]);
 
   const finish = async () => {
@@ -42,6 +47,7 @@ export default function Voice() {
     setBusy(true);
     try {
       await recorder.stop();
+      await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
       const uri = recorder.uri;
       if (!uri) throw new Error('Nothing was recorded.');
       const stt = requireRoute('transcription');
@@ -82,7 +88,7 @@ export default function Voice() {
         <Segmented<Mode> options={[{ value: 'translate', label: `Translate → ${s.translateTo}` }, { value: 'transcribe', label: 'Transcribe only' }]} value={mode} onChange={setMode} />
       </View>
       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-around', padding: 24, paddingBottom: 48 }}>
-        <Pressable accessibilityRole="button" accessibilityLabel="Cancel" onPress={() => { recorder.stop().catch(() => {}); router.back(); }} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+        <Pressable accessibilityRole="button" accessibilityLabel="Cancel" onPress={() => { recorder.stop().catch(() => {}); setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {}); router.back(); }} style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
           <Icon name="close" size={22} color={colors.text} />
         </Pressable>
         <Text mono size={16} color="text2">{Math.floor(secs / 60)}:{String(secs % 60).padStart(2, '0')}</Text>

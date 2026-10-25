@@ -17,7 +17,7 @@ import { parseReply } from '@/genui/parse';
 
 import { Icon, type IconName } from './Icon';
 import { Markdown } from './Markdown';
-import { StatusLine } from './Motion';
+import { ActivityBox } from './Motion';
 import { Text } from './Text';
 
 function ToolChip({ run }: { run: ToolRun }) {
@@ -183,7 +183,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 ))}
               </View>
             )}
-            {m.content ? <AssistantBody chatId={chatId} content={m.content} streaming={streaming && last} /> : m.status ? <StatusLine text={m.status} /> : last && streaming && !m.error && m.attachments.length === 0 ? <StatusLine text="Thinking…" /> : null}
+            {m.content ? <AssistantBody chatId={chatId} content={m.content} streaming={streaming && last} /> : m.status ? <ActivityBox status={m.status} detail={m.statusDetail} since={m.statusSince ?? m.createdAt} /> : last && streaming && !m.error && m.attachments.length === 0 ? <ActivityBox status="Thinking…" since={m.createdAt} /> : null}
             {m.error ? (
               <View style={{ backgroundColor: colors.surface, borderRadius: radii.card, padding: 14, gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

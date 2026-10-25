@@ -11,6 +11,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
+import { initNotifications } from '@/lib/notify';
 import { Toast } from '@/components/Toast';
 import { useChats } from '@/store/chats';
 import { useCommands } from '@/store/commands';
@@ -40,6 +41,7 @@ export default function RootLayout() {
   }, []);
 
   const ready = (fontsLoaded || fontError) && dataReady;
+  useEffect(() => (ready ? initNotifications() : undefined), [ready]);
   useEffect(() => {
     if (ready) SplashScreen.hideAsync();
   }, [ready]);
