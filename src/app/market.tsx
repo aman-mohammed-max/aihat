@@ -4,7 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, PulseDots, Screen, SearchBar, SectionTitle, Segmented, Text } from '@/components';
 import {
-  compact, FEATURED_MCP, parseGithubRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, skillSourceLabel, skillsShSearch, SKILL_SOURCES,
+  compact, computerPlan, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
 } from '@/lib/market';
 import { useLibrary } from '@/store/library';
@@ -134,14 +134,15 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   }, [q, src]);
 
   const key = `${src}|${applied}|${nonce}`;
-  const ready = src === 'popular' || (src === 'skillssh' && applied.length >= 2) || (src === 'github' && !!parseGithubRef(applied));
+  const ready = src === 'popular' || (src === 'skillssh' && applied.length >= 2) || (src === 'github' && !!(parseGithubRef(applied) || parseSiteRef(applied)));
   const list = useList<SkillListing>(key, ready, async () => {
     if (src === 'popular') {
       const r = await pluginSkills(applied, 0, PAGE);
       return { items: r.items, total: r.total, next: PAGE < r.total ? String(PAGE) : undefined };
     }
     if (src === 'skillssh') return { items: await skillsShSearch(applied) };
-    return { items: await repoSkills(parseGithubRef(applied)!) };
+    const repo = parseGithubRef(applied);
+    return { items: repo ? await repoSkills(repo) : await siteSkills(applied) };
   });
 
   const norm = (t: string) => t.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -149,10 +150,10 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const meta = (l: SkillListing) => [l.source, l.installs ? `${compact(l.installs)} installs` : '', l.stars ? `★ ${compact(l.stars)}` : ''].filter(Boolean).join(' · ');
   // Lists that know the folder match it exactly; skills.sh only knows the skill's name.
   const isAdded = (l: SkillListing) =>
-    skills.some((s) => (l.dir !== undefined ? s.source === skillSourceLabel(l.source, l.dir) : s.source.startsWith(`github.com/${l.source}`) && norm(s.name) === norm(l.skillId ?? l.name)));
+    skills.some((s) => (l.from === 'site' ? s.source === siteSourceLabel(l.source, l.dir!) : l.dir !== undefined ? s.source === skillSourceLabel(l.source, l.dir) : s.source.startsWith(`github.com/${l.source}`) && norm(s.name) === norm(l.skillId ?? l.name)));
 
-  const sources: { id: Source; label: string }[] = [{ id: 'popular', label: 'Popular' }, { id: 'skillssh', label: 'skills.sh' }, { id: 'github', label: 'GitHub' }];
-  const placeholder = src === 'github' ? 'owner/repo or a GitHub link' : src === 'skillssh' ? 'Search skills.sh' : 'Search skills';
+  const sources: { id: Source; label: string }[] = [{ id: 'popular', label: 'Popular' }, { id: 'skillssh', label: 'skills.sh' }, { id: 'github', label: 'Repo or site' }];
+  const placeholder = src === 'github' ? 'owner/repo, a GitHub link or vercel.com' : src === 'skillssh' ? 'Search skills.sh' : 'Search skills';
 
   return (
     <>
@@ -163,7 +164,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         ))}
       </ScrollView>
       <Text size={12.5} color="muted" style={{ marginTop: -8 }}>
-        {src === 'popular' ? 'The most-installed skills from public GitHub repositories, listed by claude-plugins.dev.' : src === 'skillssh' ? 'Search skills.sh, the open skills directory from Vercel.' : 'Any public repository or folder with SKILL.md files.'} You see the full text before adding anything.
+        {src === 'popular' ? 'The most-installed skills from public GitHub repositories, listed by claude-plugins.dev.' : src === 'skillssh' ? 'Search skills.sh, the open skills directory from Vercel.' : 'A public GitHub repository or folder with SKILL.md files, or a website that publishes skills itself.'} You see the full text before adding anything.
       </Text>
 
       {!ready && src === 'skillssh' && (
@@ -176,21 +177,32 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       {!ready && src === 'github' && (
-        <View>
+        <View style={{ gap: 20 }}>
+          <View>
+            <SectionTitle>Skills published by the companies themselves</SectionTitle>
+            <Card>
+              {SKILL_SITES.map((s, i) => (
+                <Row key={s.site} title={s.label} sub={s.sub} meta={s.site} last={i === SKILL_SITES.length - 1} onPress={() => { setQ(s.site); setApplied(s.site); }} />
+              ))}
+            </Card>
+            <Text size={12} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 17 }}>Any website can publish skills at /.well-known/agent-skills (the open Agent Skills standard). Downloads are checked against the checksum the site gives.</Text>
+          </View>
+          <View>
           <SectionTitle>Repositories that publish skills</SectionTitle>
           <Card>
             {SKILL_SOURCES.map((s, i) => (
               <Row key={s.source} title={s.label} sub={s.sub} meta={`github.com/${s.source}`} last={i === SKILL_SOURCES.length - 1} onPress={() => { setQ(s.source); setApplied(s.source); }} />
             ))}
           </Card>
+          </View>
         </View>
       )}
 
-      {src === 'github' && applied && !ready && <Text color="warn" size={13.5}>That doesn’t look like a GitHub repository or folder link.</Text>}
+      {src === 'github' && applied && !ready && <Text color="warn" size={13.5}>That doesn’t look like a GitHub repository, a folder link or a website address.</Text>}
 
       {ready && (
         <View>
-          <SectionTitle>{src === 'popular' ? (applied ? `Results${list.total ? ` · ${list.total.toLocaleString()}` : ''}` : 'Popular skills') : src === 'github' ? 'Skills in this repository' : 'Results'}</SectionTitle>
+          <SectionTitle>{src === 'popular' ? (applied ? `Results${list.total ? ` · ${list.total.toLocaleString()}` : ''}` : 'Popular skills') : src === 'github' ? (parseGithubRef(applied) ? 'Skills in this repository' : `Skills from ${applied.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`) : 'Results'}</SectionTitle>
           {list.items.length > 0 && (
             <Card>
               {list.items.map((l, i) => (
@@ -236,6 +248,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
 function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const servers = useLibrary((s) => s.servers);
+  const [where, setWhere] = useState<'hosted' | 'computer'>('hosted');
   const [applied, setApplied] = useState('');
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
@@ -243,17 +256,20 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
     return () => clearTimeout(t);
   }, [q]);
 
-  const list = useList<McpListing>(`mcp|${applied}|${nonce}`, true, async () => searchMcp(applied));
+  const list = useList<McpListing>(`mcp|${where}|${applied}|${nonce}`, true, async () => searchMcp(applied, undefined, where));
   const urls = useMemo(() => new Set(servers.map((s) => s.url.replace(/\/+$/, ''))), [servers]);
   const isAdded = (l: McpListing) => !!l.remote && urls.has(l.remote.url.replace(/\/+$/, ''));
   const open = (l: McpListing) => router.push({ pathname: '/market-mcp', params: { id: rememberMcp(l) } });
-  const featured = FEATURED_MCP.filter((f) => !applied || `${f.title} ${f.description} ${f.category}`.toLowerCase().includes(applied.toLowerCase()));
+  const featured = where === 'computer' ? [] : FEATURED_MCP.filter((f) => !applied || `${f.title} ${f.description} ${f.category}`.toLowerCase().includes(applied.toLowerCase()));
 
   return (
     <>
+      <Segmented<'hosted' | 'computer'> options={[{ value: 'hosted', label: 'Hosted online' }, { value: 'computer', label: 'On my computer' }]} value={where} onChange={setWhere} />
       <SearchBar value={q} onChangeText={setQ} placeholder="Search MCP servers" onSubmit={() => setApplied(q.trim())} />
       <Text size={12.5} color="muted" style={{ marginTop: -8 }}>
-        Hosted servers from the official MCP registry. Servers that need to run on a computer aren’t listed, because a phone can’t start them. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.
+        {where === 'hosted'
+          ? 'Servers that run online, from the official MCP registry. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.'
+          : 'Programs that run on your computer. A phone can’t start them, so AI Hat gives you one command to run there and then connects over your network. Needs Node.js on the computer.'}
       </Text>
 
       {featured.length > 0 && (
@@ -268,15 +284,15 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       <View>
-        <SectionTitle>{applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
+        <SectionTitle>{where === 'computer' ? 'Servers for your computer' : applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
         {list.items.length > 0 && (
           <Card>
             {list.items.map((l, i) => (
-              <Row key={l.id} title={l.title} sub={l.description} meta={l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
+              <Row key={l.id} title={l.title} sub={l.description} meta={where === 'computer' ? `${l.publisher} · ${{ npx: 'npm', uvx: 'Python', docker: 'Docker' }[computerPlan(l).runner ?? 'npx']}` : l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
             ))}
           </Card>
         )}
-        <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? 'No hosted servers match.' : undefined} onRetry={() => setNonce((n) => n + 1)} />
+        <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? (where === 'computer' ? 'No servers for a computer match.' : 'No hosted servers match.') : undefined} onRetry={() => setNonce((n) => n + 1)} />
         {list.next && !list.loading && (
           <View style={{ paddingTop: 12 }}>
             <Button
@@ -286,7 +302,7 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
               disabled={list.loadingMore}
               onPress={() =>
                 list.loadMore(async (cur) => {
-                  const r = await searchMcp(applied, cur.next);
+                  const r = await searchMcp(applied, cur.next, where);
                   const have = new Set(cur.items.map((i) => i.id));
                   return { items: r.items.filter((i) => !have.has(i.id)), next: r.next };
                 })

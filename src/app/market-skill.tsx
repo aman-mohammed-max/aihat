@@ -4,13 +4,16 @@ import { Linking, View } from 'react-native';
 
 import { Button, Card, Icon, ListRow, PulseDots, Screen, SectionTitle, Segmented, Text } from '@/components';
 import * as haptic from '@/lib/haptics';
-import { compact, loadSkill, recallSkill, skillSourceLabel } from '@/lib/market';
+import { compact, loadSiteSkill, loadSkill, loadSkillFiles, recallSkill, siteSourceLabel, skillSourceLabel, type SkillFileData } from '@/lib/market';
 import { parseSkillMd, slugify } from '@/lib/skills';
 import { useLibrary, type Skill } from '@/store/library';
 import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
 type Loaded = { key: string; md?: string; dir?: string; error?: string };
+type Files = { key: string; list: SkillFileData[]; omitted: number };
+const SCRIPT = /\.(py|sh|bash|zsh|js|mjs|cjs|ts|rb|php|pl|lua|go|rs|java|kt|swift|c|cpp|cs|sql|r)$/i;
+const kb = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)} kB` : `${n} B`);
 
 const MODES: { value: Skill['mode']; label: string; sub: string }[] = [
   { value: 'auto', label: 'Automatic', sub: 'The assistant sees its name and description and opens it when a task matches. Costs almost nothing until used.' },
@@ -29,14 +32,24 @@ export default function MarketSkill() {
   const [mode, setMode] = useState<Skill['mode']>('auto');
   const [full, setFull] = useState(false);
   const [nonce, setNonce] = useState(0);
+  const [files, setFiles] = useState<Files | null>(null);
+  const [withFiles, setWithFiles] = useState(true);
 
   useEffect(() => {
     if (!listing) return;
     let alive = true;
-    loadSkill(listing).then(
-      (r) => alive && setLoaded({ key: `${key}|${nonce}`, md: r.md, dir: r.dir }),
-      (e) => alive && setLoaded({ key: `${key}|${nonce}`, error: e?.message ?? 'Could not load the skill.' }),
-    );
+    const id = `${key}|${nonce}`;
+    const fail = (e: any) => alive && setLoaded({ key: id, error: e?.message ?? 'Could not load the skill.' });
+    if (listing.from === 'site') {
+      // A website's skill comes with its files in one download.
+      loadSiteSkill(listing).then((r) => {
+        if (!alive) return;
+        setLoaded({ key: id, md: r.md, dir: listing.dir });
+        setFiles({ key: id, list: r.files, omitted: r.omitted });
+      }, fail);
+    } else {
+      loadSkill(listing).then((r) => alive && setLoaded({ key: id, md: r.md, dir: r.dir }), fail);
+    }
     return () => {
       alive = false;
     };
@@ -44,6 +57,24 @@ export default function MarketSkill() {
 
   const data = loaded?.key === `${key}|${nonce}` ? loaded : null;
   const parsed = data?.md ? parseSkillMd(data.md) : null;
+
+  // Once the instructions are in, fetch the files that sit next to them.
+  const dirFound = data?.dir;
+  const bodyFound = parsed?.body;
+  useEffect(() => {
+    if (!listing || listing.from === 'site' || dirFound === undefined || bodyFound === undefined) return;
+    let alive = true;
+    loadSkillFiles(listing.source, dirFound, bodyFound).then(
+      (r) => alive && setFiles({ key: `${key}|${nonce}`, list: r.files, omitted: r.omitted }),
+      () => alive && setFiles({ key: `${key}|${nonce}`, list: [], omitted: 0 }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [listing, key, nonce, dirFound, bodyFound]);
+  const fileData = files?.key === `${key}|${nonce}` ? files : null;
+  const fileBytes = (fileData?.list ?? []).reduce((n, f) => n + f.size, 0);
+  const hasScripts = (fileData?.list ?? []).some((f) => SCRIPT.test(f.path));
 
   if (!listing) {
     return (
@@ -56,11 +87,12 @@ export default function MarketSkill() {
 
   const name = parsed?.name || listing.name;
   const description = parsed?.description || listing.description || '';
-  const label = data?.dir !== undefined ? skillSourceLabel(listing.source, data.dir) : '';
+  const label = data?.dir === undefined ? '' : listing.from === 'site' ? siteSourceLabel(listing.source, data.dir) : skillSourceLabel(listing.source, data.dir);
   const existing = label ? skills.find((s) => s.source === label) : undefined;
   const changed = !!existing && !!parsed && existing.body !== parsed.body;
+  // A skill added before files were supported, or whose files changed in size, can pick them up with an update.
+  const newFiles = !!existing && !!fileData && fileData.list.length > 0 && existing.fileCount !== fileData.list.length;
   const body = parsed?.body ?? '';
-  const mentionsFiles = /\b(scripts?|references?|assets?)\/[\w.-]+/i.test(body);
 
   const add = async () => {
     if (!parsed) return;
@@ -74,6 +106,7 @@ export default function MarketSkill() {
       mode: existing?.mode ?? mode,
       enabled: existing?.enabled ?? true,
     });
+    if (fileData && (withFiles || existing)) await useLibrary.getState().saveSkillFiles(id, withFiles ? fileData.list.map((f) => ({ path: f.path, content: f.content })) : []);
     haptic.success();
     toast(existing ? `Updated ${name}` : `Added ${name}. Use it with /${slugify(name)}`);
     if (!existing) router.replace({ pathname: '/skill-detail', params: { id } });
@@ -86,8 +119,8 @@ export default function MarketSkill() {
         data?.md ? (
           existing ? (
             <>
-              {changed ? <Button label="Update" flex onPress={add} /> : null}
-              <Button label="Open skill" variant={changed ? 'outline' : 'primary'} flex onPress={() => router.replace({ pathname: '/skill-detail', params: { id: existing.id } })} />
+              {changed || newFiles ? <Button label={changed ? 'Update' : 'Add its files'} flex onPress={add} /> : null}
+              <Button label="Open skill" variant={changed || newFiles ? 'outline' : 'primary'} flex onPress={() => router.replace({ pathname: '/skill-detail', params: { id: existing.id } })} />
             </>
           ) : (
             <Button label="Add skill" flex onPress={add} />
@@ -103,7 +136,7 @@ export default function MarketSkill() {
       {!data && (
         <View accessibilityRole="progressbar" accessibilityLabel="Loading the skill" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <PulseDots />
-          <Text color="muted" size={13.5}>Reading SKILL.md from GitHub…</Text>
+          <Text color="muted" size={13.5}>{listing.from === 'site' ? `Downloading from ${listing.source}…` : 'Reading SKILL.md from GitHub…'}</Text>
         </View>
       )}
       {data?.error && (
@@ -111,7 +144,7 @@ export default function MarketSkill() {
           <Text color="warn">{data.error}</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button label="Try again" variant="outline" height={40} onPress={() => setNonce((n) => n + 1)} />
-            <Button label="Open on GitHub" variant="outline" height={40} onPress={() => Linking.openURL(`https://github.com/${listing.source}`)} />
+            <Button label={listing.from === 'site' ? 'Open the website' : 'Open on GitHub'} variant="outline" height={40} onPress={() => Linking.openURL(listing.from === 'site' ? `https://${listing.source}` : `https://github.com/${listing.source}`)} />
           </View>
         </View>
       )}
@@ -121,7 +154,7 @@ export default function MarketSkill() {
           <View style={{ flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 14 }}>
             <Icon name="warn" size={18} color={colors.warn} />
             <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19 }}>
-              Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. AI Hat uses only these instructions{mentionsFiles ? ', not the scripts or other files that this skill refers to' : ''}.
+              Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. Scripts that come with a skill are only stored as text; they never run on your phone.
             </Text>
           </View>
 
@@ -135,7 +168,7 @@ export default function MarketSkill() {
           )}
           {existing && (
             <Card>
-              <ListRow icon="check" label="Already added" sub={changed ? 'The source has changed since you added it.' : 'Up to date with the source.'} last />
+              <ListRow icon="check" label="Already added" sub={changed ? 'The source has changed since you added it.' : newFiles ? 'Its files can be added or refreshed.' : 'Up to date with the source.'} last />
             </Card>
           )}
 
@@ -149,8 +182,23 @@ export default function MarketSkill() {
             </Card>
           </View>
 
+          {!fileData && <Text size={12.5} color="muted">Looking for its other files…</Text>}
+          {fileData && fileData.list.length > 0 && (
+            <View>
+              <SectionTitle>{`Files that come with it · ${fileData.list.length}`}</SectionTitle>
+              <Card>
+                {fileData.list.slice(0, 8).map((f) => <ListRow key={f.path} mono label={f.path} sub={SCRIPT.test(f.path) ? 'Script: read only, never run' : undefined} value={kb(f.size)} />)}
+                {fileData.list.length > 8 && <ListRow label={`and ${fileData.list.length - 8} more`} value={kb(fileBytes)} />}
+                {!existing && <ListRow label="Add these files too" sub={`${kb(fileBytes)} of text${fileData.omitted ? `; ${fileData.omitted} more were left out` : ''}`} toggle={{ on: withFiles, onChange: setWithFiles }} last />}
+              </Card>
+              <Text size={12.5} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 18 }}>
+                The assistant opens these when the instructions point to them.{hasScripts ? ' Scripts are kept as text and are never run on the phone; with a code-running tool connected (an MCP server), the assistant can pass them to it.' : ''}
+              </Text>
+            </View>
+          )}
+
           <Card>
-            <ListRow label="Source" value={label.replace('github.com/', '')} onPress={() => Linking.openURL(`https://github.com/${listing.source}/tree/HEAD/${data.dir ?? ''}`)} />
+            <ListRow label="Source" value={label.replace('github.com/', '')} onPress={() => Linking.openURL(listing.from === 'site' ? `https://${listing.source}` : `https://github.com/${listing.source}/tree/HEAD/${data.dir ?? ''}`)} />
             <ListRow label="Size" value={`${body.length.toLocaleString()} characters`} last={!parsed?.meta.license} />
             {parsed?.meta.license ? <ListRow label="License" value={parsed.meta.license} last /> : null}
           </Card>

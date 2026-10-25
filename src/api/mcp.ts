@@ -1,3 +1,4 @@
+import { accessToken } from '@/api/oauth';
 import { getApiKey } from '@/lib/keys';
 import { useLibrary, type McpTool } from '@/store/library';
 
@@ -8,10 +9,37 @@ const sessions = new Map<string, string>();
 
 let nextId = 1;
 
-async function rpc(c: Conn, method: string, params?: object, notify = false) {
-  const token = c.token ?? (c.id ? await getApiKey(`mcp.${c.id}`) : null);
+/**
+ * The JSON-RPC answer to request `id`. A server may reply with plain JSON, or with an event stream that carries
+ * notifications (progress, "tools changed") before the answer, so every `data:` event is read and the one that
+ * belongs to this request is returned.
+ */
+export function pickReply(text: string, contentType: string, id: number): any {
+  if (!contentType.includes('text/event-stream')) return JSON.parse(text);
+  for (const block of text.split(/\r?\n\r?\n/)) {
+    const data = block
+      .split(/\r?\n/)
+      .filter((l) => l.startsWith('data:'))
+      .map((l) => l.slice(5).replace(/^ /, ''))
+      .join('\n');
+    if (!data) continue;
+    let msg: any;
+    try {
+      msg = JSON.parse(data);
+    } catch {
+      continue;
+    }
+    if (String(msg?.id) === String(id) && ('result' in msg || 'error' in msg)) return msg;
+  }
+  throw new Error('The server ended its reply without answering.');
+}
+
+async function rpc(c: Conn, method: string, params?: object, notify = false, retried = false): Promise<any> {
   // The token goes in `Authorization: Bearer …` unless the server was set up with another header (from the marketplace).
   const server = c.id ? useLibrary.getState().servers.find((x) => x.id === c.id) : undefined;
+  // Servers added with a browser sign-in keep their tokens apart (and renew them); the others use the pasted token.
+  const oauth = server?.auth === 'oauth' && !!c.id;
+  const token = c.token ?? (oauth ? await accessToken(c.id!) : c.id ? await getApiKey(`mcp.${c.id}`) : null);
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json, text/event-stream',
@@ -26,19 +54,16 @@ async function rpc(c: Conn, method: string, params?: object, notify = false) {
   const res = await fetch(c.url, { method: 'POST', headers, body: JSON.stringify(body) });
   const newSid = res.headers.get('Mcp-Session-Id');
   if (newSid) sessions.set(c.url, newSid);
-  if (res.status === 401) throw Object.assign(new Error('Sign-in required'), { status: 401 });
+  if (res.status === 401) {
+    // An expired or revoked token: try one renewal before asking you to sign in again.
+    if (oauth && !retried && (await accessToken(c.id!, true))) return rpc(c, method, params, notify, true);
+    throw Object.assign(new Error(oauth ? 'Signed out. Sign in again.' : 'Sign-in required'), { status: 401, oauth });
+  }
   if (!res.ok) throw new Error(`MCP ${method} failed (${res.status})`);
   if (notify) return null;
 
   const text = await res.text();
-  const ctype = res.headers.get('Content-Type') ?? '';
-  let msg: any;
-  if (ctype.includes('text/event-stream')) {
-    const data = text.split('\n').find((l) => l.startsWith('data:'));
-    msg = data ? JSON.parse(data.slice(5)) : {};
-  } else {
-    msg = JSON.parse(text);
-  }
+  const msg = pickReply(text, res.headers.get('Content-Type') ?? '', body.id!);
   if (msg.error) throw new Error(msg.error.message ?? 'MCP error');
   return msg.result;
 }

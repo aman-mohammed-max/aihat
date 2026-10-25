@@ -15,7 +15,7 @@ import { cleanTitle, initialTitle, isTrivial, shouldRetitle, titleMessages } fro
 import { getDb, json } from '@/db';
 import { now, uid } from '@/lib/id';
 
-import { skillMenu } from '@/lib/skills';
+import { fileNote, normPath, skillMenu } from '@/lib/skills';
 import { genUiSystemPrompt } from '@/genui/catalog';
 import { wantsUI } from '@/genui/parse';
 
@@ -108,6 +108,7 @@ const genUiOn = (modelId: string, text: string, forced?: boolean) => {
 
 const WEB_SEARCH = 'web_search';
 const USE_SKILL = 'use_skill';
+const READ_SKILL_FILE = 'read_skill_file';
 /** A skill loaded into the conversation is capped so one huge SKILL.md can't fill the model's context. */
 const MAX_SKILL_CHARS = 60_000;
 const MAX_INLINE_CHARS = 100_000;
@@ -402,7 +403,10 @@ export const useChats = create<State>((set, get) => ({
       const forced = on.filter((s) => opts.skills?.includes(s.id));
       const always = on.filter((s) => s.mode === 'always' && !forced.includes(s));
       const auto = on.filter((s) => s.mode === 'auto' && !forced.includes(s));
-      const skillText = (s: { name: string; description: string; body: string }) => `## Skill: ${s.name}\n${s.description}\n${s.body.slice(0, MAX_SKILL_CHARS)}`;
+      // Files that came with a skill (references, templates, scripts) are listed so the model can open them.
+      const fileLists = new Map<string, { path: string; size: number }[]>();
+      for (const s of [...always, ...forced, ...auto]) if (s.fileCount > 0) fileLists.set(s.id, await lib.skillFiles(s.id));
+      const skillText = (s: { id: string; name: string; description: string; body: string }) => `## Skill: ${s.name}\n${s.description}\n${s.body.slice(0, MAX_SKILL_CHARS)}${fileNote(fileLists.get(s.id) ?? [])}`;
       let ragContext = '';
       try {
         if ((get().messages[chatId] ?? []).some((m) => m.attachments.some((a) => a.indexed))) act('Searching your files…', 'Finding the passages that match your question');
@@ -434,6 +438,9 @@ export const useChats = create<State>((set, get) => ({
         }
       }
 
+      if (fileLists.size) {
+        tools.push({ type: 'function', function: { name: READ_SKILL_FILE, description: 'Read one of the files that belong to a skill (a reference document, template or script).', parameters: { type: 'object', properties: { skill: { type: 'string', description: 'The skill name' }, path: { type: 'string', description: 'The file path, as listed for the skill' } }, required: ['skill', 'path'] } } });
+      }
       if (auto.length) {
         tools.push({ type: 'function', function: { name: USE_SKILL, description: 'Load the full instructions of one of your skills by name.', parameters: { type: 'object', properties: { name: { type: 'string', description: 'The skill name, exactly as listed' } }, required: ['name'] } } });
       }
@@ -478,6 +485,28 @@ export const useChats = create<State>((set, get) => ({
 
         wire.push({ role: 'assistant', content: roundText || null, tool_calls: pending });
         for (const call of pending) {
+          if (call.function.name === READ_SKILL_FILE) {
+            let a: { skill?: unknown; path?: unknown } = {};
+            try {
+              a = JSON.parse(call.function.arguments || '{}');
+            } catch {
+              /* the model sent broken JSON; the reply below lists what exists */
+            }
+            const hit = [...always, ...forced, ...auto].find((k) => k.name.toLowerCase() === String(a.skill ?? '').trim().toLowerCase());
+            const path = normPath(String(a.path ?? ''));
+            const run: ToolRun = { id: call.id, name: READ_SKILL_FILE, skill: `${hit?.name ?? String(a.skill ?? 'skill')} · ${path || '?'}`, args: call.function.arguments, status: 'running' };
+            update({ toolCalls: [...assistant.toolCalls, run] });
+            if (hit && path) act(`Reading ${path}…`, `From the “${hit.name}” skill`);
+            const text = hit && path ? await lib.readSkillFile(hit.id, path) : null;
+            const names = hit ? (fileLists.get(hit.id) ?? []).map((f) => f.path).join(', ') : '';
+            const out =
+              text != null
+                ? text.length > MAX_SKILL_CHARS ? `${text.slice(0, MAX_SKILL_CHARS)}\n[… ${(text.length - MAX_SKILL_CHARS).toLocaleString('en-US')} more characters not shown]` : text
+                : hit ? `Error: the skill "${hit.name}" has no file "${path}".${names ? ` Its files: ${names}.` : ''}` : `Error: there is no skill called "${String(a.skill ?? '')}".`;
+            update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, status: text != null ? 'done' : 'error', result: text != null ? `Read ${text.length.toLocaleString('en-US')} characters.` : out, error: text != null ? undefined : out } : t)) });
+            wire.push({ role: 'tool', tool_call_id: call.id, content: out });
+            continue;
+          }
           if (call.function.name === USE_SKILL) {
             let wanted = '';
             try {
@@ -489,7 +518,7 @@ export const useChats = create<State>((set, get) => ({
             const run: ToolRun = { id: call.id, name: USE_SKILL, skill: hit?.name ?? (wanted || 'skill'), args: call.function.arguments, status: 'running' };
             update({ toolCalls: [...assistant.toolCalls, run] });
             const out = hit
-              ? `# ${hit.name}\n\n${hit.body.slice(0, MAX_SKILL_CHARS)}`
+              ? `# ${hit.name}\n\n${hit.body.slice(0, MAX_SKILL_CHARS)}${fileNote(fileLists.get(hit.id) ?? [])}`
               : `Error: there is no skill called "${wanted}". Available skills: ${auto.map((k) => k.name).join(', ')}.`;
             if (hit) act(`Using the “${hit.name}” skill…`, hit.description.slice(0, 160));
             update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, status: hit ? 'done' : 'error', result: hit ? `Loaded ${hit.body.length.toLocaleString()} characters of instructions.` : out, error: hit ? undefined : out } : t)) });

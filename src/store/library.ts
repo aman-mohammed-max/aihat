@@ -10,7 +10,10 @@ export type SystemPrompt = {
 export type Skill = {
   id: string; name: string; description: string; version: string; source: string; body: string;
   mode: 'auto' | 'always' | 'onAsk'; enabled: boolean; canRunScripts: boolean;
+  /** Extra files that came with the skill (references, templates, scripts), kept as text. Counted when the library loads. */
+  fileCount: number; fileBytes: number;
 };
+export type SkillFile = { path: string; size: number };
 export type McpTool = { name: string; description?: string; kind: 'read' | 'write' | 'delete'; policy: 'auto' | 'ask' | 'off'; schema?: object };
 export type McpServer = {
   id: string; name: string; url: string; transport: 'http' | 'sse'; auth: 'none' | 'token' | 'oauth';
@@ -28,6 +31,10 @@ type State = {
   deletePrompt: (id: string) => Promise<void>;
   saveSkill: (s: Partial<Skill> & { name: string }) => Promise<string>;
   deleteSkill: (id: string) => Promise<void>;
+  /** Replace all of a skill's extra files. */
+  saveSkillFiles: (skillId: string, files: { path: string; content: string }[]) => Promise<void>;
+  skillFiles: (skillId: string) => Promise<SkillFile[]>;
+  readSkillFile: (skillId: string, path: string) => Promise<string | null>;
   saveServer: (s: Partial<McpServer> & { name: string; url: string }) => Promise<string>;
   deleteServer: (id: string) => Promise<void>;
 };
@@ -41,9 +48,11 @@ export const useLibrary = create<State>((set, get) => ({
       id: r.id, name: r.name, body: r.body, tags: json(r.tags, []), favorite: !!r.favorite,
       preferredModelId: r.preferred_model_id, toolIds: json(r.tool_ids, []), variables: json(r.variables, []),
     }));
+    const counts = new Map((await db.getAllAsync<any>('SELECT skill_id, COUNT(*) AS n, COALESCE(SUM(size),0) AS bytes FROM skill_files GROUP BY skill_id')).map((r) => [r.skill_id as string, r]));
     const skills = (await db.getAllAsync<any>('SELECT * FROM skills ORDER BY name')).map((r): Skill => ({
       id: r.id, name: r.name, description: r.description, version: r.version, source: r.source, body: r.body,
       mode: r.mode, enabled: !!r.enabled, canRunScripts: !!r.can_run_scripts,
+      fileCount: counts.get(r.id)?.n ?? 0, fileBytes: counts.get(r.id)?.bytes ?? 0,
     }));
     const servers = (await db.getAllAsync<any>('SELECT * FROM mcp_servers ORDER BY name')).map((r): McpServer => ({
       id: r.id, name: r.name, url: r.url, transport: r.transport, auth: r.auth, tools: json(r.tools, []),
@@ -85,8 +94,23 @@ export const useLibrary = create<State>((set, get) => ({
     return id;
   },
   async deleteSkill(id) {
-    await (await getDb()).runAsync('DELETE FROM skills WHERE id=?', id);
+    const db = await getDb();
+    await db.runAsync('DELETE FROM skill_files WHERE skill_id=?', id);
+    await db.runAsync('DELETE FROM skills WHERE id=?', id);
     await get().load();
+  },
+
+  async saveSkillFiles(skillId, files) {
+    const db = await getDb();
+    await db.runAsync('DELETE FROM skill_files WHERE skill_id=?', skillId);
+    for (const f of files) await db.runAsync('INSERT OR REPLACE INTO skill_files (skill_id,path,content,size) VALUES (?,?,?,?)', skillId, f.path, f.content, f.content.length);
+    await get().load();
+  },
+  async skillFiles(skillId) {
+    return (await getDb()).getAllAsync<SkillFile>('SELECT path, size FROM skill_files WHERE skill_id=? ORDER BY path', skillId);
+  },
+  async readSkillFile(skillId, path) {
+    return (await (await getDb()).getFirstAsync<{ content: string }>('SELECT content FROM skill_files WHERE skill_id=? AND path=?', skillId, path))?.content ?? null;
   },
 
   async saveServer(s) {

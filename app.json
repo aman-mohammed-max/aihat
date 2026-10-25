@@ -13,7 +13,8 @@
       "buildNumber": "1",
       "supportsTablet": false,
       "infoPlist": {
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers and tools on your own network, for example a model server or an MCP bridge on your computer."
       }
     },
     "android": {
@@ -75,6 +76,14 @@
         {
           "microphonePermission": "Allow AI Hat to use the microphone to dictate messages.",
           "speechRecognitionPermission": "Allow AI Hat to turn your speech into text while you dictate."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
         }
       ]
     ],

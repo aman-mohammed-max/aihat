@@ -1,10 +1,10 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button, Card, ListRow, Screen, SectionTitle, Text } from '@/components';
-import { connect, listTools } from '@/api/mcp';
-import { deleteApiKey } from '@/lib/keys';
+import { isSignedIn, OAuthError, signOut } from '@/api/oauth';
+import { reconnect, removeServer } from '@/lib/mcp-connect';
 import { useCommandList } from '@/lib/commands';
 import { pick } from '@/lib/pick';
 import { useLibrary, type McpTool } from '@/store/library';
@@ -16,33 +16,44 @@ export default function McpDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const s = useLibrary((x) => x.servers.find((k) => k.id === id));
   const [msg, setMsg] = useState('');
+  const [signed, setSigned] = useState(false);
+  useEffect(() => {
+    if (id) isSignedIn(id).then(setSigned);
+  }, [id]);
   const commands = useCommandList();
   if (!s) return null;
   const command = commands.find((c) => c.kind === 'mcp' && c.ref === s.id)?.name;
 
   const refresh = async () => {
-    setMsg('Connecting…');
+    setMsg(s.auth === 'oauth' && !signed ? 'Opening your browser to sign in…' : 'Connecting…');
     try {
-      await connect({ url: s.url, id });
-      const tools = await listTools({ url: s.url, id }, s.tools);
-      await useLibrary.getState().saveServer({ ...s, tools, connected: true });
-      setMsg(`Connected · ${tools.length} tools`);
+      const n = await reconnect(s);
+      setSigned(true);
+      setMsg(`Connected · ${n} tools`);
     } catch (e: any) {
       await useLibrary.getState().saveServer({ ...s, connected: false });
-      setMsg(e.status === 401 ? 'Sign-in needed' : e.message);
+      setSigned(await isSignedIn(id));
+      setMsg(e instanceof OAuthError ? e.message : e.status === 401 ? (s.auth === 'oauth' ? 'Signed out. Sign in again.' : 'Sign-in needed') : e.message);
     }
+  };
+  const signOutNow = async () => {
+    await signOut(id);
+    await useLibrary.getState().saveServer({ ...s, connected: false });
+    setSigned(false);
+    setMsg('Signed out');
   };
   const setPolicy = (t: McpTool, policy: McpTool['policy']) =>
     useLibrary.getState().saveServer({ ...s, tools: s.tools.map((x) => (x.name === t.name ? { ...x, policy } : x)) });
 
   return (
-    <Screen header={{ title: s.name }} footer={<Button label="Remove server" variant="danger" flex onPress={async () => { await deleteApiKey(`mcp.${id}`); await useLibrary.getState().deleteServer(id); router.back(); }} />}>
+    <Screen header={{ title: s.name }} footer={<Button label="Remove server" variant="danger" flex onPress={async () => { await removeServer(id); router.back(); }} />}>
       <Card style={{ padding: 14, gap: 4 }}>
         <Text weight="medium" color={s.connected ? 'accent' : 'warn'}>{s.connected ? 'Connected' : 'Not connected'}</Text>
         <Text mono size={12.5} color="muted" selectable>{s.url}</Text>
-        <Text size={12.5} color="muted">{s.transport === 'http' ? 'Streamable HTTP' : 'SSE'}{s.auth !== 'none' ? ` · ${s.auth}` : ''}</Text>
-        <View style={{ flexDirection: 'row', gap: 10, paddingTop: 10 }}>
-          <Button label={s.connected ? 'Refresh tools' : 'Connect'} height={40} variant="outline" onPress={refresh} />
+        <Text size={12.5} color="muted">{s.transport === 'http' ? 'Streamable HTTP' : 'SSE'} · {s.auth === 'oauth' ? (signed ? 'Signed in with your browser' : 'Browser sign-in, signed out') : s.auth === 'token' ? 'Access token' : 'No sign-in'}</Text>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, paddingTop: 10 }}>
+          <Button label={s.auth === 'oauth' && !signed ? 'Sign in' : s.connected ? 'Refresh tools' : 'Connect'} height={40} variant="outline" onPress={refresh} />
+          {s.auth === 'oauth' && signed ? <Button label="Sign out" height={40} variant="outline" onPress={signOutNow} /> : null}
           <Button label="Edit" height={40} variant="outline" onPress={() => router.push({ pathname: '/add-mcp', params: { id } })} />
         </View>
       </Card>

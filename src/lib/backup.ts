@@ -12,7 +12,7 @@ type Include = { chats: boolean; prompts: boolean; skills: boolean; mcp: boolean
 const TABLES: Record<keyof Include, string[]> = {
   chats: ['chats', 'messages'],
   prompts: ['prompts'],
-  skills: ['skills'],
+  skills: ['skills', 'skill_files'],
   mcp: ['mcp_servers', 'providers', 'models'],
   settings: [],
 };
@@ -75,7 +75,7 @@ export async function importBackup() {
 
 export async function eraseAll() {
   const db = await getDb();
-  for (const t of ['messages', 'chats', 'prompts', 'skills', 'mcp_servers', 'models', 'providers', 'rag_chunks']) await db.runAsync(`DELETE FROM ${t}`);
+  for (const t of ['messages', 'chats', 'prompts', 'skills', 'skill_files', 'mcp_servers', 'models', 'providers', 'rag_chunks']) await db.runAsync(`DELETE FROM ${t}`);
   await db.runAsync('DELETE FROM kv');
   await Promise.all([useProviders.getState().load(), useLibrary.getState().load(), useChats.getState().load(), useSettings.getState().load()]);
 }

@@ -54,6 +54,19 @@ export function skillCommandNames(skills: Pick<Skill, 'id' | 'name'>[], taken: S
   return out;
 }
 
+/** A skill's file path as the model may give it: no leading `./` or `/`, no `..`. Empty when it isn't usable. */
+export function normPath(p: string) {
+  const parts = p.trim().replace(/\\/g, '/').split('/').filter((x) => x && x !== '.');
+  return parts.some((x) => x === '..') ? '' : parts.join('/');
+}
+
+/** The list of a skill's extra files, written for the model. */
+export function fileNote(files: { path: string; size: number }[]) {
+  if (!files.length) return '';
+  const shown = files.slice(0, 80).map((f) => `- ${f.path} (${f.size.toLocaleString('en-US')} characters)`);
+  return `\n\nFiles that belong to this skill. Open one with the read_skill_file tool (give the skill name and the path):\n${shown.join('\n')}${files.length > 80 ? `\n- … and ${files.length - 80} more` : ''}`;
+}
+
 /** The skills block that goes into the system prompt: a short menu, because the full text is loaded on demand. */
 export function skillMenu(skills: Pick<Skill, 'name' | 'description'>[]) {
   if (!skills.length) return '';

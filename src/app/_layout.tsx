@@ -77,6 +77,7 @@ export default function RootLayout() {
             <Stack.Screen name="market" />
             <Stack.Screen name="market-mcp" />
             <Stack.Screen name="market-skill" />
+            <Stack.Screen name="oauth/mcp" />
             <Stack.Screen name="mcp" />
             <Stack.Screen name="mcp-detail" />
             <Stack.Screen name="privacy" />
@@ -87,6 +88,7 @@ export default function RootLayout() {
             <Stack.Screen name="search-chats" />
             <Stack.Screen name="settings" />
             <Stack.Screen name="skill-detail" />
+            <Stack.Screen name="skill-file" />
             <Stack.Screen name="skills" />
             <Stack.Screen name="web-search" />
             {/* Every sheet / dialog is a transparent modal over the current screen. */}

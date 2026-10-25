@@ -6,6 +6,10 @@
  *  - Skills: claude-plugins.dev (browse + search, with descriptions), skills.sh (search, the same call its CLI makes), and
  *    any public GitHub repository or folder that holds SKILL.md files. Skill text always comes from GitHub's raw files.
  */
+import * as Crypto from 'expo-crypto';
+import { gunzipSync, unzipSync } from 'fflate';
+
+import type { StdioSpec } from './bridge';
 import { parseSkillMd } from './skills';
 
 // ---------- shared ----------
@@ -58,7 +62,20 @@ export type McpListing = {
   websiteUrl?: string;
   /** The way to reach it from a phone: a hosted (remote) server. Undefined for servers that only run on a computer. */
   remote?: McpRemote;
+  /** How the registry says the server is installed (npm, pypi, docker…). Servers with these and no `remote` run on a computer. */
+  packages?: RegistryPackage[];
   featured?: boolean;
+};
+
+export type RegistryArg = { type?: 'positional' | 'named'; name?: string; value?: string; default?: string; description?: string; isRequired?: boolean; isSecret?: boolean; format?: string; choices?: string[] };
+export type RegistryPackage = {
+  registryType: string;
+  identifier: string;
+  version?: string;
+  runtimeHint?: string;
+  transport?: { type?: string };
+  packageArguments?: RegistryArg[];
+  environmentVariables?: { name: string; description?: string; isRequired?: boolean; isSecret?: boolean; default?: string; choices?: string[] }[];
 };
 
 const reverseDomain = (name: string) => name.split('/')[0].split('.').reverse().join('.');
@@ -77,6 +94,7 @@ export function normalizeRegistryEntry(entry: any): McpListing | null {
     publisher: reverseDomain(s.name),
     repoUrl: s.repository?.url,
     websiteUrl: s.websiteUrl,
+    packages: Array.isArray(s.packages) ? s.packages.filter((p: any) => p?.identifier && p?.registryType) : undefined,
     remote: r?.url
       ? {
           type: r.type,
@@ -88,11 +106,14 @@ export function normalizeRegistryEntry(entry: any): McpListing | null {
   };
 }
 
-/** One page of registry results. Servers that only run on a computer are dropped, since a phone can't start them. */
-export async function searchMcp(query: string, cursor?: string): Promise<{ items: McpListing[]; next?: string }> {
+/**
+ * One page of registry results. `hosted` servers are reachable over the internet and work from a phone directly; `computer`
+ * servers are programs to run on a computer (npm, Python or Docker) that the phone reaches through a bridge.
+ */
+export async function searchMcp(query: string, cursor?: string, kind: 'hosted' | 'computer' = 'hosted'): Promise<{ items: McpListing[]; next?: string }> {
   const items: McpListing[] = [];
   let next = cursor;
-  // Most registry entries are hosted servers, but keep paging a little when a page has few.
+  // Keep paging a little when a page has few matches.
   for (let page = 0; page < 3 && items.length < 20; page++) {
     const params = new URLSearchParams({ limit: '60', version: 'latest' });
     if (query.trim()) params.set('search', query.trim());
@@ -100,7 +121,8 @@ export async function searchMcp(query: string, cursor?: string): Promise<{ items
     const d = await getJson<{ servers?: any[]; metadata?: { nextCursor?: string } }>(`${REGISTRY}?${params}`, 'The MCP registry');
     for (const e of d.servers ?? []) {
       const n = normalizeRegistryEntry(e);
-      if (n?.remote) items.push(n);
+      if (!n) continue;
+      if (kind === 'hosted' ? n.remote : !n.remote && computerPlan(n).supported) items.push(n);
     }
     next = d.metadata?.nextCursor || undefined;
     if (!next) break;
@@ -180,6 +202,74 @@ export function buildMcpConnection(l: McpListing, plan: McpPlan, values: Record<
   return { url, headerName: plan.headerName, headerTemplate: plan.headerTemplate, token: token || undefined };
 }
 
+// ----- servers that run on a computer -----
+
+export type ComputerField = { key: string; label: string; hint?: string; secret: boolean; required: boolean; env: boolean; default?: string; choices?: string[] };
+export type ComputerPlan = {
+  supported: boolean;
+  reason?: string;
+  /** What the package is installed with: npx (npm), uvx (Python) or docker. */
+  runner?: 'npx' | 'uvx' | 'docker';
+  fields: ComputerField[];
+  /** The program to start, once the fields are filled. */
+  build: (values: Record<string, string>) => StdioSpec;
+};
+
+const argKey = (a: RegistryArg, i: number) => `arg:${i}:${a.name ?? 'value'}`;
+
+/** How to start a registry package on a computer. Only stdio packages from npm, PyPI and Docker images are handled. */
+export function computerPlan(l: McpListing): ComputerPlan {
+  const none = (reason: string): ComputerPlan => ({ supported: false, reason, fields: [], build: () => ({ command: '', args: [], env: {} }) });
+  const pkg = (l.packages ?? []).find((p) => (!p.transport?.type || p.transport.type === 'stdio') && ['npm', 'pypi', 'oci'].includes(p.registryType));
+  if (!pkg) return none((l.packages ?? []).length ? 'This server is packaged in a way the app can’t start for you (only npm, Python and Docker packages are supported). Its website may explain how to run it.' : 'This server has no package to run.');
+
+  const args = pkg.packageArguments ?? [];
+  const fields: ComputerField[] = [];
+  args.forEach((a, i) => {
+    if (a.value !== undefined || a.default !== undefined || a.isRequired) {
+      // A fixed value needs no question; a required one without a value does.
+      if (a.value !== undefined) return;
+      fields.push({ key: argKey(a, i), label: a.name ? `--${a.name}` : 'Value', hint: a.description, secret: !!a.isSecret, required: !!a.isRequired, env: false, default: a.default, choices: a.choices });
+    }
+  });
+  for (const e of pkg.environmentVariables ?? []) {
+    fields.push({ key: `env:${e.name}`, label: e.name, hint: e.description, secret: !!e.isSecret, required: !!e.isRequired && e.default === undefined, env: true, default: e.default, choices: e.choices });
+  }
+  // Required settings first.
+  fields.sort((x, y) => Number(y.required) - Number(x.required));
+
+  const runner = pkg.registryType === 'npm' ? 'npx' : pkg.registryType === 'pypi' ? 'uvx' : 'docker';
+  const version = pkg.version && pkg.version !== 'latest' ? pkg.version : '';
+  return {
+    supported: true,
+    runner,
+    fields,
+    build(values) {
+      const get = (f: string, fallback?: string) => (values[f] ?? '').trim() || fallback || '';
+      const tail: string[] = [];
+      args.forEach((a, i) => {
+        const v = a.value ?? get(argKey(a, i), a.default);
+        if (!v) return;
+        if (a.type === 'named' && a.name) {
+          if (a.format === 'boolean') {
+            if (v === 'true') tail.push(`--${a.name}`);
+          } else tail.push(`--${a.name}`, v);
+        } else tail.push(v);
+      });
+      const env: Record<string, string> = {};
+      for (const e of pkg.environmentVariables ?? []) {
+        const v = get(`env:${e.name}`, e.default);
+        if (v) env[e.name] = v;
+      }
+      if (pkg.registryType === 'npm') return { command: 'npx', args: ['-y', version ? `${pkg.identifier}@${version}` : pkg.identifier, ...tail], env };
+      if (pkg.registryType === 'pypi') return { command: 'uvx', args: [version ? `${pkg.identifier}==${version}` : pkg.identifier, ...tail], env };
+      // Docker: pass each setting on with `-e NAME`, which takes the value from the environment the bridge starts it in.
+      const image = version && !/[:@]/.test(pkg.identifier.split('/').pop() ?? '') ? `${pkg.identifier}:${version}` : pkg.identifier;
+      return { command: 'docker', args: ['run', '-i', '--rm', ...Object.keys(env).flatMap((k) => ['-e', k]), image, ...tail], env };
+    },
+  };
+}
+
 // ---------- Skills ----------
 
 export type SkillListing = {
@@ -193,9 +283,11 @@ export type SkillListing = {
   dir?: string;
   installs?: number;
   stars?: number;
-  from: 'plugins' | 'skillssh' | 'github';
+  from: 'plugins' | 'skillssh' | 'github' | 'site';
   /** skills.sh gives a skill's folder name but not its path inside the repository. */
   skillId?: string;
+  /** For skills a website publishes itself: where its index is and what it says about this skill. */
+  site?: { indexUrl: string; entry: SiteEntry };
 };
 
 const PLUGINS = 'https://claude-plugins.dev/api/skills';
@@ -235,6 +327,159 @@ export async function skillsShSearch(query: string, limit = 30): Promise<SkillLi
     .map((s): SkillListing => ({ key: `ssh:${s.id}`, name: s.name || s.skillId, source: s.source, skillId: s.skillId, installs: s.installs, from: 'skillssh' }));
 }
 
+// ----- skills that websites publish themselves (the open Agent Skills discovery standard) -----
+
+export type SiteEntry = { name: string; description: string; type?: 'skill-md' | 'archive'; url?: string; digest?: string; files?: string[] };
+
+/** `vercel.com`, `https://docs.stripe.com/` → `https://vercel.com`. Null for GitHub links and things that aren't a website. */
+export function parseSiteRef(input: string): string | null {
+  const t = input.trim().replace(/\/+$/, '');
+  if (!t || /\s/.test(t)) return null;
+  if (/^https?:\/\//i.test(t)) {
+    try {
+      const u = new URL(t);
+      return /(^|\.)github\.com$/i.test(u.hostname) ? null : u.origin;
+    } catch {
+      return null;
+    }
+  }
+  const host = t.split('/')[0];
+  return /^([a-z0-9-]+\.)+[a-z]{2,}(:\d+)?$/i.test(host) && !/^github\.com$/i.test(host) ? `https://${host}` : null;
+}
+
+const WELL_KNOWN = ['.well-known/agent-skills', '.well-known/skills'];
+
+/** Read a website's skills index (new format first, then the older one). */
+export async function siteSkills(input: string): Promise<SkillListing[]> {
+  const origin = parseSiteRef(input);
+  if (!origin) throw new Error('That doesn’t look like a website address.');
+  for (const dir of WELL_KNOWN) {
+    const indexUrl = `${origin}/${dir}/index.json`;
+    let d: { skills?: SiteEntry[] } | null = null;
+    try {
+      const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
+      d = res.ok ? await res.json() : null;
+    } catch {
+      d = null;
+    }
+    if (!d || !Array.isArray(d.skills) || !d.skills.length) continue;
+    const host = new URL(origin).host;
+    return d.skills
+      .filter((e) => e?.name && /^[\w.-]+$/.test(e.name))
+      .map((entry): SkillListing => ({ key: `site:${host}/${entry.name}`, name: entry.name, description: entry.description, source: host, dir: entry.name, from: 'site', site: { indexUrl, entry } }));
+  }
+  throw new Error(`${new URL(origin).host} doesn’t publish skills this way (no /.well-known/agent-skills/index.json).`);
+}
+
+const sha256Hex = async (bytes: Uint8Array) => [...new Uint8Array(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as Uint8Array<ArrayBuffer>))].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+async function fetchBytes(url: string, max = 20_000_000) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`Could not download ${new URL(url).host} (${res.status}).`);
+  const bytes = new Uint8Array(await res.arrayBuffer());
+  if (bytes.length > max) throw new Error('That download is too large.');
+  return bytes;
+}
+
+/** The files of a .tar archive (ustar, with GNU long names and pax paths). Folders and links are skipped. */
+export function untar(tar: Uint8Array): { path: string; data: Uint8Array }[] {
+  const out: { path: string; data: Uint8Array }[] = [];
+  const text = new TextDecoder();
+  const str = (a: number, b: number) => text.decode(tar.subarray(a, b)).replace(/\0.*$/s, '');
+  let longName: string | null = null;
+  let paxPath: string | null = null;
+  for (let at = 0; at + 512 <= tar.length; ) {
+    if (tar.subarray(at, at + 512).every((b) => b === 0)) break;
+    const size = parseInt(str(at + 124, at + 136).trim() || '0', 8);
+    const type = str(at + 156, at + 157) || '0';
+    const body = tar.subarray(at + 512, at + 512 + size);
+    const prefix = str(at + 345, at + 500);
+    let name = (prefix ? `${prefix}/` : '') + str(at, at + 100);
+    at += 512 + Math.ceil(size / 512) * 512;
+    if (type === 'L') { longName = text.decode(body).replace(/\0.*$/s, ''); continue; }
+    if (type === 'x') { paxPath = text.decode(body).match(/\d+ path=([^\n]+)\n/)?.[1] ?? null; continue; }
+    if (longName) { name = longName; longName = null; }
+    if (paxPath) { name = paxPath; paxPath = null; }
+    if ((type === '0' || type === '\0' || type === '7') && !name.endsWith('/')) out.push({ path: name.replace(/^\.\//, ''), data: body });
+  }
+  return out;
+}
+
+/** Unpack a downloaded archive (.tar.gz, .tgz, .zip or .tar) into files. */
+export function unpack(bytes: Uint8Array): { path: string; data: Uint8Array }[] {
+  const MAX_UNPACKED = 80_000_000;
+  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+    const tar = gunzipSync(bytes);
+    if (tar.length > MAX_UNPACKED) throw new Error('That archive is too large once unpacked.');
+    return untar(tar);
+  }
+  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
+    const files = unzipSync(bytes, { filter: (f) => f.originalSize <= 5_000_000 && !f.name.endsWith('/') });
+    return Object.entries(files).map(([path, data]) => ({ path, data }));
+  }
+  return untar(bytes);
+}
+
+/** SKILL.md and its companion files from the unpacked files of an archive (the skill may sit in a folder inside it). */
+export function skillFromFiles(all: { path: string; data: Uint8Array }[]): { md: string; files: SkillFileData[]; omitted: number } {
+  const text = new TextDecoder();
+  const md = all.filter((f) => /(^|\/)skill\.md$/i.test(f.path)).sort((a, b) => a.path.split('/').length - b.path.split('/').length)[0];
+  if (!md) throw new Error('There is no SKILL.md in that download.');
+  const dir = md.path.includes('/') ? md.path.slice(0, md.path.lastIndexOf('/')) : '';
+  const body = parseSkillMdBody(text.decode(md.data));
+  const blobs = all.map((f) => ({ path: f.path, size: f.data.length }));
+  const { picked, omitted } = chooseSkillFiles(blobs, dir, referencedPaths(body));
+  const byPath = new Map(all.map((f) => [f.path, f.data]));
+  const files: SkillFileData[] = [];
+  for (const { rel } of picked) {
+    const data = byPath.get(dir ? `${dir}/${rel}` : rel)!;
+    const content = text.decode(data).replace(/\r\n?/g, '\n');
+    if (content.trim() && !content.includes('\u0000')) files.push({ path: rel, content, size: content.length });
+  }
+  return { md: text.decode(md.data), files, omitted };
+}
+
+const parseSkillMdBody = (md: string) => parseSkillMd(md).body;
+
+/** Download one skill a website publishes, check it against the checksum the site gave, and read it. */
+export async function loadSiteSkill(l: SkillListing): Promise<{ md: string; files: SkillFileData[]; omitted: number; url: string }> {
+  if (!l.site) throw new Error('This skill has no download address.');
+  const { indexUrl, entry } = l.site;
+  const verify = async (bytes: Uint8Array) => {
+    const want = entry.digest?.replace(/^sha256:/i, '').toLowerCase();
+    if (want && (await sha256Hex(bytes)) !== want) throw new Error('The download doesn’t match the checksum the website published, so it was not used.');
+  };
+  const text = new TextDecoder();
+
+  if (entry.url) {
+    const url = new URL(entry.url, indexUrl).toString();
+    const bytes = await fetchBytes(url);
+    await verify(bytes);
+    if (entry.type === 'archive') return { ...skillFromFiles(unpack(bytes)), url };
+    return { md: text.decode(bytes), files: [], omitted: 0, url };
+  }
+
+  // The older index lists every file of the skill.
+  const names = entry.files ?? ['SKILL.md'];
+  const base = new URL(`${entry.name}/`, indexUrl).toString();
+  const got: { path: string; data: Uint8Array }[] = [];
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      while (i < Math.min(names.length, MAX_SKILL_FILES + 1)) {
+        const rel = names[i++];
+        if (!rel || rel.includes('..')) continue;
+        try {
+          got.push({ path: rel, data: await fetchBytes(new URL(rel, base).toString(), MAX_SKILL_FILE_BYTES * 2) });
+        } catch {
+          /* a missing companion file is left out */
+        }
+      }
+    }),
+  );
+  return { ...skillFromFiles(got), url: new URL('SKILL.md', base).toString() };
+}
+
 // ----- GitHub -----
 
 export type GithubRef = { owner: string; repo: string; ref?: string; path: string };
@@ -242,8 +487,10 @@ export type GithubRef = { owner: string; repo: string; ref?: string; path: strin
 /** `owner/repo`, `github.com/owner/repo`, or a link to a folder or SKILL.md inside a repo. */
 export function parseGithubRef(input: string): GithubRef | null {
   const t = input.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, '').replace(/\.git$/i, '');
+  const explicit = /^github\.com\//i.test(t);
   const m = t.match(/^(?:github\.com\/)?([\w.-]+)\/([\w.-]+)(?:\/(?:tree|blob)\/([^/]+)\/?(.*))?$/i);
-  if (!m || /^github\.com$/i.test(m[1])) return null;
+  // A bare "owner/repo" has no dots in the owner (GitHub names don't), so "vercel.com/docs" is a website.
+  if (!m || /^github\.com$/i.test(m[1]) || (!explicit && m[1].includes('.'))) return null;
   let path = (m[4] ?? '').replace(/\/+$/, '');
   if (/(^|\/)SKILL\.md$/i.test(path)) path = path.replace(/\/?SKILL\.md$/i, '');
   return { owner: m[1], repo: m[2], ref: m[3], path };
@@ -251,16 +498,20 @@ export function parseGithubRef(input: string): GithubRef | null {
 
 const raw = (source: string, path: string, ref = 'HEAD') => `https://raw.githubusercontent.com/${source}/${ref}/${path.replace(/^\/+/, '')}`;
 
-type TreeEntry = { path: string; type: string };
-/** Every SKILL.md folder in a repo, from one GitHub API call. */
-const skillDirs = (source: string, ref = 'HEAD') =>
-  once(`tree:${source}@${ref}`, async () => {
-    const d = await getJson<{ tree?: TreeEntry[]; truncated?: boolean }>(`https://api.github.com/repos/${source}/git/trees/${encodeURIComponent(ref)}?recursive=1`, 'GitHub');
-    return (d.tree ?? [])
-      .filter((t) => t.type === 'blob' && /(^|\/)SKILL\.md$/.test(t.path))
-      .map((t) => t.path.replace(/\/?SKILL\.md$/, ''))
-      .sort((a, b) => a.length - b.length || a.localeCompare(b));
+type Blob = { path: string; size: number };
+/** Every file in a repository, from one GitHub API call (cached for the session). */
+const repoBlobs = (source: string, ref = 'HEAD') =>
+  once(`tree:${source}@${ref}`, async (): Promise<Blob[]> => {
+    const d = await getJson<{ tree?: { path: string; type: string; size?: number }[] }>(`https://api.github.com/repos/${source}/git/trees/${encodeURIComponent(ref)}?recursive=1`, 'GitHub');
+    return (d.tree ?? []).filter((t) => t.type === 'blob').map((t) => ({ path: t.path, size: t.size ?? 0 }));
   });
+
+/** Every SKILL.md folder in a repo. */
+const skillDirs = async (source: string, ref = 'HEAD') =>
+  (await repoBlobs(source, ref))
+    .filter((t) => /(^|\/)SKILL\.md$/.test(t.path))
+    .map((t) => t.path.replace(/\/?SKILL\.md$/, ''))
+    .sort((a, b) => a.length - b.length || a.localeCompare(b));
 
 async function fetchText(url: string): Promise<string | null> {
   try {
@@ -374,10 +625,103 @@ export async function loadSkill(l: SkillListing): Promise<{ md: string; dir: str
   throw new Error('Couldn’t find that skill’s SKILL.md. It may have been moved or removed.');
 }
 
+// ----- the files that come with a skill -----
+
+export type SkillFileData = { path: string; content: string; size: number };
+
+const TEXT_EXT = new Set('md markdown txt rst json jsonc yaml yml toml ini cfg csv tsv xml html htm css js mjs cjs ts tsx jsx py sh bash zsh rb php go rs java kt swift c h cpp hpp cs sql r lua pl tex bib'.split(' '));
+const SKIP_DIR = /(^|\/)(node_modules|\.git|__pycache__|dist|build|\.venv|venv)(\/|$)/;
+const SKIP_NAME = /^(LICENSE|LICENCE|NOTICE|CHANGELOG|CONTRIBUTING|CODE_OF_CONDUCT)(\.[A-Za-z]+)?$/i;
+export const MAX_SKILL_FILES = 60;
+export const MAX_SKILL_FILE_BYTES = 150_000;
+export const MAX_SKILL_TOTAL_BYTES = 1_200_000;
+
+/** Files a SKILL.md points to by relative path (`forms.md`, `scripts/fill.py`), so they can be taken first. */
+export function referencedPaths(body: string): string[] {
+  const found = new Set<string>();
+  for (const m of body.matchAll(/(?:^|[\s`'"(\[])(\.?\/?(?:[\w.-]+\/)*[\w.-]+\.[A-Za-z0-9]{1,8})(?=$|[\s`'")\],:;])/gm)) {
+    const p = m[1].replace(/^\.?\//, '');
+    if (!p.includes('..') && !/^https?:/.test(p) && TEXT_EXT.has(p.split('.').pop()!.toLowerCase())) found.add(p);
+  }
+  return [...found];
+}
+
+/** Which files of a folder to keep, in the order to keep them: referenced ones, then documents, then code. */
+export function chooseSkillFiles(blobs: Blob[], dir: string, referenced: string[], otherSkillDirs: string[] = []) {
+  const prefix = dir ? `${dir}/` : '';
+  const ref = new Set(referenced);
+  const rank = (rel: string) => (ref.has(rel) ? 0 : /\.(md|markdown|txt|rst)$/i.test(rel) ? 1 : /^(scripts?|examples?)\//i.test(rel) ? 2 : 3);
+  const candidates = blobs
+    .filter((b) => b.path.startsWith(prefix) && b.path !== `${prefix}SKILL.md`)
+    .filter((b) => !otherSkillDirs.some((o) => b.path.startsWith(`${o}/`)))
+    .map((b) => ({ rel: b.path.slice(prefix.length), size: b.size }))
+    .filter(({ rel, size }) => {
+      const name = rel.split('/').pop()!;
+      const ext = name.includes('.') ? name.split('.').pop()!.toLowerCase() : '';
+      return TEXT_EXT.has(ext) && !SKIP_NAME.test(name) && !SKIP_DIR.test(rel) && size > 1 && size <= MAX_SKILL_FILE_BYTES;
+    })
+    .sort((x, y) => rank(x.rel) - rank(y.rel) || x.rel.split('/').length - y.rel.split('/').length || x.rel.localeCompare(y.rel));
+  const picked: { rel: string; size: number }[] = [];
+  let total = 0;
+  for (const c of candidates) {
+    if (picked.length >= MAX_SKILL_FILES || total + c.size > MAX_SKILL_TOTAL_BYTES) continue;
+    picked.push(c);
+    total += c.size;
+  }
+  return { picked, omitted: candidates.length - picked.length };
+}
+
+/**
+ * Read the text files that sit next to a SKILL.md (references, templates, scripts) so the assistant can open them later.
+ * Pictures, fonts and other binaries are left out, and the total is capped. Scripts are stored as text only; they are not run.
+ */
+export async function loadSkillFiles(source: string, dir: string, skillBody: string): Promise<{ files: SkillFileData[]; omitted: number }> {
+  const referenced = referencedPaths(skillBody);
+  let choice: { picked: { rel: string; size: number }[]; omitted: number };
+  try {
+    const blobs = await repoBlobs(source);
+    if (!dir) {
+      // A skill at the root of a repository: only what it points to, not the whole repository.
+      choice = { picked: blobs.filter((b) => referenced.includes(b.path) && b.size <= MAX_SKILL_FILE_BYTES).map((b) => ({ rel: b.path, size: b.size })), omitted: 0 };
+    } else {
+      const others = (await skillDirs(source)).filter((d) => d !== dir && d.startsWith(`${dir}/`));
+      choice = chooseSkillFiles(blobs, dir, referenced, others);
+    }
+  } catch {
+    // GitHub's file list wasn't available (limit reached): try the files the instructions name.
+    choice = { picked: referenced.map((rel) => ({ rel, size: 0 })).slice(0, 20), omitted: 0 };
+  }
+
+  const out: SkillFileData[] = [];
+  let i = 0;
+  await Promise.all(
+    Array.from({ length: 6 }, async () => {
+      while (i < choice.picked.length) {
+        const at = i++;
+        const { rel } = choice.picked[at];
+        const text = await fetchText(raw(source, `${dir ? dir + '/' : ''}${rel}`));
+        if (text != null && text.trim() && !text.includes('\u0000') && text.length <= MAX_SKILL_FILE_BYTES * 1.5) out[at] = { path: rel, content: text.replace(/\r\n?/g, '\n'), size: text.length };
+      }
+    }),
+  );
+  return { files: out.filter(Boolean), omitted: choice.omitted };
+}
+
+/** The same for a skill a website publishes: `vercel.com/deploy-to-vercel`. */
+export const siteSourceLabel = (host: string, name: string) => `${host}/${name}`;
+
 /** A stable label for where an installed skill came from; used to show "Added" in the lists. */
 export const skillSourceLabel = (source: string, dir?: string) => `github.com/${source}${dir ? '/' + dir : ''}`;
 
 /** Curated places to start browsing: repositories that publish many skills. */
+export const SKILL_SITES = [
+  { site: 'vercel.com', label: 'Vercel', sub: 'Deploy, React and web design' },
+  { site: 'developers.cloudflare.com', label: 'Cloudflare', sub: 'Workers, agents, storage and more' },
+  { site: 'docs.stripe.com', label: 'Stripe', sub: 'Payments, Connect and billing' },
+  { site: 'supabase.com', label: 'Supabase', sub: 'Postgres and Supabase projects' },
+  { site: 'agentskills.io', label: 'Agent Skills', sub: 'Writing and testing skills' },
+];
+
 export const SKILL_SOURCES = [
   { source: 'anthropics/skills', label: 'Anthropic', sub: 'Documents, design, MCP builder and more' },
   { source: 'openai/skills', label: 'OpenAI Codex', sub: 'Curated skills for Codex' },

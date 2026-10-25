@@ -35,6 +35,10 @@ CREATE TABLE IF NOT EXISTS skills (
   source TEXT NOT NULL DEFAULT 'local', body TEXT NOT NULL DEFAULT '', files TEXT NOT NULL DEFAULT '[]',
   mode TEXT NOT NULL DEFAULT 'auto', enabled INTEGER NOT NULL DEFAULT 1, can_run_scripts INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS skill_files (
+  skill_id TEXT NOT NULL, path TEXT NOT NULL, content TEXT NOT NULL, size INTEGER NOT NULL,
+  PRIMARY KEY (skill_id, path)
+);
 CREATE TABLE IF NOT EXISTS mcp_servers (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, url TEXT NOT NULL, transport TEXT NOT NULL DEFAULT 'http',
   auth TEXT NOT NULL DEFAULT 'none', tools TEXT NOT NULL DEFAULT '[]', enabled_by_default INTEGER NOT NULL DEFAULT 1,

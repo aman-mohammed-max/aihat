@@ -46,7 +46,7 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 - **Web search** with sources: SearXNG, Brave, Tavily, or your endpoint's `/v1/search`. Models with tool calling can search by themselves.
 - **Files**: text, Markdown, CSV and code, plus **PDF, Word, PowerPoint and Excel**, read on the phone. Long files are searched by meaning instead of sent whole (needs an embeddings endpoint).
 - **Generative UI**: ask for a checklist, form or dashboard and get an interactive one in the chat, drawn with the app's own components ([json-render](https://json-render.dev)).
-- **Marketplace**: browse and add **skills** (from claude-plugins.dev, skills.sh or any public GitHub repository) and **MCP servers** (from the official MCP registry), after reading what you're adding.
+- **Marketplace**: browse and add **skills** (from the companies that publish them themselves, such as Vercel, Cloudflare, Stripe and Supabase; from claude-plugins.dev, skills.sh or any public GitHub repository) and **MCP servers** (from the official MCP registry), after reading what you're adding. Skills keep their reference files, which the assistant can open; downloads from websites are checked against the checksum the site publishes.
 - **Skills and MCP as commands**: every skill and every MCP server is also a slash command (`/pdf fill in this form`, `/github list my open pull requests`). Skills marked Automatic are listed to the model and opened only when a task matches, so many skills cost little.
 - **Tools**: system prompt library with variables, skills, and MCP servers (HTTP) with a per-tool Auto / Ask / Off setting.
 - **Reasoning effort** (`low` to `high`), temperature and other model settings, per chat.
@@ -71,6 +71,7 @@ These are the **design mockups** the app is built from. Real screenshots will re
 ## Quick start
 
 1. **Open the app → Add an endpoint.** Pick a preset (or Custom), enter the base URL **including `/v1`**, add a key if the server needs one, and tap *Test & add*. The model list is fetched automatically.
+   Servers on your own network can use plain `http://` (for example `http://192.168.1.20:11434/v1` for Ollama on your computer); the phone asks permission to reach your local network the first time. Prefer `https://` for anything over the internet.
 2. **Start chatting.** Tap the model name at the top to switch models.
 3. **Try a command.** Type `/` and look around, or try `/image a cozy cabin in snow`.
 
@@ -126,8 +127,10 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 - **iOS builds are unsigned**, so they need AltStore, SideStore or Sideloadly.
 - **Developed and tested mainly on iPhone.** The Android build is newer and has had less testing.
 - **No on-device language models.** Live-text dictation uses the phone's speech service (Apple on iPhone, Google on Android), which is a native module that **Expo Go doesn't include**: in Expo Go the mic uses your transcription endpoint instead. It is untested on real phones so far; please report problems.
-- **Skills are instructions only.** Scripts and extra files that a skill refers to are not run or read. Skills and MCP servers are written by other people: read before you add. The skills.sh search is the public endpoint its own command line tool uses; it isn't a documented API and may change.
-- **MCP servers that ask you to sign in with a browser (OAuth)** can't be added yet, and neither can servers that only run on a computer. Hosted servers that take a token can.
+- **Skill scripts are never run on the phone.** The text files that come with a skill (references, templates, scripts) are stored and the assistant can read them, but Python and shell scripts don't execute. With a code-running MCP server connected (through the computer bridge below), the assistant can pass a script to it. Skills and MCP servers are written by other people: read before you add.
+- **skills.sh has no public API for apps.** Its documented API needs a Vercel server token, so the app uses the search endpoint its own command line tool uses, which may change. The other sources (company websites, GitHub, claude-plugins.dev) keep working if it does.
+- **Browser sign-in for MCP servers** works with servers that let apps register themselves (Notion, Linear, Sentry, Vercel, Stripe, Supabase, Figma, Canva, PayPal and others). Servers that don't (GitHub's, Asana's) need an access token. This has been tested against a stand-in sign-in service and the real servers' sign-in descriptions, not yet with a real login on a phone.
+- **MCP servers that run on a computer** can't start on a phone. AI Hat writes the command that runs one on your computer behind a small bridge ([supergateway](https://github.com/supercorp-ai/supergateway), needs Node.js) and then connects to it over your network. Works on the same Wi-Fi or a network such as Tailscale.
 - **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
 - **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
 - **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
