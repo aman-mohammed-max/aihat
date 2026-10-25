@@ -40,7 +40,7 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 ## What it does
 
 - **Chat with any OpenAI-compatible server**: vLLM, Ollama, LM Studio, OpenRouter, Groq, [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) or your own. Replies stream in; add as many endpoints as you like and switch per chat.
-- **Slash commands**: type `/` for 40+ commands, and add your own. [`/image`](#slash-commands) has the chat model write a detailed image prompt and then draws it.
+- **Slash commands**: type `/` for 50+ commands, and add your own. [`/image`](#slash-commands) has the chat model write a detailed image prompt and then draws it.
 - **Images**: your endpoint's `/v1/images/generations`, ComfyUI or AUTOMATIC1111. Choose the model, aspect ratio and count from the chat box.
 - **Voice**: tap the mic for a small bar above the message box (no full screen): a red dot, a timer, a level meter and, when the phone's own speech service does the listening, **your words as you speak**. Or dictate through your own Whisper-style endpoint. Optional translation. Replies can be read aloud with pause and stop.
 - **Web search** with sources: SearXNG, Brave, Tavily, or your endpoint's `/v1/search`. Models with tool calling can search by themselves.
