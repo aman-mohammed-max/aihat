@@ -13,7 +13,8 @@ import { Text } from './Text';
 
 const DAY = 86_400_000;
 
-function group(chats: Chat[]) {
+/** Chats in the menu's groups: pinned first, then by when you last used them. */
+export function groupChats(chats: Chat[]) {
   const today = new Date().setHours(0, 0, 0, 0);
   const g: Record<string, Chat[]> = { Pinned: [], Today: [], 'Previous 7 days': [], Older: [], Archived: [] };
   for (const c of chats) {
@@ -31,7 +32,7 @@ export function Sidebar({ navigation }: DrawerContentComponentProps) {
   const insets = useSafeAreaInsets();
   const chats = useChats((s) => s.chats);
   const { prompts, skills, servers } = useLibrary();
-  const groups = useMemo(() => group(chats), [chats]);
+  const groups = useMemo(() => groupChats(chats), [chats]);
 
   const go = (path: string) => {
     navigation.closeDrawer();

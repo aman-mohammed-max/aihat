@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 
-import { Chip, Header, SearchBar, Text } from '@/components';
+import { Chip, Header, PageShell, SearchBar, Text, useColumn } from '@/components';
 import { getDb } from '@/db';
 import { useTheme } from '@/theme';
 
@@ -11,6 +11,7 @@ const FILTERS = ['All', 'Titles', 'Files', 'Images'] as const;
 
 export default function SearchChats() {
   const { colors } = useTheme();
+  const column = useColumn();
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<(typeof FILTERS)[number]>('All');
   const [hits, setHits] = useState<Hit[]>([]);
@@ -41,9 +42,10 @@ export default function SearchChats() {
   };
 
   return (
+    <PageShell>
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <Header left="back" title="Search chats" />
-      <View style={{ paddingHorizontal: 16, gap: 12 }}>
+      <View style={[{ paddingHorizontal: 16, gap: 12 }, column]}>
         <SearchBar value={q} onChangeText={setQ} placeholder="Search chats" autoFocus hint={q ? `${hits.length} results` : undefined} />
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {FILTERS.map((f) => <Chip key={f} label={f} selected={filter === f} onPress={() => setFilter(f)} />)}
@@ -52,7 +54,7 @@ export default function SearchChats() {
       <FlatList
         data={hits}
         keyExtractor={(h) => h.chat_id}
-        contentContainerStyle={{ padding: 16 }}
+        contentContainerStyle={[{ padding: 16 }, column]}
         renderItem={({ item }) => (
           <Pressable accessibilityRole="button" onPress={() => router.push(`/chat/${item.chat_id}`)} style={{ paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.hairline, gap: 4 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
@@ -64,5 +66,6 @@ export default function SearchChats() {
         )}
       />
     </View>
+    </PageShell>
   );
 }

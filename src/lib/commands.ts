@@ -13,6 +13,7 @@ import { useLibrary, type McpServer, type Skill } from '@/store/library';
 import { isChatModel, useProviders } from '@/store/providers';
 import { useSettings } from '@/store/settings';
 import { toast } from '@/store/toast';
+import { device } from '@/lib/device';
 
 import { pickFiles } from './attach';
 import { quickComplete, resolveChatModel } from './llm';
@@ -261,7 +262,7 @@ export const BUILT_IN: Command[] = [
     run: (_a, ctx) => {
       const id = ctx.chatId;
       if (!id) return toast('Nothing to clear yet');
-      Alert.alert('Clear this chat?', 'Every message in it is removed from this phone.', [
+      Alert.alert('Clear this chat?', `Every message in it is removed from this ${device}.`, [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Clear', style: 'destructive', onPress: () => useChats.getState().clear(id).then(() => toast('Chat cleared')) },
       ]);
@@ -458,7 +459,7 @@ export const BUILT_IN: Command[] = [
   { name: 'settings', group: 'Go to', summary: 'Open Settings', run: () => router.push('/settings') },
   { name: 'resume', aliases: ['history', 'chats'], group: 'Go to', summary: 'Find and reopen an earlier chat', run: () => router.push('/search-chats') },
   {
-    name: 'theme', group: 'Go to', args: '[dark|light|system]', summary: 'Switch between dark, light and the phone’s setting',
+    name: 'theme', group: 'Go to', args: '[dark|light|system]', summary: `Switch between dark, light and the ${device}’s setting`,
     run: (args) => {
       const st = useSettings.getState();
       const order = ['system', 'dark', 'light'] as const;

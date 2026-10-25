@@ -7,6 +7,7 @@ import {
   compact, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
 } from '@/lib/market';
+import { useLayout, useNavWidth } from '@/lib/layout';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
 
@@ -71,8 +72,49 @@ function Tile({ name }: { name: string }) {
   );
 }
 
+/** Widest the marketplace grows on a big screen (a grid of cards, like a store). */
+const GRID = 1120;
+
+/** On a tablet or computer, the width of one card in the grid; null on a phone (a list). */
+function useCardWidth() {
+  const { wide, width } = useLayout();
+  const nav = useNavWidth();
+  if (!wide) return null;
+  const inner = Math.min(width - nav, GRID) - 48;
+  const cols = Math.max(1, Math.min(4, Math.floor((inner + 12) / 272)));
+  return Math.floor((inner - 12 * (cols - 1)) / cols);
+}
+
+/** Search results: a list on a phone, a grid of cards on a bigger screen. */
+function Results({ children }: { children: React.ReactNode }) {
+  const card = useCardWidth();
+  return card ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View> : <Card>{children}</Card>;
+}
+
 function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: string; meta?: string; badge?: string; onPress: () => void; last?: boolean }) {
   const { colors } = useTheme();
+  const card = useCardWidth();
+  if (card) {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${title}. ${sub ?? ''} ${meta ?? ''}`}
+        onPress={onPress}
+        style={(s) => ({ width: card, minHeight: 150, padding: 16, gap: 10, borderRadius: 16, backgroundColor: (s as { hovered?: boolean }).hovered ? colors.surface2 : colors.surface, borderWidth: 1, borderColor: (s as { hovered?: boolean }).hovered ? colors.border : colors.surface2 })}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <Tile name={title} />
+          <Text weight="semi" size={15} numberOfLines={1} style={{ flex: 1 }}>{title}</Text>
+          {badge ? (
+            <View style={{ height: 22, borderRadius: 6, paddingHorizontal: 7, justifyContent: 'center', backgroundColor: colors.accentSoft }}>
+              <Text size={11} color="accent" weight="semi">{badge}</Text>
+            </View>
+          ) : null}
+        </View>
+        <Text size={13} color="text2" numberOfLines={3} style={{ flex: 1, lineHeight: 19 }}>{sub ?? ''}</Text>
+        {meta ? <Text size={11.5} color="faint" numberOfLines={1}>{meta}</Text> : null}
+      </Pressable>
+    );
+  }
   return (
     <Pressable
       accessibilityRole="button"
@@ -204,7 +246,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         <View>
           <SectionTitle>{src === 'popular' ? (applied ? `Results${list.total ? ` · ${list.total.toLocaleString()}` : ''}` : 'Popular skills') : src === 'github' ? (parseGithubRef(applied) ? 'Skills in this repository' : `Skills from ${applied.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`) : 'Results'}</SectionTitle>
           {list.items.length > 0 && (
-            <Card>
+            <Results>
               {list.items.map((l, i) => (
                 <Row
                   key={l.key}
@@ -216,7 +258,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
                   onPress={() => open(l)}
                 />
               ))}
-            </Card>
+            </Results>
           )}
           <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? 'Nothing found. Try another word.' : undefined} onRetry={() => setNonce((n) => n + 1)} />
           {list.next && !list.loading && (
@@ -271,22 +313,22 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       {featured.length > 0 && (
         <View>
           <SectionTitle>Good to start with</SectionTitle>
-          <Card>
+          <Results>
             {featured.map((l, i) => (
               <Row key={l.id} title={l.title} sub={l.description} meta={(l as (typeof FEATURED_MCP)[number]).category} badge={isAdded(l) ? 'Added' : undefined} last={i === featured.length - 1} onPress={() => open(l)} />
             ))}
-          </Card>
+          </Results>
         </View>
       )}
 
       <View>
         <SectionTitle>{applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
         {list.items.length > 0 && (
-          <Card>
+          <Results>
             {list.items.map((l, i) => (
               <Row key={l.id} title={l.title} sub={l.description} meta={l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
             ))}
-          </Card>
+          </Results>
         )}
         <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? 'No hosted servers match.' : undefined} onRetry={() => setNonce((n) => n + 1)} />
         {list.next && !list.loading && (
@@ -317,7 +359,7 @@ export default function Market() {
   // Each tab keeps its own search text.
   const [qs, setQs] = useState<Record<Tab, string>>({ skills: '', mcp: '' });
   return (
-    <Screen header={{ title: 'Marketplace' }}>
+    <Screen header={{ title: 'Marketplace' }} maxWidth={GRID}>
       <Segmented<Tab> options={[{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP servers' }]} value={tab} onChange={setTab} />
       {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} />}
     </Screen>

@@ -9,9 +9,16 @@ import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-rean
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import '@/lib/alerts';
+import '@/lib/webstyle';
+import { AlertHost } from '@/components/AlertHost';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
+import { isDesktop } from '@/lib/device';
+import { useLayout } from '@/lib/layout';
 import { initNotifications } from '@/lib/notify';
+import { lockPhonesUpright } from '@/lib/orientation';
+import { useDesktopShortcuts } from '@/lib/shortcuts';
 import { Toast } from '@/components/Toast';
 import { useChats } from '@/store/chats';
 import { useCommands } from '@/store/commands';
@@ -24,6 +31,7 @@ import { useTheme } from '@/theme';
 configureReanimatedLogger({ level: ReanimatedLogLevel.error, strict: false });
 
 SplashScreen.preventAutoHideAsync();
+lockPhonesUpright();
 
 const sheet = { presentation: 'transparentModal', animation: 'fade', headerShown: false, contentStyle: { backgroundColor: 'transparent' } } as const;
 
@@ -31,6 +39,8 @@ export default function RootLayout() {
   const { colors, isDark } = useTheme();
   const [fontsLoaded, fontError] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, GeistMono_400Regular, GeistMono_500Medium });
   const [dataReady, setDataReady] = useState(false);
+  const { wide } = useLayout();
+  useDesktopShortcuts();
 
   useEffect(() => {
     Promise.all([useSettings.getState().load(), useProviders.getState().load(), useLibrary.getState().load(), useCommands.getState().load()])
@@ -51,9 +61,10 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
       <SafeAreaProvider>
           <StatusBar style={isDark ? 'light' : 'dark'} />
-          <PrivacyShield />
+          {!isDesktop && <PrivacyShield />}
           <Toast />
-          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+          {/* On a tablet or computer the side menu stays put between pages, so pages swap in place instead of sliding. */}
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: wide ? 'fade' : 'default', title: 'AI Hat' }}>
             <Stack.Screen name="(drawer)" />
             <Stack.Screen name="about" />
             <Stack.Screen name="add-mcp" />
@@ -107,7 +118,9 @@ export default function RootLayout() {
             <Stack.Screen name="(modals)/sources-sheet" options={sheet} />
             <Stack.Screen name="(modals)/gen-action" options={sheet} />
             <Stack.Screen name="(modals)/tool-detail" options={sheet} />
+            <Stack.Screen name="(modals)/palette" options={sheet} />
           </Stack>
+          <AlertHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );

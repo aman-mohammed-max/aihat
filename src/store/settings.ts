@@ -18,6 +18,10 @@ export type Settings = {
   materialYou: boolean;
   buttonShape: ButtonShape;
   textSize: TextSize;
+  /** Tablet and desktop: the side menu folded down to its icon rail. */
+  sidebarCollapsed: boolean;
+  /** Wide windows (1280 px and up): show a reply's sources in a panel beside the chat. */
+  sourcesPanel: boolean;
   // Chat defaults
   defaultProviderId: string | null;
   defaultModelId: string | null;
@@ -96,6 +100,8 @@ export const DEFAULT_SETTINGS: Settings = {
   mode: 'dark',
   accent: '#C6F46B',
   materialYou: false,
+  sidebarCollapsed: false,
+  sourcesPanel: true,
   buttonShape: 'pill',
   textSize: 'default',
   defaultProviderId: null,

@@ -10,6 +10,7 @@ import { buildMcpConnection, planMcp, recallMcp, type McpListing } from '@/lib/m
 import { slugify } from '@/lib/skills';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
+import { keyPlace } from '@/lib/device';
 
 type Outcome = { ok: true; id: string; tools: number } | { ok: false; text: string };
 type Kind = 'none' | 'oauth' | 'token' | 'unknown';
@@ -173,12 +174,12 @@ function Hosted({ listing }: { listing: McpListing }) {
                     value={get(f.key, f.default)}
                     onChangeText={(t) => setValues((v) => ({ ...v, [f.key]: t }))}
                     secureTextEntry={f.secret}
-                    hint={f.hint ? `${f.hint}${f.secret ? ' Stored only in this phone’s secure keystore.' : ''}` : f.secret ? 'Stored only in this phone’s secure keystore.' : undefined}
+                    hint={f.hint ? `${f.hint}${f.secret ? ` Stored only in ${keyPlace}.` : ''}` : f.secret ? `Stored only in ${keyPlace}.` : undefined}
                   />
                 ),
               )}
               {extraToken && (
-                <Field label="Access token" value={get('@token')} onChangeText={(t) => setValues((v) => ({ ...v, '@token': t }))} secureTextEntry hint="This server asks for a token but doesn’t say how to get one. Look on its website. Stored only in this phone’s secure keystore." />
+                <Field label="Access token" value={get('@token')} onChangeText={(t) => setValues((v) => ({ ...v, '@token': t }))} secureTextEntry hint={`This server asks for a token but doesn’t say how to get one. Look on its website. Stored only in ${keyPlace}.`} />
               )}
             </View>
           )}
@@ -215,7 +216,7 @@ export default function MarketMcp() {
     return (
       <Screen header={{ title: listing.title }}>
         <Header l={listing} />
-        <Notice icon="info">{planMcp(listing).reason ?? 'This server can’t be used from a phone.'}</Notice>
+        <Notice icon="info">{planMcp(listing).reason ?? 'AI Hat can’t use this server.'}</Notice>
         <Links l={listing} />
       </Screen>
     );

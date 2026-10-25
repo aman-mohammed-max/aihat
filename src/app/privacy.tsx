@@ -4,6 +4,8 @@ import { useState , useEffect } from 'react';
 import { View } from 'react-native';
 
 import { Card, Dialog, ListRow, Screen, SectionTitle, Text } from '@/components';
+import { desktopInfo } from '@/lib/desktop';
+import { device, isDesktop } from '@/lib/device';
 import { getApiKey } from '@/lib/keys';
 import { eraseAll } from '@/lib/backup';
 import { useLibrary } from '@/store/library';
@@ -16,6 +18,12 @@ export default function Privacy() {
   const servers = useLibrary((x) => x.servers);
   const [keys, setKeys] = useState<Record<string, string>>({});
   const [confirm, setConfirm] = useState(false);
+  const [keyStore, setKeyStore] = useState<'keychain' | 'file' | null>(null);
+
+  useEffect(() => {
+    if (isDesktop) desktopInfo().then((i) => setKeyStore(i.keyStore)).catch(() => {});
+  }, []);
+  const where = !isDesktop ? `stored in this ${device}’s secure keystore` : keyStore === 'file' ? 'in a private file (no keyring found)' : 'stored in your system keychain';
 
   useEffect(() => {
     Promise.all(providers.map(async (p) => [p.id, await getApiKey(p.id)] as const)).then((r) =>
@@ -34,7 +42,7 @@ export default function Privacy() {
   return (
     <Screen header={{ title: 'Privacy & API keys' }}>
       <View>
-        <SectionTitle>API keys · stored in the phone’s secure keystore</SectionTitle>
+        <SectionTitle>{`API keys · ${where}`}</SectionTitle>
         <Card>
           {providers.length === 0 && <ListRow label="No keys saved" last />}
           {providers.map((p, i) => (
@@ -43,16 +51,17 @@ export default function Privacy() {
         </Card>
       </View>
       <View>
-        <SectionTitle>On this phone</SectionTitle>
+        <SectionTitle>{`On this ${device}`}</SectionTitle>
         <Card>
-          <ListRow label="Lock with Face ID / fingerprint" sub="When the app opens" toggle={{ on: s.appLock, onChange: setLock }} />
-          <ListRow label="Hide chats in the app switcher" toggle={{ on: s.hideInSwitcher, onChange: (hideInSwitcher) => s.set({ hideInSwitcher }) }} />
+          {!isDesktop && <ListRow label="Lock with Face ID / fingerprint" sub="When the app opens" toggle={{ on: s.appLock, onChange: setLock }} />}
+          {!isDesktop && <ListRow label="Hide chats in the app switcher" toggle={{ on: s.hideInSwitcher, onChange: (hideInSwitcher) => s.set({ hideInSwitcher }) }} />}
           <ListRow label="Warn before sending to cloud" sub="When a chat moves off a local model" toggle={{ on: s.cloudWarning, onChange: (cloudWarning) => s.set({ cloudWarning }) }} last />
         </Card>
       </View>
       <Text size={13} color="muted">This app has no servers of its own. Messages go only to the endpoints you add; nothing is collected about you.</Text>
-      <Card><ListRow label="Erase all data on this phone" danger onPress={() => setConfirm(true)} last /></Card>
-      <Dialog visible={confirm} onClose={() => setConfirm(false)} title="Erase everything?" message="Chats, prompts, skills, endpoints and settings are removed from this phone. Back up first if you need them." confirmLabel="Erase" destructive onConfirm={async () => { await eraseAll(); setConfirm(false); router.replace('/welcome'); }} />
+      {isDesktop && keyStore === 'file' ? <Text size={13} color="muted">No keyring is running on this computer, so keys are kept in a file in the app’s data folder that only your user account can read. Install and unlock GNOME Keyring or KWallet to keep them in a keyring instead.</Text> : null}
+      <Card><ListRow label={`Erase all data on this ${device}`} danger onPress={() => setConfirm(true)} last /></Card>
+      <Dialog visible={confirm} onClose={() => setConfirm(false)} title="Erase everything?" message={`Chats, prompts, skills, endpoints and settings are removed from this ${device}. Back up first if you need them.`} confirmLabel="Erase" destructive onConfirm={async () => { await eraseAll(); setConfirm(false); router.replace('/welcome'); }} />
     </Screen>
   );
 }

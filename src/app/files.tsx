@@ -5,6 +5,7 @@ import { Card, EndpointRoute, ListRow, Screen, SectionTitle, Segmented, Text } f
 import { pick } from '@/lib/pick';
 import { clearIndex, indexSize } from '@/lib/rag';
 import { useSettings, type Settings } from '@/store/settings';
+import { device } from '@/lib/device';
 
 export default function Files() {
   const s = useSettings();
@@ -34,7 +35,7 @@ export default function Files() {
         </Card>
       </View>
       <View>
-        <SectionTitle>Storage on this phone</SectionTitle>
+        <SectionTitle>{`Storage on this ${device}`}</SectionTitle>
         <Card>
           <ListRow label="Search index" sub={`${size.passages} passages · ${(size.bytes / 1024 / 1024).toFixed(1)} MB`} />
           <ListRow label="Clear the search index" danger onPress={async () => { await clearIndex(); setSize(await indexSize()); }} last />

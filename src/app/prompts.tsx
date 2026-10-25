@@ -2,7 +2,8 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View, ScrollView } from 'react-native';
 
-import { Button, Card, Chip, Header, Icon, SearchBar, Text } from '@/components';
+import { Button, Card, Chip, Header, Icon, PageShell, SearchBar, Text, useColumn } from '@/components';
+import { useLayout } from '@/lib/layout';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
 import { exportText } from '@/lib/share';
@@ -10,14 +11,17 @@ import { exportText } from '@/lib/share';
 export default function Prompts() {
   const { colors } = useTheme();
   const prompts = useLibrary((s) => s.prompts);
+  const { wide } = useLayout();
+  const column = useColumn();
   const [q, setQ] = useState('');
   const [tag, setTag] = useState('All');
   const tags = ['All', 'Favorites', ...Array.from(new Set(prompts.flatMap((p) => p.tags)))];
   const list = prompts.filter((p) => (tag === 'All' || (tag === 'Favorites' ? p.favorite : p.tags.includes(tag))) && `${p.name} ${p.body}`.toLowerCase().includes(q.toLowerCase()));
   return (
+    <PageShell>
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
-      <Header left="back" title="System prompts" right="add" addLabel="New prompt" onAdd={() => router.push('/prompt-edit')} />
-      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
+      <Header left={wide ? 'none' : 'back'} title="System prompts" right="add" addLabel="New prompt" onAdd={() => router.push('/prompt-edit')} />
+      <ScrollView contentContainerStyle={[{ padding: wide ? 24 : 16, gap: 12 }, column]}>
         <SearchBar value={q} onChangeText={setQ} placeholder="Search prompts" hint={q ? `${list.length} results` : undefined} />
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
           {tags.map((t) => <Chip key={t} label={t} selected={tag === t} onPress={() => setTag(t)} />)}
@@ -36,9 +40,10 @@ export default function Prompts() {
           ))}
         </Card>
       </ScrollView>
-      <View style={{ flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 28 }}>
+      <View style={[{ flexDirection: 'row', gap: 10, padding: 16, paddingBottom: 28 }, column]}>
         <Button label="Export all" variant="outline" flex onPress={() => exportText('prompts.json', JSON.stringify(prompts, null, 2))} />
       </View>
     </View>
+    </PageShell>
   );
 }

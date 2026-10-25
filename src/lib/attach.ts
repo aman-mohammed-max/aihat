@@ -1,5 +1,4 @@
 import * as DocumentPicker from 'expo-document-picker';
-import { File } from 'expo-file-system';
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
 
@@ -8,48 +7,67 @@ import { useSettings } from '@/store/settings';
 import { toast } from '@/store/toast';
 
 import { DOC_EXT, readDocument } from './docs';
+import { readBytes, readText } from './files';
 import { uid } from './id';
 
 const TEXT_EXT = /\.(txt|md|markdown|csv|tsv|json|jsonl|xml|html?|css|ya?ml|toml|ini|log|sql|sh|ts|tsx|js|jsx|mjs|py|rs|kt|java|go|c|cc|cpp|h|hpp|swift|rb|php|lua|r|tex)$/i;
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|heic|heif|bmp)$/i;
 const MAX_CHARS = 5_000_000;
 
-/**
- * Pick files and read their text: plain text and code directly, PDF / Word / PowerPoint / Excel through the
- * document readers. Files that can't be read are listed in one message instead of being silently dropped.
- */
+/** A file to read: picked, or dropped on the desktop window. */
+export type Picked = { name: string; uri: string; size?: number | null; mimeType?: string | null };
+
+function dataUri(bytes: Uint8Array, mime: string) {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return `data:${mime};base64,${btoa(s)}`;
+}
+
+/** Pick files and read them (see readFiles). */
 export async function pickFiles(): Promise<Attachment[]> {
   const res = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true });
   if (res.canceled) return [];
-  const maxBytes = useSettings.getState().maxFileMb * 1024 * 1024;
+  return readFiles(res.assets);
+}
+
+/**
+ * Read files into attachments: plain text and code directly, PDF / Word / PowerPoint / Excel through the document
+ * readers, pictures as images the model can see. Files that can't be read are listed in one message instead of
+ * being silently dropped.
+ */
+export async function readFiles(list: Picked[]): Promise<Attachment[]> {
+  const maxMb = useSettings.getState().maxFileMb;
   const out: Attachment[] = [];
   const problems: string[] = [];
 
-  for (const a of res.assets) {
-    if ((a.size ?? 0) > maxBytes) {
-      problems.push(`${a.name}: larger than ${useSettings.getState().maxFileMb} MB (change this in Files & documents)`);
+  for (const a of list) {
+    if ((a.size ?? 0) > maxMb * 1024 * 1024) {
+      problems.push(`${a.name}: larger than ${maxMb} MB (change this in Files & documents)`);
       continue;
     }
     try {
       let text: string | undefined;
       let meta: string | undefined;
+      if (a.mimeType?.startsWith('image/') || IMAGE_EXT.test(a.name)) {
+        const mime = a.mimeType?.startsWith('image/') ? a.mimeType : `image/${a.name.split('.').pop()?.toLowerCase().replace('jpg', 'jpeg') ?? 'png'}`;
+        out.push({ id: uid(), kind: 'image', name: a.name, uri: dataUri(await readBytes(a.uri), mime), mime });
+        continue;
+      }
       if (DOC_EXT.test(a.name)) {
         toast(`Reading ${a.name}…`);
         await new Promise((r) => setTimeout(r, 30)); // let the toast paint before the (synchronous) parse
-        const r = readDocument(new Uint8Array(await new File(a.uri).arrayBuffer()), a.name);
+        const r = readDocument(await readBytes(a.uri), a.name);
         text = r.text;
         meta = r.meta;
       } else if (TEXT_EXT.test(a.name) || a.mimeType?.startsWith('text/') || a.mimeType === 'application/json') {
-        text = await new File(a.uri).text();
+        text = await readText(a.uri);
         meta = `${text.length >= 10000 ? Math.round(text.length / 1000) + 'k' : text.length} chars`;
-      } else if (a.mimeType?.startsWith('image/')) {
-        problems.push(`${a.name}: add pictures with Photos or Camera so the model can see them`);
-        continue;
       } else {
-        problems.push(`${a.name}: this file type can’t be read yet (text, code, PDF, Word, PowerPoint and Excel can)`);
+        problems.push(`${a.name}: this file type can’t be read yet (text, code, PDF, Word, PowerPoint, Excel and pictures can)`);
         continue;
       }
       if (text.length > MAX_CHARS) text = text.slice(0, MAX_CHARS);
-      out.push({ id: uid(), kind: 'file', name: a.name, uri: a.uri, mime: a.mimeType, text, meta });
+      out.push({ id: uid(), kind: 'file', name: a.name, uri: a.uri, mime: a.mimeType ?? undefined, text, meta });
     } catch (e: any) {
       problems.push(`${a.name}: ${e?.message ?? 'could not be read'}`);
     }

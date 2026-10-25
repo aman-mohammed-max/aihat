@@ -5,6 +5,8 @@ import { AppState, Platform } from 'react-native';
 
 import { useSettings } from '@/store/settings';
 
+export { previewOf } from './preview';
+
 const CHANNEL = 'replies';
 let viewing: string | null = null;
 
@@ -43,19 +45,6 @@ export async function ensureNotifyPermission() {
   } catch {
     return false;
   }
-}
-
-/** Plain text for a banner: no markdown, no reasoning block, no UI spec. */
-export function previewOf(markdown: string, max = 140) {
-  const t = markdown
-    .replace(/<think>[\s\S]*?(<\/think>|$)/g, '')
-    .replace(/```spec[\s\S]*?(```|$)/g, '')
-    .replace(/```[\s\S]*?(```|$)/g, ' [code] ')
-    .replace(/[*_`#>]+/g, '')
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-    .replace(/\s+/g, ' ')
-    .trim();
-  return t.length > max ? `${t.slice(0, max - 1)}…` : t;
 }
 
 /**

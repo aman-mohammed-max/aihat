@@ -1,6 +1,6 @@
 name: Check
 
-# Type-checks and lints on every push to main and every pull request.
+# Type-checks and lints on every push to main and every pull request (the app, and the desktop backend with its tests).
 
 on:
   push:
@@ -20,3 +20,18 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx expo lint
+
+  desktop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+      - working-directory: desktop
+        run: bun install --frozen-lockfile
+      - working-directory: desktop
+        run: bun test
+      - working-directory: desktop
+        run: bun scripts/typecheck.ts

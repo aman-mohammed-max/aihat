@@ -7,6 +7,10 @@ import { phoneRecognitionAvailable } from '@/lib/speechrec';
 import { pick } from '@/lib/pick';
 import { speak } from '@/lib/tts';
 import { useSettings, type Settings } from '@/store/settings';
+import { device } from '@/lib/device';
+
+/** “This phone”, “This tablet” or “This computer”. */
+const thisDevice = `This ${device}`;
 
 const LANGS = ['English', 'Hindi', 'Spanish', 'French', 'German', 'Japanese', 'Chinese', 'Arabic', 'Portuguese', 'Russian', 'Korean', 'Italian', 'Tamil', 'Bengali', 'Urdu'];
 
@@ -35,14 +39,14 @@ export default function Audio() {
         <Card>
           <ListRow
             label="Dictate with"
-            value={s.dictationEngine === 'phone' ? 'This phone' : 'My endpoint'}
-            onPress={() => pick('Dictate with', [{ value: 'phone', label: 'This phone', note: phoneRecognitionAvailable() ? 'Live text while you speak' : 'Not available in this build' }, { value: 'endpoint', label: 'My endpoint', note: 'Records, then transcribes (Whisper)' }], s.dictationEngine, (v) => s.set({ dictationEngine: v as Settings['dictationEngine'] }))}
+            value={s.dictationEngine === 'phone' ? thisDevice : 'My endpoint'}
+            onPress={() => pick('Dictate with', [{ value: 'phone', label: thisDevice, note: phoneRecognitionAvailable() ? 'Live text while you speak' : 'Not available in this build' }, { value: 'endpoint', label: 'My endpoint', note: 'Records, then transcribes (Whisper)' }], s.dictationEngine, (v) => s.set({ dictationEngine: v as Settings['dictationEngine'] }))}
             last={s.dictationEngine === 'endpoint'}
           />
           {s.dictationEngine === 'phone' && (
             <>
               <ListRow label="Language" value={DICTATION_LANGS.find((l) => l.value === s.dictationLang)?.label ?? 'Phone language'} onPress={() => pick('Dictation language', [{ value: '', label: 'Phone language' }, ...DICTATION_LANGS], s.dictationLang, (dictationLang) => s.set({ dictationLang }))} />
-              <ListRow label="Only on this phone" sub="Never sends your voice to Apple or Google. May be less accurate and isn’t available for every language." toggle={{ on: s.dictationOnDevice, onChange: (dictationOnDevice) => s.set({ dictationOnDevice }) }} last />
+              <ListRow label={`Only on this ${device}`} sub="Never sends your voice to Apple or Google. May be less accurate and isn’t available for every language." toggle={{ on: s.dictationOnDevice, onChange: (dictationOnDevice) => s.set({ dictationOnDevice }) }} last />
             </>
           )}
         </Card>
@@ -62,7 +66,7 @@ export default function Audio() {
       <View style={{ gap: 12 }}>
         <SectionTitle>Text to speech</SectionTitle>
         <Card>
-          <ListRow label="Voice engine" value={s.ttsEngine === 'device' ? 'This phone' : 'My endpoint'} onPress={() => pick('Voice engine', [{ value: 'device', label: 'This phone', note: 'Works offline' }, { value: 'endpoint', label: 'My endpoint', note: 'POST /v1/audio/speech' }], s.ttsEngine, (v) => s.set({ ttsEngine: v as Settings['ttsEngine'] }))} />
+          <ListRow label="Voice engine" value={s.ttsEngine === 'device' ? thisDevice : 'My endpoint'} onPress={() => pick('Voice engine', [{ value: 'device', label: thisDevice, note: 'Works offline' }, { value: 'endpoint', label: 'My endpoint', note: 'POST /v1/audio/speech' }], s.ttsEngine, (v) => s.set({ ttsEngine: v as Settings['ttsEngine'] }))} />
           <ListRow label="Play a sample" icon="speaker" onPress={() => speak('This is how replies will sound.').catch((e) => alert(e.message))} />
           <ListRow label="Read replies aloud" toggle={{ on: s.autoReadAloud, onChange: (autoReadAloud) => s.set({ autoReadAloud }) }} last />
         </Card>

@@ -192,7 +192,7 @@ export default function MarketSkill() {
                 {!existing && <ListRow label="Add these files too" sub={`${kb(fileBytes)} of text${fileData.omitted ? `; ${fileData.omitted} more were left out` : ''}`} toggle={{ on: withFiles, onChange: setWithFiles }} last />}
               </Card>
               <Text size={12.5} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 18 }}>
-                The assistant opens these when the instructions point to them.{hasScripts ? ' Scripts are kept as text and are never run on the phone; with a code-running tool connected (an MCP server), the assistant can pass them to it.' : ''}
+                The assistant opens these when the instructions point to them.{hasScripts ? ' Scripts are kept as text and AI Hat never runs them; with a code-running tool connected (an MCP server), the assistant can pass them to it.' : ''}
               </Text>
             </View>
           )}

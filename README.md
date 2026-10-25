@@ -4,13 +4,13 @@
 
 # AI Hat
 
-**A dark-first mobile chat app for any OpenAI-compatible endpoint.**
+**A dark-first chat app for any OpenAI-compatible endpoint, on your phone, tablet and computer.**
 Chat, draw images, talk, search the web, read PDFs and build small UIs, all from servers you choose.
 
 [![Beta](https://img.shields.io/badge/status-beta-orange)](#known-limitations-beta)
 [![Latest release](https://img.shields.io/github/v/release/aman-mohammed-max/aihat?include_prereleases&label=release)](https://github.com/aman-mohammed-max/aihat/releases)
 [![Downloads](https://img.shields.io/github/downloads/aman-mohammed-max/aihat/total?label=downloads)](https://github.com/aman-mohammed-max/aihat/releases)
-![Android and iOS](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)
+![Android, iOS, macOS, Windows, Linux](https://img.shields.io/badge/platform-Android%20%7C%20iOS%20%7C%20macOS%20%7C%20Windows%20%7C%20Linux-lightgrey)
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020)
 [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
@@ -29,11 +29,23 @@ Every change to `main` is built automatically and published on the **[Releases p
 | **Latest beta build** (updated on every change) | [**AI-Hat-beta-latest.apk**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest.apk) | [**AI-Hat-beta-latest-unsigned.ipa**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-unsigned.ipa) |
 | **Numbered releases** (fixed versions) | `AI-Hat-v0.1.0-beta.1.apk` and so on, [on the releases page](https://github.com/aman-mohammed-max/aihat/releases) | `AI-Hat-v0.1.0-beta.1-unsigned.ipa` and so on |
 
+**Computers** (the same app in a small desktop window; see [On tablets and computers](#on-tablets-and-computers)):
+
+| | Mac | Windows | Linux |
+|---|---|---|---|
+| **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [**AI-Hat-beta-latest-Windows-x64-Setup.zip**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.zip) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.tar.gz) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.tar.gz) (`.tar.gz`) |
+
 If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
 **Install on Android:** download the APK on your phone, open it, allow "Install unknown apps" for your browser or Files app, then tap Install. Android may warn that the app isn't from the Play Store. That's expected for a beta distributed here.
 
 **Install on iPhone / iPad:** the IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
+
+**Install on a Mac:** open the `.dmg` and drag AI Hat to Applications. It isn't signed by Apple yet, so the first time, right-click the app and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**).
+
+**Install on Windows:** unzip the file and run the Setup program. SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
+
+**Install on Linux:** extract the `.tar.gz` and run `./installer`; AI Hat appears in your app menu. It needs WebKitGTK 4.1 (on Debian or Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`).
 
 Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself).
 
@@ -52,7 +64,8 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 - **Reasoning effort** (`low` to `high`), temperature and other model settings, per chat.
 - **Always shows what it's doing**: a small activity box names the current step (searching the web, reading a file, improving your prompt, drawing, running a tool) with a timer and the query or prompt behind it.
 - **Reply-ready notifications**: get a notification when a reply or image finishes while you're in another app or another chat. Switch it off in Settings › Chat defaults.
-- **Yours to keep**: chats are stored on the phone in SQLite, API keys in the OS keystore (never backed up), JSON backup and restore, optional app lock with Face ID or fingerprint.
+- **Yours to keep**: chats are stored on your device in SQLite, API keys in the OS keystore or keychain (never backed up), JSON backup and restore, optional app lock with Face ID or fingerprint on phones.
+- **Phone, tablet and computer**: the layout follows the window. Tablets get an icon rail with a menu that slides over, two-pane settings and dialogs instead of bottom sheets; computers get the full side menu, a sources panel beside the chat, ⌘K / Ctrl+K search for everything, keyboard shortcuts and drag-and-drop files.
 - **Looks**: dark by default, light theme, six accent colours, text size, button shape, and haptics tuned for iPhone and Android.
 
 ## Screenshots
@@ -114,13 +127,28 @@ Type `/` in the chat box, or tap the `/` button. Commands that need text insert 
 
 Start a message with `//` to send a real slash.
 
+## On tablets and computers
+
+The app follows the width of its window, the same way on an iPad, an Android tablet, a foldable or a desktop window:
+
+| | Phone (under 700 px) | Tablet (700–1099 px) | Computer (1100 px and up) |
+|---|---|---|---|
+| Menu | Drawer | 64 px icon rail; the full menu slides over | Side menu, foldable to the rail (⌘B / Ctrl+B) |
+| Model, prompt, tools, + menu | Bottom sheets | Centred dialogs; the model picker opens under its button | Same, plus ⌘K / Ctrl+K to search chats, commands and settings |
+| Chat | Full width | 760 px column | 760 px column; sources in a side panel from 1280 px |
+| Settings | A list, then a page | Sections beside the page | Sections, list and detail side by side (Providers) |
+
+Phones stay upright; tablets turn freely.
+
+**The desktop app** is the same app built for the web (React Native Web) inside [Electrobun](https://blackboard.sh/electrobun/): a window that uses the computer's own web view (WebKit on macOS and Linux, Edge WebView2 on Windows) and a [Bun](https://bun.sh) backend, instead of shipping a whole browser the way Electron does. The download is tens of megabytes rather than the 100–250 MB of an Electron app. The Bun backend keeps your chats in SQLite in your user folder, keeps API keys in the system keychain (macOS Keychain, Windows Credential Manager, GNOME Keyring or KWallet on Linux; without a keyring, a file only you can read), reaches your endpoints and MCP servers without the browser's cross-site limits, saves exports to Downloads, shows notifications and brings browser sign-ins back to the app. It only listens on your own computer (127.0.0.1), and every request to it needs a key that changes each time the app starts.
+
 ## Files it can read
 
 Plain text, Markdown, CSV, JSON, code, **PDF**, **Word (.docx)**, **PowerPoint (.pptx)** and **Excel (.xlsx)**. Scanned PDFs (pictures of pages) and password-protected files can't be read. The app tells you why instead of silently dropping them.
 
 ## Privacy
 
-There is no account, no analytics and no server of ours. Messages, images and files go only to the endpoints **you** add. The exceptions are things you ask for: **dictation with the phone's speech service** sends your voice to Apple or Google unless you turn on "Only on this phone" (or dictate with your own endpoint), and the **marketplace** talks to registry.modelcontextprotocol.io, claude-plugins.dev, skills.sh and GitHub when you open it. API keys and tokens are kept in the phone's secure keystore and are never written to backups. If you use a cloud endpoint, your messages go to that company, so choose accordingly.
+There is no account, no analytics and no server of ours. Messages, images and files go only to the endpoints **you** add. The exceptions are things you ask for: **dictation with the phone's speech service** sends your voice to Apple or Google unless you turn on "Only on this phone" (or dictate with your own endpoint), and the **marketplace** talks to registry.modelcontextprotocol.io, claude-plugins.dev, skills.sh and GitHub when you open it. API keys and tokens are kept in the phone's secure keystore (on a computer, the system keychain) and are never written to backups. If you use a cloud endpoint, your messages go to that company, so choose accordingly.
 
 ## Known limitations (beta)
 
@@ -135,16 +163,17 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 - **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
 - **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
 - **Notifications only arrive while the app is still running.** iPhone pauses apps shortly after you leave them, so a very long reply may not notify. Android is more forgiving but battery savers can also stop it.
-- Not available on the web.
+- **The desktop apps are new and haven't been tried on a real Mac, Windows PC or Linux desktop yet.** The web build and its Bun backend were tested in Chromium on Linux; the windows themselves are built by GitHub Actions. They are unsigned (see Download), don't update themselves yet (download a new build from Releases), and on Linux the menu bar isn't shown (use the keyboard shortcuts). Dictation in the desktop app depends on the system web view's microphone support.
+- Not available as a website: the web build needs the desktop app's backend.
 
 ## Build the apps yourself
 
-You don't need a Mac or Android Studio: GitHub builds both (free on a public repository), using the **Build & Release** workflow.
+You don't need a Mac, a Windows PC or Android Studio: GitHub builds every app (free on a public repository), using the **Build & Release** workflow: the APK, the IPA, and the desktop apps for macOS (Apple Silicon and Intel), Windows and Linux (x64 and ARM).
 
 | You do this | What happens |
 |---|---|
-| **Push to `main`** | Both apps are built and the **latest beta build** pre-release is replaced with the new files. (Changes that only touch docs or the design files don't start a build.) |
-| **Push a version tag** | Both apps are built and a **permanent release** is created for that version. |
+| **Push to `main`** | All the apps are built and the **latest beta build** pre-release is replaced with the new files. (Changes that only touch docs or the design files don't start a build.) |
+| **Push a version tag** | All the apps are built and a **permanent release** is created for that version. |
 | **Actions → Build & Release → Run workflow** | The same, started by hand. Type a version to make a numbered release, or leave it empty to refresh the latest beta build. |
 
 To make a numbered release:
@@ -154,7 +183,7 @@ git tag v0.1.0-beta.2
 git push origin v0.1.0-beta.2
 ```
 
-A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the other is still published. You can also run **Android APK** or **iOS IPA** alone from the Actions tab to get just one file as a downloadable artifact.
+A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the others are still published. You can also run **Android APK**, **iOS IPA** or **Desktop apps** alone from the Actions tab to get just those files as downloadable artifacts.
 
 ## Run it from source
 
@@ -169,6 +198,16 @@ npx expo start -c        # scan the QR code with Expo Go
 
 Before sending changes: `npx tsc --noEmit` and `npx expo lint` (the **Check** workflow runs both).
 
+**The desktop app** needs [Bun](https://bun.sh) as well:
+
+```bash
+npx expo export --platform web     # the web build, into dist/
+cd desktop && bun install
+bun run dev                        # the app in its window (needs WebKitGTK 4.1 on Linux)
+bun run serve                      # or: the same backend, opened in your normal browser
+bun test                           # backend tests
+```
+
 **Troubleshooting**
 - `AggregateError [ETIMEDOUT]` with `--tunnel`: your network can't reach Expo's tunnel service. Try `NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection" npx expo start --tunnel`, or skip the tunnel and use the same Wi-Fi.
 - On a Chromebook (Linux container), forward TCP port 8081 in ChromeOS settings and run `REACT_NATIVE_PACKAGER_HOSTNAME=<your Wi-Fi IP> npx expo start`.
@@ -182,6 +221,7 @@ src/store        app state (Zustand) and the SQLite data
 src/api          OpenAI-compatible and MCP clients, image engines
 src/lib          commands, PDF / Office readers, search, speech, titles
 src/genui        generative UI (json-render catalog, renderer, parser)
+desktop          the desktop app: Electrobun window and Bun backend (database, keychain, network, files)
 handoff          the design mockups and spec the app follows
 .github          build, release and check workflows
 ```
@@ -192,4 +232,4 @@ Bug reports and ideas are welcome: [open an issue](https://github.com/aman-moham
 
 ## License
 
-[MIT](LICENSE). Built with [Expo](https://expo.dev), React Native, [json-render](https://json-render.dev) and [fflate](https://github.com/101arrowz/fflate).
+[MIT](LICENSE). Built with [Expo](https://expo.dev), React Native, [json-render](https://json-render.dev), [fflate](https://github.com/101arrowz/fflate), [Electrobun](https://blackboard.sh/electrobun/) and [Bun](https://bun.sh).

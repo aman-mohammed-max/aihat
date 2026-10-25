@@ -4,16 +4,17 @@
  *  1. Ask the server without credentials. A 401 answer names where its sign-in is described (RFC 9728).
  *  2. Read the sign-in service's addresses (RFC 8414 / OpenID discovery).
  *  3. Register this app as a client on the fly (RFC 7591), so there is nothing to set up by hand.
- *  4. Open the system browser at the authorization address with a PKCE challenge, and come back through the `aihat://` link.
+ *  4. Open the system browser at the authorization address with a PKCE challenge, and come back through the `aihat://`
+ *     link (the desktop app comes back to its own address on 127.0.0.1 instead).
  *  5. Trade the code for tokens, keep them in the keystore, and refresh them when they run out.
  *
  * Servers that don't allow step 3 (no registration address) can't be signed into this way; an access token still works.
  */
 import * as Crypto from 'expo-crypto';
 import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
 
 import { getDb } from '@/db';
+import { openAuthSession } from '@/lib/authsession';
 import { deleteApiKey, getApiKey, setApiKey } from '@/lib/keys';
 
 export class OAuthError extends Error {
@@ -28,7 +29,7 @@ export class OAuthError extends Error {
 const b64url = (b64: string) => b64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 const bytesToB64url = (bytes: Uint8Array) => b64url(btoa(String.fromCharCode(...bytes)));
 
-/** The address the browser returns to. `aihat://oauth/mcp` in an installed build (the app's URL scheme). */
+/** The address the browser returns to: `aihat://oauth/mcp` on a phone, `http://127.0.0.1:<port>/oauth/mcp` on a computer. */
 export const redirectUri = () => Linking.createURL('oauth/mcp');
 
 const isLocalHost = (h: string) => /^(localhost|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|\[?::1\]?$)/.test(h) || h.endsWith('.local');
@@ -313,9 +314,9 @@ export async function signIn(id: string, mcpUrl: string): Promise<void> {
   });
   const authUrl = `${d.authorizationEndpoint}${d.authorizationEndpoint.includes('?') ? '&' : '?'}${params}`;
 
-  const result = await WebBrowser.openAuthSessionAsync(authUrl, redirect);
-  if (result.type !== 'success') throw new OAuthError('cancelled', 'Sign-in was cancelled.');
-  const back = new URL(result.url).searchParams;
+  const returned = await openAuthSession(authUrl, redirect);
+  if (!returned) throw new OAuthError('cancelled', 'Sign-in was cancelled.');
+  const back = new URL(returned).searchParams;
   if (back.get('error')) throw new OAuthError('denied', back.get('error_description') || `The service said: ${back.get('error')}.`);
   if (back.get('state') !== state) throw new OAuthError('failed', 'The sign-in answer didn’t match the request, so it was ignored.');
   const code = back.get('code');

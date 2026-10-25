@@ -1,7 +1,8 @@
-import { router } from 'expo-router';
+import { Redirect, router } from 'expo-router';
 import { View } from 'react-native';
 
 import { Card, ListRow, Screen, SectionTitle, type IconName } from '@/components';
+import { useLayout } from '@/lib/layout';
 import { useRefreshModels } from '@/lib/useRefreshModels';
 
 const groups: { title: string; rows: { icon: IconName; label: string; path?: string; refresh?: boolean }[] }[] = [
@@ -13,6 +14,9 @@ const groups: { title: string; rows: { icon: IconName; label: string; path?: str
 
 export default function Settings() {
   const refresh = useRefreshModels();
+  const { wide } = useLayout();
+  // A tablet or computer shows the sections beside each page, so open the first one.
+  if (wide) return <Redirect href="/appearance" />;
   return (
     <Screen header={{ title: 'Settings' }}>
       {groups.map((g) => (

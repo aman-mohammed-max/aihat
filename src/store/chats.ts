@@ -587,6 +587,8 @@ export const useChats = create<State>((set, get) => ({
     } finally {
       aborts.delete(chatId);
       set((s) => ({ streaming: { ...s.streaming, [chatId]: false } }));
+      // A reply that failed or was stopped mid-step must not keep saying "Thinking…".
+      if (assistant.status) update({ status: undefined, statusDetail: undefined, statusSince: undefined });
       if (indexError && !assistant.error) update({ error: `File search is off for this message: ${indexError}` });
       await saveMessage(assistant);
       await get().patch(chatId, {});

@@ -1,0 +1,80 @@
+name: Desktop apps
+
+# Builds AI Hat for macOS (Apple Silicon and Intel), Windows and Linux (x64 and ARM): the web build of the app in an
+# Electrobun window (the system's own web view, with a Bun backend). Each system builds on its own runner because
+# the desktop builder can't cross-compile. Called by "Build & Release"; can also be run by hand.
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      label:
+        description: Used in the file names, for example the release tag
+        type: string
+        default: ''
+
+jobs:
+  desktop:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: macOS-arm64, runner: macos-15 }
+          - { name: macOS-x64, runner: macos-15-intel }
+          - { name: Windows-x64, runner: windows-latest }
+          - { name: Linux-x64, runner: ubuntu-24.04 }
+          - { name: Linux-arm64, runner: ubuntu-24.04-arm }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.3
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          cd desktop && bun install --frozen-lockfile
+
+      - name: Build the web app
+        run: npx expo export --platform web
+
+      - name: Test the backend
+        working-directory: desktop
+        run: bun test
+
+      - name: Build the desktop app
+        working-directory: desktop
+        run: bunx electrobun build --env=stable
+
+      - name: Name the files
+        working-directory: desktop
+        env:
+          LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
+          NAME: ${{ matrix.name }}
+        run: |
+          ls -la artifacts
+          mkdir -p out
+          shopt -s nullglob
+          for f in artifacts/*.dmg; do cp "$f" "out/AI-Hat-$LABEL-$NAME.dmg"; done
+          for f in artifacts/*Setup*.zip; do cp "$f" "out/AI-Hat-$LABEL-$NAME-Setup.zip"; done
+          for f in artifacts/*Setup*.tar.gz; do cp "$f" "out/AI-Hat-$LABEL-$NAME.tar.gz"; done
+          ls -la out
+          [ -n "$(ls out)" ] || { echo "::error::The desktop build made no installer."; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Hat-desktop-${{ matrix.name }}
+          path: desktop/out/*
+          if-no-files-found: error

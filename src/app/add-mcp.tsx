@@ -8,6 +8,7 @@ import { getApiKey } from '@/lib/keys';
 import { addAndConnect, removeServer } from '@/lib/mcp-connect';
 import { useLibrary, type McpServer } from '@/store/library';
 import { fonts, radii, useTheme } from '@/theme';
+import { keyPlace } from '@/lib/device';
 
 type Mode = 'url' | 'json';
 type Auth = McpServer['auth'];
@@ -27,7 +28,7 @@ function readConfig(text: string): { name?: string; url: string } {
   const entries: [string | undefined, any][] = table && typeof table === 'object' ? Object.entries(table) : json.url || json.command ? [[undefined, json]] : Object.entries(json);
   for (const [name, v] of entries) if (typeof v?.url === 'string') return { name, url: v.url };
   if (entries.some(([, v]) => typeof v?.command === 'string')) {
-    throw new Error('This server is a program that has to run on a computer (it has a "command"). A phone can’t start it. Look for a hosted version with a web address.');
+    throw new Error('This server is a program to start (it has a "command"), and AI Hat can only reach servers with a web address. Look for a hosted version.');
   }
   throw new Error('No server address ("url") found in that config.');
 }
@@ -106,14 +107,14 @@ export default function AddMcp() {
             autoCorrect={false}
             style={{ minHeight: 180, borderRadius: radii.input, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 12, color: colors.text, fontFamily: fonts.mono, fontSize: body - 1.5 }}
           />
-          <Text size={12.5} color="muted">Paste what a server’s README shows. Servers with a web address (“url”) work; ones that are a program to start (“command”) need a computer and can’t run on a phone.</Text>
+          <Text size={12.5} color="muted">Paste what a server’s README shows. Servers with a web address (“url”) work; ones that are a program to start (“command”) can’t be started from AI Hat.</Text>
         </View>
       )}
 
       <View style={{ gap: 8 }}>
         <SectionTitle>Sign-in</SectionTitle>
         <Segmented<Auth> options={[{ value: 'none', label: 'None' }, { value: 'token', label: 'Access token' }, { value: 'oauth', label: 'Browser sign-in' }]} value={auth} onChange={setAuth} />
-        {auth === 'token' && <Field label="Access token" value={token} onChangeText={setToken} secureTextEntry hint="Sent as “Authorization: Bearer …”. Stored only in this phone’s secure keystore." />}
+        {auth === 'token' && <Field label="Access token" value={token} onChangeText={setToken} secureTextEntry hint={`Sent as “Authorization: Bearer …”. Stored only in ${keyPlace}.`} />}
         {auth === 'oauth' && <Text size={12.5} color="muted" style={{ lineHeight: 18 }}>Your browser opens so you can sign in to the service. AI Hat registers itself with the service automatically. Works with servers that allow it (Notion, Linear, Sentry, Vercel, Stripe and many more); others need an access token.</Text>}
       </View>
       {status && <Card><ListRow icon={status.ok ? 'check' : 'warn'} danger={!status.ok} label={status.text} last /></Card>}

@@ -3,7 +3,7 @@
     "name": "AI Hat",
     "slug": "ai-hat",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "aihat",
     "userInterfaceStyle": "dark",
@@ -11,7 +11,7 @@
       "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.amanm.aihat",
       "buildNumber": "1",
-      "supportsTablet": false,
+      "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers you add that are on your local network."
@@ -29,7 +29,7 @@
       "versionCode": 1
     },
     "web": {
-      "output": "server",
+      "output": "single",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [

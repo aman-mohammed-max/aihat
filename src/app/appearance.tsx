@@ -4,6 +4,7 @@ import { Card, Icon, ListRow, Screen, SectionTitle, Segmented, Text } from '@/co
 import * as haptic from '@/lib/haptics';
 import { useSettings } from '@/store/settings';
 import { accents, radii, useTheme, wallpaperColorsAvailable, type ButtonShape, type TextSize, type ThemeMode } from '@/theme';
+import { device } from '@/lib/device';
 
 export default function Appearance() {
   const { colors, radius, body } = useTheme();
@@ -26,7 +27,7 @@ export default function Appearance() {
       <View style={{ gap: 8 }}>
         <SectionTitle>Theme</SectionTitle>
         <Segmented<ThemeMode> options={[{ value: 'system', label: 'System' }, { value: 'light', label: 'Light' }, { value: 'dark', label: 'Dark' }]} value={s.mode} onChange={(mode) => s.set({ mode })} />
-        <Text size={12} color="muted">System follows your phone’s light or dark mode.</Text>
+        <Text size={12} color="muted">{`System follows your ${device}’s light or dark mode.`}</Text>
       </View>
 
       <View style={{ gap: 8 }}>

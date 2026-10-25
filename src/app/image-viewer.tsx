@@ -1,12 +1,14 @@
 import { Image } from 'expo-image';
-import { File, Paths } from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View, useWindowDimensions } from 'react-native';
 
 import { Header, Icon, Text, type IconName } from '@/components';
+import { isDesktop } from '@/lib/device';
+import { readBytes, saveFile } from '@/lib/files';
+import { b64ToBytes } from '@/lib/media';
 import { useChats } from '@/store/chats';
+import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
 export default function ImageViewer() {
@@ -19,18 +21,19 @@ export default function ImageViewer() {
   const img = images[i];
   const user = useChats((s) => s.messages[chatId]?.find((m) => m.role === 'user' && m.createdAt < (msg?.createdAt ?? 0)));
 
+  /** Share sheet on a phone; Downloads on a computer. */
   const share = async () => {
     if (!img) return;
-    let uri = img.uri;
-    if (uri.startsWith('data:')) {
-      const f = new File(Paths.cache, `image-${Date.now()}.png`);
-      f.write(Uint8Array.from(atob(uri.split(',')[1]), (c) => c.charCodeAt(0)));
-      uri = f.uri;
+    try {
+      const bytes = img.uri.startsWith('data:') ? b64ToBytes(img.uri.split(',')[1]) : await readBytes(img.uri);
+      const path = await saveFile(`image-${Date.now()}.png`, bytes, 'image/png');
+      if (path) toast(`Saved to ${path}`);
+    } catch (e: any) {
+      toast(e?.message ?? 'The image could not be saved.');
     }
-    if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
   };
   const actions: { icon: IconName; label: string; onPress: () => void }[] = [
-    { icon: 'link', label: 'Share', onPress: share },
+    { icon: 'link', label: isDesktop ? 'Save' : 'Share', onPress: share },
   ];
 
   return (

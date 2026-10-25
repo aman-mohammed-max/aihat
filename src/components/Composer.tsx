@@ -1,4 +1,4 @@
-import { Pressable, TextInput, View } from 'react-native';
+import { Platform, Pressable, TextInput, View, type TextInputKeyPressEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as haptic from '@/lib/haptics';
@@ -69,6 +69,14 @@ function ModeChip({ icon, label, onPress, onClear }: { icon: IconName; label: st
   );
 }
 
+/** Desktop: Enter sends, Shift+Enter starts a new line (and Enter while an input method is composing does neither). */
+function enterToSend(e: TextInputKeyPressEvent, send: () => void) {
+  const k = e.nativeEvent as TextInputKeyPressEvent['nativeEvent'] & { shiftKey?: boolean; isComposing?: boolean; keyCode?: number };
+  if (k.key !== 'Enter' || k.shiftKey || k.isComposing || k.keyCode === 229) return;
+  e.preventDefault();
+  send();
+}
+
 export function Composer({
   value, onChangeText, onSend, placeholder = 'Message', files = [], onRemoveFile,
   searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, voiceActive, onSlash,
@@ -107,6 +115,7 @@ export function Composer({
           multiline
           submitBehavior={sendWithEnter ? 'submit' : 'newline'}
           onSubmitEditing={sendWithEnter ? onSend : undefined}
+          onKeyPress={Platform.OS === 'web' ? (e) => enterToSend(e, onSend) : undefined}
           style={{ color: colors.text, fontSize: body, fontFamily: fonts.ui, paddingHorizontal: 8, paddingVertical: 8, maxHeight: 140 }}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

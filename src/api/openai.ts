@@ -1,6 +1,6 @@
-import { File } from 'expo-file-system';
 import { fetch as streamFetch } from 'expo/fetch';
 
+import { readBytes } from '@/lib/files';
 import { getApiKey } from '@/lib/keys';
 
 export type ProviderConn = {
@@ -202,9 +202,12 @@ export function multipartBody(fields: Record<string, string>, file: { field: str
 
 /** POST {base}/audio/transcriptions (Whisper-compatible), or /translations for English output. */
 export async function transcribe(p: ProviderConn, model: string, fileUri: string, translate = false) {
-  const bytes = new Uint8Array(await new File(fileUri).arrayBuffer());
+  const bytes = await readBytes(fileUri);
   if (!bytes.length) throw new Error('The recording was empty. Hold the mic a little longer and try again.');
-  const { body, contentType } = multipartBody({ model: model || 'whisper-1' }, { field: 'file', name: 'audio.m4a', type: 'audio/m4a', bytes });
+  // Phones record m4a; the desktop app's web view records webm (Windows, Linux) or mp4 (macOS). Servers go by the name.
+  const ext = audioExtension(bytes);
+  const type = ext === 'm4a' ? 'audio/m4a' : ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`;
+  const { body, contentType } = multipartBody({ model: model || 'whisper-1' }, { field: 'file', name: `audio.${ext}`, type, bytes });
   const h = await headers(p);
   const res = await fetch(`${base(p.baseUrl)}/audio/${translate ? 'translations' : 'transcriptions'}`, {
     method: 'POST',
@@ -223,10 +226,12 @@ export function audioExtension(b: Uint8Array, contentType = ''): string {
   if (head === 'fLaC') return 'flac';
   if (head.startsWith('ID3') || (b[0] === 0xff && (b[1] & 0xe0) === 0xe0)) return 'mp3';
   if (String.fromCharCode(...b.subarray(4, 8)) === 'ftyp') return 'm4a';
+  if (b[0] === 0x1a && b[1] === 0x45 && b[2] === 0xdf && b[3] === 0xa3) return 'webm';
   const t = contentType.toLowerCase();
   if (t.includes('wav')) return 'wav';
   if (t.includes('ogg') || t.includes('opus')) return 'ogg';
   if (t.includes('aac') || t.includes('mp4')) return 'm4a';
+  if (t.includes('webm')) return 'webm';
   return 'mp3';
 }
 

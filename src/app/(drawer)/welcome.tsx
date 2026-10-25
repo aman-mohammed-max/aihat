@@ -3,6 +3,7 @@ import { Pressable, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { Button, Icon, Text, type IconName } from '@/components';
+import { useLayout } from '@/lib/layout';
 import { useSettings } from '@/store/settings';
 import { useTheme } from '@/theme';
 
@@ -14,12 +15,13 @@ const OPTIONS: { icon: IconName; title: string; sub: string; path: string }[] = 
 export default function Welcome() {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
+  const { wide } = useLayout();
   const go = (path: string) => {
     useSettings.getState().set({ welcomed: true });
     router.push(path as never);
   };
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + 56, paddingHorizontal: 20, paddingBottom: insets.bottom + 20 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top + (wide ? 96 : 56), paddingHorizontal: 20, paddingBottom: insets.bottom + 20, width: '100%', maxWidth: wide ? 560 : undefined, alignSelf: 'center' }}>
       <View style={{ width: 56, height: 56, borderRadius: 18, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}>
         <Icon name="logo" size={28} color={colors.onAccent} />
       </View>
@@ -39,7 +41,7 @@ export default function Welcome() {
           </Pressable>
         ))}
       </View>
-      <View style={{ flex: 1 }} />
+      <View style={{ flex: wide ? 0 : 1, height: wide ? 32 : undefined }} />
       <Button label="Get started" onPress={() => go('/add-provider')} height={52} />
       <Pressable accessibilityRole="button" onPress={() => { useSettings.getState().set({ welcomed: true }); router.replace('/'); }} style={{ minHeight: 44, alignItems: 'center', justifyContent: 'center', marginTop: 6 }}>
         <Text color="muted">Skip for now</Text>

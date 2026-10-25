@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Alert, Animated, Easing, FlatList, Pressable, View } from 'react-native';
+import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } from 'react-native';
 import Animated2, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { longPress, success, tap } from '@/lib/haptics';
@@ -129,9 +129,13 @@ type Props = {
   onFixEndpoint: () => void;
   onSwitchModel: () => void;
   onRetry: () => void;
+  /** Big screens: keep the conversation to a readable column. */
+  column?: ViewStyle | null;
+  /** Show a reply's sources (a panel beside the chat on wide windows, a sheet otherwise). */
+  onSources?: (messageId: string) => void;
 };
 
-export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpoint, onSwitchModel, onRetry }: Props) {
+export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpoint, onSwitchModel, onRetry, column, onSources }: Props) {
   const { colors } = useTheme();
   const showStats = useSettings((s) => s.showStats);
   const list = useRef<FlatList<Message>>(null);
@@ -145,7 +149,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
       ref={list}
       data={messages}
       keyExtractor={(m) => m.id}
-      contentContainerStyle={{ padding: 16, gap: 18 }}
+      contentContainerStyle={[{ padding: column ? 24 : 16, gap: 18 }, column]}
       keyboardShouldPersistTaps="handled"
       renderItem={({ item: m }) => {
         if (m.role === 'user') {
@@ -208,7 +212,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 <ActionButton icon="more" label="More message actions" onPress={() => router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } })} />
                 <View style={{ flex: 1 }} />
                 {m.citations.length > 0 && (
-                  <Pressable accessibilityRole="button" onPress={() => router.push({ pathname: '/sources-sheet', params: { chatId, messageId: m.id } })} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
+                  <Pressable accessibilityRole="button" onPress={() => (onSources ? onSources(m.id) : router.push({ pathname: '/sources-sheet', params: { chatId, messageId: m.id } }))} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 8 }}>
                     <Text size={12} color="accent">Sources · {m.citations.length}</Text>
                   </Pressable>
                 )}

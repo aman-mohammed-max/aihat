@@ -4,6 +4,7 @@ import { Alert, View } from 'react-native';
 import { DEFAULT_COMFY_WORKFLOW, fetchCheckpoints } from '@/api/images';
 import { pick } from '@/lib/pick';
 import { useSettings, type Settings } from '@/store/settings';
+import { device } from '@/lib/device';
 
 import { Card, ListRow, SectionTitle, Segmented } from './Controls';
 import { EndpointRoute } from './EndpointRoute';
@@ -29,7 +30,7 @@ export function ImageOptionsForm({ showWorkflow }: { showWorkflow?: boolean }) {
       if (!names.length) return Alert.alert('No checkpoints found', 'The server returned an empty list.');
       pick('Checkpoint', [{ value: NONE, label: 'Server default' }, ...names], s.imageModel || NONE, (v) => s.set({ imageModel: v === NONE ? '' : v }));
     } catch (e: any) {
-      Alert.alert('Could not fetch checkpoints', `${e.message}\n\nCheck the server URL and that it is reachable from this phone.`);
+      Alert.alert('Could not fetch checkpoints', `${e.message}\n\nCheck the server URL and that it is reachable from this ${device}.`);
     } finally {
       setBusy(false);
     }

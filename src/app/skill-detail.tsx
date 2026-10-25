@@ -39,7 +39,7 @@ export default function SkillDetail() {
               <ListRow key={f.path} mono label={f.path} sub={/\.(py|sh|bash|js|mjs|ts|rb|php|pl|lua|go|rs|java|kt|swift|c|cpp|cs|sql|r)$/i.test(f.path) ? 'Script: read only, never run' : undefined} value={f.size >= 1000 ? `${(f.size / 1000).toFixed(1)} kB` : `${f.size} B`} onPress={() => router.push({ pathname: '/skill-file', params: { id, path: f.path } })} last={i === files.length - 1} />
             ))}
           </Card>
-          <Text size={12.5} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 18 }}>The assistant can open these when the instructions point to them. Scripts are kept as text; they can’t be run on the phone.</Text>
+          <Text size={12.5} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 18 }}>The assistant can open these when the instructions point to them. Scripts are kept as text; AI Hat never runs them.</Text>
         </View>
       )}
       <Card>

@@ -28,6 +28,7 @@
     "expo-local-authentication": "~58.0.2",
     "expo-notifications": "~58.1.6",
     "expo-router": "~58.0.26",
+    "expo-screen-orientation": "~58.0.3",
     "expo-secure-store": "~58.0.2",
     "expo-sharing": "~58.0.20",
     "expo-speech": "~58.0.3",

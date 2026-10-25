@@ -31,6 +31,7 @@ export default function ModelSheet() {
   return (
     <RouteSheet
       title="Choose model"
+      popover
       footer={[
         { label: 'Model settings', onPress: () => router.replace({ pathname: '/params-sheet', params: { chatId } }) },
         { label: 'Manage providers', onPress: () => router.replace('/providers') },

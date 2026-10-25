@@ -1,6 +1,6 @@
 name: Build & Release
 
-# Builds the Android APK and the iOS IPA and puts them on the Releases page.
+# Builds the Android APK, the iOS IPA and the desktop apps (macOS, Windows, Linux) and puts them on the Releases page.
 #
 #   Push to main        → the "latest beta build" pre-release (tag beta-latest) is replaced with fresh files.
 #   Push a version tag  → a permanent release for that version:
@@ -8,7 +8,7 @@ name: Build & Release
 #                         A tag with a hyphen (-beta.2, -rc.1) is marked as a pre-release; v1.0.0 is a normal release.
 #   Run it by hand      → Actions → "Build & Release" → Run workflow (optionally type a version tag).
 #
-# If one platform fails, the other is still published and the notes list only the files that exist.
+# If one platform fails, the others are still published and the notes list only the files that exist.
 # Changes that only touch docs or the design files don't start a build.
 
 on:
@@ -75,9 +75,16 @@ jobs:
       label: ${{ needs.plan.outputs.tag }}
     secrets: inherit
 
+  desktop:
+    needs: plan
+    uses: ./.github/workflows/desktop.yml
+    with:
+      label: ${{ needs.plan.outputs.tag }}
+
   publish:
-    needs: [plan, android, ios]
-    if: ${{ always() && needs.plan.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success') }}
+    needs: [plan, android, ios, desktop]
+    # The desktop matrix counts as done when at least one system built (its jobs don't stop each other).
+    if: ${{ always() && needs.plan.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success' || needs.desktop.result != 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -117,6 +124,21 @@ jobs:
             done
             for f in dist/*.ipa; do [ -e "$f" ] || continue; cat <<NOTE
           **iPhone / iPad:** \`$(basename "$f")\` is **unsigned**, so it will not install by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
+
+          NOTE
+            done
+            for f in dist/*-macOS-*.dmg; do [ -e "$f" ] || continue; cat <<NOTE
+          **Mac** ($(basename "$f" .dmg | sed 's/.*-macOS-//; s/arm64/Apple Silicon/; s/x64/Intel/')): open \`$(basename "$f")\`, drag AI Hat to Applications. The app isn't signed by Apple yet, so the first time, right-click it and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**).
+
+          NOTE
+            done
+            for f in dist/*-Windows-*-Setup.zip; do [ -e "$f" ] || continue; cat <<NOTE
+          **Windows:** unzip \`$(basename "$f")\` and run the Setup file. Windows SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. Uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
+
+          NOTE
+            done
+            for f in dist/*-Linux-*.tar.gz; do [ -e "$f" ] || continue; cat <<NOTE
+          **Linux** ($(basename "$f" .tar.gz | sed 's/.*-Linux-//')): extract \`$(basename "$f")\` and run \`./installer\`; AI Hat appears in your app menu. Needs WebKitGTK 4.1 (Debian/Ubuntu: \`sudo apt install libwebkit2gtk-4.1-0\`). Your keys go in your desktop's keyring (GNOME Keyring or KWallet); without one, in a private file.
 
           NOTE
             done
