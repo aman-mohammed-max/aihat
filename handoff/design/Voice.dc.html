@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voice input</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="close" left-href="Main.dc.html" title="Listening" sub="Whisper small · on device" title-href="Audio.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 28px; padding: 0 28px">
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 500; color: #9BA0A8">Heard · Hindi</span>
+      <p lang="hi" style="margin: 0; font-size: 17px; line-height: 1.5; color: #9BA0A8">मेरे मॉड में VM रीस्टार्ट होने पर गेम फ्रीज़ हो जाता है</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-size: 12px; font-weight: 500; color: #9BA0A8">Will send · English</span>
+      <p style="margin: 0; font-size: 24px; line-height: 1.4; font-weight: 500; letter-spacing: -0.01em">The game freezes in my mod when the VM restarts<span style="color: {{accent}}">|</span></p>
+    </div>
+  </main>
+
+  <div aria-hidden="true" style="display: flex; align-items: center; justify-content: center; gap: 4px; height: 64px">
+    <span style="width: 4px; height: 14px; border-radius: 2px; background: #3A3F46"></span>
+    <span style="width: 4px; height: 24px; border-radius: 2px; background: #3A3F46"></span>
+    <span style="width: 4px; height: 38px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 54px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 30px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 46px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 60px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 36px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 22px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 40px; border-radius: 2px; background: {{accent}}"></span>
+    <span style="width: 4px; height: 18px; border-radius: 2px; background: #3A3F46"></span>
+    <span style="width: 4px; height: 10px; border-radius: 2px; background: #3A3F46"></span>
+  </div>
+
+  <div style="display: flex; justify-content: center; padding: 16px 16px 20px 16px">
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px; width: 300px">
+      <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Translate → English</button>
+      <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Transcribe only</button>
+    </div>
+  </div>
+
+  <footer style="display: flex; align-items: center; justify-content: space-between; padding: 8px 40px 40px 40px">
+    <a href="Main.dc.html" aria-label="Cancel" style="width: 56px; height: 56px; border-radius: 28px; background: #17191C; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"></path></svg></a>
+    <span style="font-family: 'Geist Mono', monospace; font-size: 15px; color: #C9CCD1">0:07</span>
+    <a href="Main.dc.html" aria-label="Done, add to message" style="width: 56px; height: 56px; border-radius: 28px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg></a>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

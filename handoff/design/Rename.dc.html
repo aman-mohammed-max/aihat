@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Rename chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0; display: flex; flex-direction: column">
+    <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <div aria-hidden="true" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6)"></div>
+
+  <section role="dialog" aria-label="Rename chat" style="position: absolute; left: 24px; right: 24px; top: 250px; background: #17191C; border-radius: 24px; padding: 22px 20px 18px 20px; display: flex; flex-direction: column; gap: 14px">
+    <h2 style="margin: 0; font-size: 18px; font-weight: 600">Rename chat</h2>
+    <label for="rn" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Chat name</label>
+    <input id="rn" value="QEMU wrapper leaking fds" style="height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid {{accent}}; background: #0E0F11; color: #ECEDEF; padding: 0 12px; font-size: 15px">
+    <button style="align-self: flex-start; height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px">Suggest a name</button>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-top: 4px">
+      <a href="ChatMenu.dc.html" style="height: 46px; border-radius: 23px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px">Cancel</a>
+      <a href="Main.dc.html" style="height: 46px; border-radius: 23px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 600">Save</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

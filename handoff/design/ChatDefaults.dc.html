@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat defaults</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Chat defaults" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 18px; padding: 4px 16px 0 16px">
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Every new chat starts with</h2>
+      <a href="ModelSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Model</span><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; color: #9BA0A8">qwen3-32b</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="PromptSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">System prompt</span><span style="font-size: 13px; color: #9BA0A8">None</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ToolsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Tools</span><span style="font-size: 13px; color: #9BA0A8">4 skills, github</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ParamsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Model settings</span><span style="font-size: 13px; color: #9BA0A8">Provider defaults</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Behaviour</h2>
+      <a href="ModelSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span>Name chats with</span><span style="font-size: 12px; color: #9BA0A8">A small, fast model is enough</span></span><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; color: #9BA0A8">on-device 1.2B</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Send with Enter key</span><dc-import name="Toggle" on="{{ false }}" label="Send with Enter key" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Show tokens and speed</span><dc-import name="Toggle" on="{{ true }}" label="Show tokens and speed" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Show reasoning</span><dc-import name="Toggle" on="{{ true }}" label="Show reasoning" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Haptics</span><dc-import name="Toggle" on="{{ true }}" label="Haptics" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">History</h2>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Archive chats older than</span><span style="font-size: 13px; color: #9BA0A8">Never</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Temporary chat by default</span><dc-import name="Toggle" on="{{ false }}" label="Temporary chat by default" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

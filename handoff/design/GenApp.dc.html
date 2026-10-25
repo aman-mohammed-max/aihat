@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generated mini app</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="close" left-href="Sidebar.dc.html" title="VM Monitor" sub="Generated app · pinned" right="more" more-href="GenSpec.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 14px; padding: 10px 16px">
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+      <div style="background: #17191C; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11.5px; color: #9BA0A8">Status</span><span style="display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600"><span style="width: 7px; height: 7px; border-radius: 4px; background: {{accent}}"></span>Running</span></div>
+      <div style="background: #17191C; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11.5px; color: #9BA0A8">CPU</span><span style="font-family: 'Geist Mono', monospace; font-size: 17px">[CPU %]</span></div>
+      <div style="background: #17191C; border-radius: 16px; padding: 12px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 11.5px; color: #9BA0A8">Uptime</span><span style="font-family: 'Geist Mono', monospace; font-size: 17px">[UP]</span></div>
+    </div>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 14px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; justify-content: space-between"><label for="ram" style="font-size: 14.5px">Guest RAM</label><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #C9CCD1">2048 MB</span></div>
+        <input id="ram" type="range" min="512" max="8192" value="2048" style="width: 100%; accent-color: {{accent}}; margin: 0">
+      </div>
+      <div style="display: flex; align-items: center; gap: 12px">
+        <span style="flex: 1; font-size: 14.5px">Auto-restart on crash</span>
+        <button aria-label="Auto-restart" aria-pressed="true" style="width: 44px; height: 26px; border-radius: 13px; border: none; background: {{accent}}; position: relative; padding: 0"><span style="position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 10px; background: #0E0F11"></span></button>
+      </div>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px">
+        <button style="height: 44px; border-radius: 22px; border: none; background: {{accent}}; color: #0E0F11; font-size: 14px; font-weight: 600">Restart VM</button>
+        <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Snapshot</button>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 6px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Recent log</h2>
+      <div style="display: flex; gap: 10px; padding: 9px 4px; border-bottom: 1px solid #1E2125"><span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8">[time]</span><span style="font-size: 13.5px">QMP socket reopened</span></div>
+      <div style="display: flex; gap: 10px; padding: 9px 4px; border-bottom: 1px solid #1E2125"><span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8">[time]</span><span style="font-size: 13.5px">Guest booted</span></div>
+      <div style="display: flex; gap: 10px; padding: 9px 4px"><span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8">[time]</span><span style="font-size: 13.5px; color: #FDBA74">Monitor thread joined late</span></div>
+    </section>
+  </main>
+
+  <footer style="padding: 8px 12px 30px 12px">
+    <div style="background: #17191C; border-radius: 26px; height: 52px; display: flex; align-items: center; padding: 0 6px 0 16px; gap: 8px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>
+      <label for="ga" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Change this app</label>
+      <input id="ga" placeholder="Ask to change this app…" style="flex: 1; border: none; background: transparent; color: #ECEDEF; font-family: inherit; font-size: 15px; outline: none">
+      <button aria-label="Send" style="width: 40px; height: 40px; border-radius: 20px; border: none; background: #ECEDEF; color: #0E0F11; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+    </div>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

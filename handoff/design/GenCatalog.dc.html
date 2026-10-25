@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Component catalog</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="back" left-href="GenSettings.dc.html" title="Components & actions" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  <p style="margin: 0; padding: 4px 20px 16px 20px; font-size: 13.5px; line-height: 1.45; color: #9BA0A8">The only components and actions the AI may use. Anything else in a reply is rejected.</p>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 20px; padding: 0 16px">
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; justify-content: space-between; align-items: center"><h2 style="margin: 0; font-size: 12px; font-weight: 500; color: #9BA0A8">Standard · 26</h2><span style="font-size: 12px; color: #9BA0A8">React Native</span></div>
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Card</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Row</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Column</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Heading</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Image</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Button</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">TextInput</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Switch</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">Slider</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">ProgressBar</span>
+        <span style="font-family: 'Geist Mono', monospace; font-size: 12px; background: #17191C; border-radius: 8px; padding: 5px 8px">ListItem</span>
+        <span style="font-size: 12px; color: #9BA0A8; padding: 5px 4px">+15 more</span>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px"><h2 style="margin: 0; font-size: 12px; font-weight: 500; color: #9BA0A8">Your components · 4</h2><button style="height: 32px; border: none; background: transparent; color: {{accent}}; font-size: 13.5px; font-weight: 500; padding: 0 4px">+ Add</button></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13.5px">CodeBlock</span><span style="font-size: 12px; color: #9BA0A8">language, code, diff?</span></span><span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13.5px">ModelPicker</span><span style="font-size: 12px; color: #9BA0A8">providerId?, value</span></span><span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 11px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13.5px">ImageGrid</span><span style="font-size: 12px; color: #9BA0A8">images[], columns</span></span><span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span></div>
+      <div style="display: flex; align-items: center; gap: 12px; padding: 11px 4px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13.5px">Chart</span><span style="font-size: 12px; color: #9BA0A8">kind, series[], xLabels[]</span></span><span style="width: 8px; height: 8px; border-radius: 4px; border: 1.5px solid #6F747C; box-sizing: border-box"></span></div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 4px 0; font-size: 12px; font-weight: 500; color: #9BA0A8">Actions · 5</h2>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">sendMessage</span><span style="font-size: 12px; color: #9BA0A8">Auto</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">setDefaultModel</span><span style="font-size: 12px; color: #9BA0A8">Auto</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">openUrl</span><span style="font-size: 12px; color: #9BA0A8">Ask</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">saveToDrive</span><span style="font-size: 12px; color: #9BA0A8">Ask</span></div>
+      <div style="display: flex; align-items: center; gap: 10px; padding: 10px 4px"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">runMcpTool</span><span style="font-size: 12px; color: #FDBA74">Always ask</span></div>
+    </section>
+  </div>
+  <div style="height: 30px"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

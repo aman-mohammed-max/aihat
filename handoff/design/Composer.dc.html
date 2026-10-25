@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Composer component</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<footer style="width: 100%; box-sizing: border-box; padding: 8px 12px 28px 12px; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif">
+  <div style="background: #17191C; border-radius: 24px; padding: 8px; display: flex; flex-direction: column; gap: 4px">
+    <sc-if value="{{hasFiles}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; gap: 6px; padding: 2px 2px 4px 2px; overflow: hidden">
+        <sc-for list="{{fileList}}" as="f" hint-placeholder-count="1">
+          <span style="display: flex; align-items: center; gap: 8px; background: #22252A; border-radius: 12px; padding: 6px 6px 6px 8px; flex-shrink: 0">
+            <span style="width: 30px; height: 30px; border-radius: 8px; background: #2E3238; display: flex; align-items: center; justify-content: center; font-family: 'Geist Mono', monospace; font-size: 9.5px; font-weight: 500; color: #ECEDEF">{{f.ext}}</span>
+            <span style="display: flex; flex-direction: column; gap: 1px"><span style="font-size: 12.5px; max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis">{{f.label}}</span><span style="font-size: 11px; color: #9BA0A8">{{f.meta}}</span></span>
+            <button aria-label="Remove file" style="width: 24px; height: 24px; border-radius: 12px; border: none; background: transparent; color: #9BA0A8; font-size: 15px; padding: 0">×</button>
+          </span>
+        </sc-for>
+      </div>
+    </sc-if>
+    <label for="composer-input" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Message</label>
+    <input id="composer-input" placeholder="{{placeholder}}" style="border: none; background: transparent; color: #ECEDEF; font-size: 15px; outline: none; padding: 8px 8px">
+    <div style="display: flex; align-items: center; gap: 4px">
+      <a href="AttachSheet.dc.html" aria-label="Add files, photos or images" style="width: 38px; height: 38px; border-radius: 19px; background: #22252A; color: #ECEDEF; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg></a>
+      <a href="ToolsSheet.dc.html" aria-label="Tools for this chat" style="width: 38px; height: 38px; border-radius: 19px; color: #C9CCD1; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg></a>
+      <sc-if value="{{searchOn}}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{toggleSearch}}" aria-pressed="true" style="height: 32px; border-radius: 16px; border: none; background: #2A3220; color: {{accent}}; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"></path></svg>Search</button>
+      </sc-if>
+      <sc-if value="{{imageOn}}" hint-placeholder-val="{{ false }}">
+        <button onClick="{{toggleImage}}" aria-pressed="true" style="height: 32px; border-radius: 16px; border: none; background: #2A3220; color: {{accent}}; display: flex; align-items: center; gap: 6px; padding: 0 10px; font-size: 13px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>Image</button>
+      </sc-if>
+      <span style="flex: 1"></span>
+      <a href="Voice.dc.html" aria-label="Dictate" style="width: 38px; height: 38px; border-radius: 19px; color: #C9CCD1; display: flex; align-items: center; justify-content: center"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0014 0M12 18v3"></path></svg></a>
+      <button aria-label="Send" style="width: 38px; height: 38px; border-radius: 19px; border: none; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"></path></svg></button>
+    </div>
+  </div>
+</footer>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"placeholder":{"editor":"text","default":"Message"},"search":{"editor":"boolean","default":false},"image":{"editor":"boolean","default":false},"files":{"editor":null},"accent":{"editor":"color","default":"#C6F46B"},"$preview":{"width":390,"height":150}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { search: !!props.search, image: !!props.image };
+  }
+  renderVals() {
+    const files = Array.isArray(this.props.files) ? this.props.files : [];
+    return {
+      accent: this.props.accent ?? '#C6F46B',
+      placeholder: this.props.placeholder ?? 'Message',
+      searchOn: this.state.search,
+      imageOn: this.state.image,
+      toggleSearch: () => this.setState({ search: !this.state.search }),
+      toggleImage: () => this.setState({ image: !this.state.image }),
+      hasFiles: files.length > 0,
+      fileList: files
+    };
+  }
+}
+</script>
+</body>
+</html>

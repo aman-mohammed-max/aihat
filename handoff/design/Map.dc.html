@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Navigation map</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+</style>
+</helmet>
+<div style="width: 1600px; height: 1040px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; padding: 48px 56px; display: flex; flex-direction: column; gap: 28px">
+  <div style="display: flex; align-items: flex-end; justify-content: space-between; gap: 40px">
+    <div style="display: flex; flex-direction: column; gap: 8px">
+      <h1 style="margin: 0; font-size: 34px; font-weight: 600; letter-spacing: -0.02em">What every tap opens</h1>
+      <p style="margin: 0; font-size: 15px; color: #9BA0A8">Screen names are links: press Play on any screen and they work the same way. Back and ✕ return to where you came from; sheets close with Done or a tap outside.</p>
+    </div>
+    <div style="display: flex; gap: 16px; font-size: 13px; color: #9BA0A8; white-space: nowrap">
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: {{accent}}"></span>Primary action</span>
+      <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 3px; background: #F2A2A2"></span>Destructive</span>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="Main.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Chat</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>☰ → <a href="Sidebar.dc.html">Side menu</a></li>
+        <li>Model name → <a href="ModelSheet.dc.html">Model picker</a></li>
+        <li>✎ → <a href="NewChat.dc.html">New chat</a> · ⋯ → <a href="ChatMenu.dc.html">Chat options</a></li>
+        <li>Prompt pill → <a href="PromptSheet.dc.html">System prompt picker</a></li>
+        <li>Skill / MCP chip in a reply → <a href="SkillDetail.dc.html">Skill</a> / <a href="McpDetail.dc.html">Server</a></li>
+        <li>Long-press or ⋯ on a message → <a href="MessageSheet.dc.html">Message actions</a></li>
+        <li>Endpoint fails → <a href="ErrorChat.dc.html">Error card</a> with Retry, Switch model, Endpoint</li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="Composer.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Message box (every chat)</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>+ → <a href="AttachSheet.dc.html">Add menu</a>: camera, photos, files, Drive, iCloud, web, image</li>
+        <li>Sliders → <a href="ToolsSheet.dc.html">Tools for this chat</a></li>
+        <li>Search / Image chip → tap to switch that mode off</li>
+        <li>Mic → <a href="Voice.dc.html">Voice input &amp; translation</a></li>
+        <li>Send (accent) → sends; files upload first and show progress in the box</li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="Sidebar.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Side menu</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>Search chats → <a href="SearchChats.dc.html">Search results</a></li>
+        <li><a href="Prompts.dc.html">System prompts</a>, <a href="Skills.dc.html">Skills</a>, <a href="Mcp.dc.html">MCP servers</a>, <a href="Connectors.dc.html">Connectors</a></li>
+        <li>Pinned app → <a href="GenApp.dc.html">Full-screen mini app</a></li>
+        <li>Chat → opens it · long-press → <a href="ChatMenu.dc.html">Chat options</a></li>
+        <li>Profile → <a href="Settings.dc.html">Settings</a></li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="ChatMenu.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Chat options ⋯</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>Rename · Pin to top (in place)</li>
+        <li>System prompt → <a href="PromptSheet.dc.html">picker</a></li>
+        <li>Model settings → <a href="ParamsSheet.dc.html">temperature, length, reasoning</a></li>
+        <li>Tools → <a href="ToolsSheet.dc.html">Tools for this chat</a></li>
+        <li>Export → Markdown, PDF, Google Drive</li>
+        <li><span style="color: #F2A2A2">Delete</span> → <a href="DeleteChat.dc.html">Confirm dialog</a></li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="AttachSheet.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Files, web &amp; images</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>Files / Drive → <a href="FileChat.dc.html">File chat</a>: citations show page or line</li>
+        <li>Search the web → <a href="SearchChat.dc.html">Web search chat</a> → <a href="SourcesSheet.dc.html">Sources</a> → <a href="WebSearch.dc.html">Search settings</a></li>
+        <li>Photos / Create image → <a href="MediaChat.dc.html">Image chat</a> → <a href="ImageViewer.dc.html">Viewer</a>: Save, Drive, Vary, Share</li>
+        <li>iCloud (not linked) → <a href="ConnectorAuth.dc.html">Connect</a></li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="ModelSheet.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Models &amp; providers</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>Pick a model → back to chat with it</li>
+        <li>Offline · why? → <a href="ErrorChat.dc.html">Error details</a></li>
+        <li>Manage providers → <a href="Providers.dc.html">Providers</a> → <a href="ProviderDetail.dc.html">Detail</a></li>
+        <li>+ / Add endpoint → <a href="AddProvider.dc.html">New endpoint</a>: presets, URL, key, test, pick models</li>
+        <li>First run → <a href="Welcome.dc.html">Welcome</a> → Add endpoint or on-device model</li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="Prompts.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Prompts, skills &amp; MCP</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li>Prompt row or + → <a href="PromptEdit.dc.html">Editor</a> with variables, model, tools</li>
+        <li>Skill row → <a href="SkillDetail.dc.html">Skill detail</a> · + → <a href="AddSkill.dc.html">Add skill</a> (Git, .zip, write)</li>
+        <li>Server row → <a href="McpDetail.dc.html">Server detail</a>: per-tool Auto / Ask / Off</li>
+        <li>+ → <a href="AddMcp.dc.html">Add MCP server</a> (URL or JSON) · <a href="Connectors.dc.html">Connectors</a> → <a href="ConnectorAuth.dc.html">Sign in</a></li>
+      </ul>
+    </section>
+
+    <section style="background: #17191C; border-radius: 18px; padding: 18px; display: flex; flex-direction: column; gap: 10px">
+      <a href="Settings.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none">Settings</a>
+      <ul style="margin: 0; padding: 0 0 0 16px; display: flex; flex-direction: column; gap: 6px; font-size: 13.5px; line-height: 1.4; color: #C9CCD1">
+        <li><a href="Appearance.dc.html">Appearance</a> · <a href="ChatDefaults.dc.html">Chat defaults</a></li>
+        <li><a href="Providers.dc.html">Providers</a> · <a href="Skills.dc.html">Skills</a> · <a href="Mcp.dc.html">MCP</a> · <a href="GenSettings.dc.html">Generative UI</a></li>
+        <li><a href="Audio.dc.html">Voice &amp; speech</a> · <a href="Images.dc.html">Images</a> · <a href="WebSearch.dc.html">Web search</a> · <a href="Files.dc.html">Files</a></li>
+        <li><a href="Backup.dc.html">Sync &amp; backup</a> · <a href="Privacy.dc.html">Privacy &amp; keys</a> · <a href="About.dc.html">About</a></li>
+      </ul>
+    </section>
+
+    <section style="grid-column: span 4; background: #17191C; border-radius: 18px; padding: 18px; display: flex; align-items: center; gap: 24px">
+      <a href="GenCard.dc.html" style="font-size: 17px; font-weight: 600; text-decoration: none; white-space: nowrap">Generative UI</a>
+      <span style="font-size: 13.5px; line-height: 1.5; color: #C9CCD1">Replies can be <a href="GenCard.dc.html">cards</a> and <a href="GenForm.dc.html">forms</a> that <a href="GenStream.dc.html">stream in</a>. Buttons that write data open <a href="GenAction.dc.html">Allow this action?</a> first. “View spec” → <a href="GenSpec.dc.html">Spec inspector</a>. Settings → <a href="GenSettings.dc.html">Generative UI</a> → <a href="GenCatalog.dc.html">Components &amp; actions</a>. Apps can open <a href="GenApp.dc.html">full screen</a> and be pinned.</span>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":1600,"height":1040}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

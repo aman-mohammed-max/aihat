@@ -1,0 +1,146 @@
+name: iOS IPA
+
+# Builds an .ipa on a macOS runner.
+#   By hand: GitHub → Actions → "iOS IPA" → Run workflow. The IPA is under the run's Artifacts.
+#   For a public release, push a tag instead (see release.yml), which builds this and the Android app together.
+#
+# With no secrets you get an UNSIGNED .ipa. It will not install by itself; install it with a tool that signs
+# it for you with your own Apple ID (AltStore, SideStore, Sideloadly) or on a jailbroken/TrollStore device.
+#
+# For a signed .ipa you can install directly (needs a paid Apple Developer account), add these repository secrets:
+#   IOS_CERT_P12_BASE64            signing certificate (.p12), base64-encoded   (base64 -i cert.p12)
+#   IOS_CERT_PASSWORD              the .p12 password
+#   IOS_PROVISION_PROFILE_BASE64   the .mobileprovision for com.aihat.app, base64-encoded
+#   IOS_TEAM_ID                    your 10-character Apple team id
+# and optionally these repository variables:
+#   IOS_EXPORT_METHOD              ad-hoc (default) | development | app-store-connect | enterprise
+#   IOS_CODE_SIGN_IDENTITY         "Apple Distribution" (default) or "Apple Development"
+
+on:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      label:
+        description: Used in the file name, for example the release tag
+        type: string
+        default: ''
+
+jobs:
+  ipa:
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      IOS_CERT_P12_BASE64: ${{ secrets.IOS_CERT_P12_BASE64 }}
+      IOS_CERT_PASSWORD: ${{ secrets.IOS_CERT_PASSWORD }}
+      IOS_PROVISION_PROFILE_BASE64: ${{ secrets.IOS_PROVISION_PROFILE_BASE64 }}
+      IOS_TEAM_ID: ${{ secrets.IOS_TEAM_ID }}
+      IOS_EXPORT_METHOD: ${{ vars.IOS_EXPORT_METHOD || 'ad-hoc' }}
+      IOS_CODE_SIGN_IDENTITY: ${{ vars.IOS_CODE_SIGN_IDENTITY || 'Apple Distribution' }}
+      LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Number this build
+        run: |
+          node -e "
+            const fs = require('fs'); const a = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            a.expo.ios.buildNumber = process.env.RUN;
+            fs.writeFileSync('app.json', JSON.stringify(a, null, 2));
+          "
+        env:
+          RUN: ${{ github.run_number }}
+
+      - name: Generate the iOS project
+        run: npx expo prebuild --platform ios --no-install --clean
+
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+
+      - name: Find the project
+        run: |
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
+          echo "WORKSPACE=$WORKSPACE" >> "$GITHUB_ENV"
+          echo "SCHEME=$(basename "$WORKSPACE" .xcworkspace)" >> "$GITHUB_ENV"
+          mkdir -p out
+
+      # ---------- unsigned (default) ----------
+      - name: Build an unsigned IPA
+        if: ${{ env.IOS_CERT_P12_BASE64 == '' }}
+        run: |
+          set -o pipefail
+          xcodebuild archive \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO CODE_SIGN_IDENTITY="" \
+            | tail -n 60
+          APP=$(ls -d "$RUNNER_TEMP"/App.xcarchive/Products/Applications/*.app | head -1)
+          mkdir -p "$RUNNER_TEMP/ipa/Payload"
+          cp -R "$APP" "$RUNNER_TEMP/ipa/Payload/"
+          (cd "$RUNNER_TEMP/ipa" && zip -qry "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL-unsigned.ipa" Payload)
+
+      # ---------- signed (when the secrets are set) ----------
+      - name: Set up signing
+        if: ${{ env.IOS_CERT_P12_BASE64 != '' }}
+        run: |
+          KEYCHAIN="$RUNNER_TEMP/build.keychain"; KEYCHAIN_PASS="$(uuidgen)"
+          echo "$IOS_CERT_P12_BASE64" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          echo "$IOS_PROVISION_PROFILE_BASE64" | base64 --decode > "$RUNNER_TEMP/profile.mobileprovision"
+          security create-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security import "$RUNNER_TEMP/cert.p12" -P "$IOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASS" "$KEYCHAIN"
+          security list-keychain -d user -s "$KEYCHAIN"
+          security cms -D -i "$RUNNER_TEMP/profile.mobileprovision" > "$RUNNER_TEMP/profile.plist"
+          UUID=$(/usr/libexec/PlistBuddy -c 'Print UUID' "$RUNNER_TEMP/profile.plist")
+          NAME=$(/usr/libexec/PlistBuddy -c 'Print Name' "$RUNNER_TEMP/profile.plist")
+          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
+          cp "$RUNNER_TEMP/profile.mobileprovision" "$HOME/Library/MobileDevice/Provisioning Profiles/$UUID.mobileprovision"
+          echo "PROFILE_NAME=$NAME" >> "$GITHUB_ENV"
+
+      - name: Build and export a signed IPA
+        if: ${{ env.IOS_CERT_P12_BASE64 != '' }}
+        run: |
+          set -o pipefail
+          BUNDLE_ID=$(node -p "require('./app.json').expo.ios.bundleIdentifier")
+          xcodebuild archive \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
+            -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            CODE_SIGN_STYLE=Manual DEVELOPMENT_TEAM="$IOS_TEAM_ID" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" CODE_SIGN_IDENTITY="$IOS_CODE_SIGN_IDENTITY" \
+            | tail -n 60
+          cat > "$RUNNER_TEMP/ExportOptions.plist" <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0"><dict>
+            <key>method</key><string>$IOS_EXPORT_METHOD</string>
+            <key>teamID</key><string>$IOS_TEAM_ID</string>
+            <key>signingStyle</key><string>manual</string>
+            <key>provisioningProfiles</key><dict><key>$BUNDLE_ID</key><string>$PROFILE_NAME</string></dict>
+          </dict></plist>
+          PLIST
+          xcodebuild -exportArchive -archivePath "$RUNNER_TEMP/App.xcarchive" \
+            -exportOptionsPlist "$RUNNER_TEMP/ExportOptions.plist" -exportPath "$RUNNER_TEMP/export"
+          cp "$RUNNER_TEMP"/export/*.ipa "out/AI-Hat-$LABEL.ipa"
+
+      - name: Show the result
+        run: ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Hat-ipa
+          path: out/*.ipa
+          if-no-files-found: error

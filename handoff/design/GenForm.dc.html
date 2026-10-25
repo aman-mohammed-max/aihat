@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generated form in chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" more-href="ChatMenu.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 10px 16px; overflow: hidden">
+    <div style="align-self: flex-end; max-width: 80%; background: #22252A; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45">Connect my Postgres as an MCP server</div>
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #E3E5E8">Fill this in and I'll set it up. Your password stays on the phone.</p>
+
+    <sc-if value="{{editing}}" hint-placeholder-val="{{ true }}">
+      <form aria-label="Generated form" style="background: #17191C; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600">postgres-mcp</h3>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+          <div style="grid-column: span 2; display: flex; flex-direction: column; gap: 5px">
+            <label for="h" style="font-size: 12px; color: #9BA0A8">Host</label>
+            <input id="h" value="192.168.1.40" style="height: 42px; box-sizing: border-box; border-radius: 10px; border: 1px solid #2C3036; background: #0E0F11; color: #ECEDEF; padding: 0 10px; font-family: 'Geist Mono', monospace; font-size: 13px">
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 5px">
+            <label for="p" style="font-size: 12px; color: #9BA0A8">Port</label>
+            <input id="p" value="5432" style="height: 42px; box-sizing: border-box; border-radius: 10px; border: 1px solid #2C3036; background: #0E0F11; color: #ECEDEF; padding: 0 10px; font-family: 'Geist Mono', monospace; font-size: 13px">
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px">
+          <label for="d" style="font-size: 12px; color: #9BA0A8">Database</label>
+          <input id="d" value="mods_telemetry" style="height: 42px; box-sizing: border-box; border-radius: 10px; border: 1px solid #2C3036; background: #0E0F11; color: #ECEDEF; padding: 0 10px; font-family: 'Geist Mono', monospace; font-size: 13px">
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 5px">
+          <label for="pw" style="font-size: 12px; color: #9BA0A8">Password</label>
+          <input id="pw" type="password" value="xxxxxxxxxx" style="height: 42px; box-sizing: border-box; border-radius: 10px; border: 1px solid #2C3036; background: #0E0F11; color: #ECEDEF; padding: 0 10px; font-size: 13px">
+        </div>
+        <div style="display: flex; align-items: center; gap: 12px; height: 40px">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 1px"><span style="font-size: 14.5px">Read-only</span><span style="font-size: 12px; color: #9BA0A8">Block INSERT, UPDATE and DELETE</span></span>
+          <button type="button" aria-label="Read-only" aria-pressed="{{readOnly}}" onClick="{{toggle}}" style="width: 44px; height: 26px; border-radius: 13px; border: none; position: relative; padding: 0; background: {{sw.track}}"><span style="position: absolute; top: 3px; width: 20px; height: 20px; border-radius: 10px; left: {{sw.left}}; background: {{sw.knob}}"></span></button>
+        </div>
+        <button type="button" onClick="{{submit}}" style="height: 46px; border-radius: 23px; border: none; background: {{accent}}; color: #0E0F11; font-size: 14.5px; font-weight: 600">Connect</button>
+      </form>
+    </sc-if>
+
+    <sc-if value="{{done}}" hint-placeholder-val="{{ false }}">
+      <div style="background: #17191C; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px">
+        <div style="display: flex; align-items: center; gap: 10px">
+          <span style="width: 28px; height: 28px; border-radius: 14px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg></span>
+          <span style="font-size: 15px; font-weight: 600">postgres-mcp connected</span>
+        </div>
+        <span style="font-size: 13px; color: #9BA0A8">6 tools found · {{modeLabel}}</span>
+        <div style="display: flex; gap: 8px">
+          <a href="McpDetail.dc.html" style="height: 40px; border-radius: 20px; border: 1px solid #2C3036; padding: 0 14px; display: flex; align-items: center; text-decoration: none; font-size: 13.5px">Open in MCP servers</a>
+          <button onClick="{{reset}}" style="height: 40px; border-radius: 20px; border: none; background: transparent; color: #9BA0A8; font-size: 13.5px; padding: 0 10px">Edit</button>
+        </div>
+      </div>
+    </sc-if>
+
+    <span style="font-size: 11.5px; color: #9BA0A8">Generated UI · form with 6 bound fields</span>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { readOnly: true, done: false };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#C6F46B';
+    const ro = this.state.readOnly;
+    return {
+      accent,
+      readOnly: ro,
+      editing: !this.state.done,
+      done: this.state.done,
+      modeLabel: ro ? 'read-only' : 'read & write',
+      sw: { track: ro ? accent : '#2C3036', knob: ro ? '#0E0F11' : '#9BA0A8', left: ro ? '21px' : '3px' },
+      toggle: () => this.setState({ readOnly: !ro }),
+      submit: () => this.setState({ done: true }),
+      reset: () => this.setState({ done: false })
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Model settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <a href="Main.dc.html" aria-label="Close" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6)"></a>
+
+  <section role="dialog" aria-label="Model settings" style="position: absolute; left: 0; right: 0; bottom: 0; top: 150px; background: #17191C; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #3A3F46; margin-top: 8px"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 0 20px">
+      <span style="display: flex; flex-direction: column; gap: 2px"><h2 style="margin: 0; font-size: 17px; font-weight: 600">Model settings</h2><span style="font-family: 'Geist Mono', monospace; font-size: 12px; color: #9BA0A8">qwen3-32b</span></span>
+      <a href="Main.dc.html" style="height: 44px; display: flex; align-items: center; padding: 0 12px; color: {{accent}}; text-decoration: none; font-size: 15px; font-weight: 600">Done</a>
+    </div>
+
+    <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 18px; padding: 14px 20px 0 20px">
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #0E0F11; border-radius: 12px; padding: 4px">
+        <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">This chat</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Default for model</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><label for="t" style="font-size: 15px">Temperature</label><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #C9CCD1">0.7</span></div>
+        <input id="t" type="range" min="0" max="2" step="0.1" value="0.7" style="width: 100%; accent-color: {{accent}}; margin: 0">
+        <span style="display: flex; justify-content: space-between; font-size: 11.5px; color: #9BA0A8"><span>Precise</span><span>Creative</span></span>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><label for="mt" style="font-size: 15px">Max reply length</label><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #C9CCD1">4,096 tok</span></div>
+        <input id="mt" type="range" min="256" max="32768" step="256" value="4096" style="width: 100%; accent-color: {{accent}}; margin: 0">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <div style="display: flex; justify-content: space-between"><label for="tp" style="font-size: 15px">Top P</label><span style="font-family: 'Geist Mono', monospace; font-size: 13px; color: #C9CCD1">0.95</span></div>
+        <input id="tp" type="range" min="0" max="1" step="0.05" value="0.95" style="width: 100%; accent-color: {{accent}}; margin: 0">
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 8px">
+        <span style="font-size: 15px">Reasoning</span>
+        <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #0E0F11; border-radius: 12px; padding: 4px">
+          <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Off</button>
+          <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Low</button>
+          <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">High</button>
+        </div>
+      </div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 44px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Stream replies</span><span style="font-size: 12px; color: #9BA0A8">Show words as they arrive</span></span><dc-import name="Toggle" on="{{ true }}" label="Stream replies" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #9BA0A8">Context used</span><span style="font-family: 'Geist Mono', monospace; color: #C9CCD1">9.8k / 128k</span></div>
+        <div style="height: 6px; border-radius: 3px; background: #2C3036"><div style="width: 8%; height: 6px; border-radius: 3px; background: {{accent}}"></div></div>
+      </div>
+    </div>
+    <div style="padding: 12px 20px 28px 20px">
+      <button style="width: 100%; height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Reset to provider defaults</button>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

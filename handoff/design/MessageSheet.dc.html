@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Message actions</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <a href="Main.dc.html" aria-label="Close" style="position: absolute; inset: 0; background: rgba(0,0,0,0.7)"></a>
+
+  <div style="position: absolute; left: 16px; right: 16px; top: 112px; background: #17191C; border-radius: 18px; padding: 14px; font-size: 14px; line-height: 1.5; color: #E3E5E8">The fds come from <code style="font-family: 'Geist Mono', monospace; font-size: 12.5px; background: #22252A; padding: 1px 5px; border-radius: 5px">spawn_vm()</code>. Each restart opens a new QMP socket, but the old stream moves into a detached thread that never exits…
+    <div style="margin-top: 10px; display: flex; gap: 12px; font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8"><span>qwen3-32b</span><span>412 tok</span><span>2.3 s</span><span>182 tok/s</span></div>
+  </div>
+
+  <section role="menu" aria-label="Message actions" style="position: absolute; left: 0; right: 0; bottom: 0; background: #17191C; border-radius: 28px 28px 0 0; padding: 8px 16px 28px 16px; display: flex; flex-direction: column">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #3A3F46; margin-bottom: 6px"></span>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 6px 0 12px 0; border-bottom: 1px solid #22252A">
+      <button role="menuitem" style="height: 64px; border-radius: 14px; border: none; background: #22252A; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"></path></svg>Copy</button>
+      <button role="menuitem" style="height: 64px; border-radius: 14px; border: none; background: #22252A; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"></path><path d="M15.5 8.5a5 5 0 010 7"></path></svg>Read aloud</button>
+      <a role="menuitem" href="ModelSheet.dc.html" style="height: 64px; border-radius: 14px; background: #22252A; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; text-decoration: none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"></path></svg>Retry with…</a>
+      <button role="menuitem" style="height: 64px; border-radius: 14px; border: none; background: #22252A; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13"></path></svg>Share</button>
+    </div>
+    <a role="menuitem" href="NewChat.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="6" cy="5" r="2"></circle><circle cx="6" cy="19" r="2"></circle><circle cx="18" cy="9" r="2"></circle><path d="M6 7v10M18 11c0 4-6 3-12 6"></path></svg><span style="flex: 1">Branch into new chat</span></a>
+    <a role="menuitem" href="Voice.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h8M8 3v2M6 5c0 4 3 7 6 8M10 5c0 3-3 7-6 8M13 21l4-9 4 9M14.5 18h5"></path></svg><span style="flex: 1">Translate</span><span style="font-size: 13px; color: #9BA0A8">to Hindi</span></a>
+    <a role="menuitem" href="Backup.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 01-.6-10A6 6 0 0118 9a4.5 4.5 0 01-.5 9z"></path></svg><span style="flex: 1">Save to Google Drive</span></a>
+    <a role="menuitem" href="#" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"></path></svg><span style="flex: 1">Select text</span></a>
+    <a role="menuitem" href="Main.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px; color: #F2A2A2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg><span style="flex: 1">Delete message</span></a>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

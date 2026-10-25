@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Search chats</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Sidebar.dc.html" title="Search chats" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="padding: 4px 16px 12px 16px">
+    <dc-import name="SearchBar" placeholder="Search chats" value="qemu" hint="4 results" hint-size="100%,44px"></dc-import>
+  </div>
+  <div style="display: flex; gap: 8px; padding: 0 16px 12px 16px">
+    <button style="height: 32px; border-radius: 16px; border: none; background: #ECEDEF; color: #0E0F11; font-size: 13px; font-weight: 500; padding: 0 12px">All</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px">Titles</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px">Files</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px">Images</button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0 16px">
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="font-size: 15px; font-weight: 500"><mark style="background: #3A4423; color: #ECEDEF; border-radius: 3px">QEMU</mark> wrapper leaking fds</span><span style="font-size: 12px; color: #9BA0A8">Today</span></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">…each restart opens a new QMP socket for the <mark style="background: #3A4423; color: #ECEDEF; border-radius: 3px">QEMU</mark> VM, but the old…</span>
+    </a>
+    <a href="FileChat.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="font-size: 15px; font-weight: 500">Mod design doc review</span><span style="font-size: 12px; color: #9BA0A8">Mon</span></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">design-doc.pdf · page 4: “the <mark style="background: #3A4423; color: #ECEDEF; border-radius: 3px">QEMU</mark> process runs outside the game…”</span>
+    </a>
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="font-size: 15px; font-weight: 500">Snapshot format for saves</span><span style="font-size: 12px; color: #9BA0A8">Oct 12</span></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">…use <mark style="background: #3A4423; color: #ECEDEF; border-radius: 3px">qemu</mark>-img to convert the qcow2 snapshot before…</span>
+    </a>
+    <a href="Main.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 12px 4px; text-decoration: none">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="font-size: 15px; font-weight: 500">Rendering a VM screen in-game</span><span style="font-size: 12px; color: #9BA0A8">Sep 30</span></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">…read the <mark style="background: #3A4423; color: #ECEDEF; border-radius: 3px">QEMU</mark> framebuffer into a dynamic texture…</span>
+    </a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

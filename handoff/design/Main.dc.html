@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM · 182 tok/s" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" more-href="ChatMenu.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="padding: 2px 16px 10px 16px; display: flex; justify-content: center">
+    <a href="PromptSheet.dc.html" style="display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 12px; border-radius: 16px; background: #17191C; text-decoration: none; font-size: 13px; color: #C9CCD1">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h9"></path></svg>
+      Rust Systems Mentor
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 9l6 6 6-6"></path></svg>
+    </a>
+  </div>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 8px 16px; overflow: hidden">
+    <a href="MessageSheet.dc.html" style="align-self: flex-end; max-width: 82%; background: #22252A; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45; text-decoration: none">Why does my QEMU wrapper crate leak file descriptors when the VM restarts?</a>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; flex-wrap: wrap; gap: 6px">
+        <a href="SkillDetail.dc.html" style="display: flex; align-items: center; gap: 6px; height: 28px; font-size: 12px; color: #C9CCD1; background: #17191C; border-radius: 14px; padding: 0 10px; text-decoration: none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"></path></svg>code-review
+        </a>
+        <a href="McpDetail.dc.html" style="display: flex; align-items: center; gap: 6px; height: 28px; font-size: 12px; color: #C9CCD1; background: #17191C; border-radius: 14px; padding: 0 10px; text-decoration: none">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 01-10 0zM12 16v5"></path></svg>github.search_code<span style="color: {{accent}}">3 files</span>
+        </a>
+      </div>
+      <p style="margin: 0; font-size: 15px; line-height: 1.55; color: #E3E5E8">The fds come from <code style="font-family: 'Geist Mono', monospace; font-size: 13px; background: #1C1F23; padding: 1px 5px; border-radius: 5px">spawn_vm()</code>. Each restart opens a new QMP socket, but the old <code style="font-family: 'Geist Mono', monospace; font-size: 13px; background: #1C1F23; padding: 1px 5px; border-radius: 5px">UnixStream</code> moves into a detached thread that never exits.</p>
+      <pre style="margin: 0; font-family: 'Geist Mono', monospace; font-size: 12.5px; line-height: 1.6; background: #131518; border-radius: 12px; padding: 12px; color: #C9CCD1; white-space: pre-wrap">impl Drop for VmHandle {
+    fn drop(&amp;mut self) {
+        let _ = self.qmp.shutdown(Both);
+        self.monitor.join().ok();
+    }
+}</pre>
+      <div style="display: flex; align-items: center; gap: 2px; color: #9BA0A8">
+        <button aria-label="Copy" style="width: 36px; height: 36px; border: none; background: transparent; color: inherit"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"></rect><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"></path></svg></button>
+        <button aria-label="Read aloud" style="width: 36px; height: 36px; border: none; background: transparent; color: inherit"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M11 5L6 9H3v6h3l5 4z"></path><path d="M15.5 8.5a5 5 0 010 7M18.5 5.5a9 9 0 010 13"></path></svg></button>
+        <button aria-label="Regenerate" style="width: 36px; height: 36px; border: none; background: transparent; color: inherit"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M20 11a8 8 0 10-2.3 5.7M20 4v7h-7"></path></svg></button>
+        <a href="MessageSheet.dc.html" aria-label="More message actions" style="width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; color: inherit"><svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.7"></circle><circle cx="12" cy="12" r="1.7"></circle><circle cx="19" cy="12" r="1.7"></circle></svg></a>
+        <span style="margin-left: auto; font-family: 'Geist Mono', monospace; font-size: 11px">412 tok · 2.3s</span>
+      </div>
+    </div>
+  </main>
+
+  <dc-import name="Composer" placeholder="Message qwen3-32b" accent="{{accent}}" hint-size="100%,130px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

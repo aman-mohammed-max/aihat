@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>System prompts</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Sidebar.dc.html" title="System prompts" sub="142 saved" right="add" right-href="PromptEdit.dc.html" add-label="New system prompt" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="padding: 4px 16px 12px 16px">
+    <dc-import name="SearchBar" placeholder="Search prompts" value="rust" hint="8 results" hint-size="100%,44px"></dc-import>
+  </div>
+  <div style="display: flex; gap: 8px; padding: 0 16px 8px 16px; overflow: hidden">
+    <button style="height: 32px; border-radius: 16px; border: none; background: #ECEDEF; color: #0E0F11; font-size: 13px; font-weight: 500; padding: 0 12px; white-space: nowrap">All</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px; white-space: nowrap">Favorites</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px; white-space: nowrap">Coding</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px; white-space: nowrap">Writing</button>
+    <button style="height: 32px; border-radius: 16px; border: 1px solid #2C3036; background: transparent; color: #C9CCD1; font-size: 13px; padding: 0 12px; white-space: nowrap">Translate</button>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0 16px">
+    <a href="PromptEdit.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 13px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 15px; font-weight: 500">Rust Systems Mentor</span><span style="font-size: 11px; font-weight: 600; color: #0E0F11; background: {{accent}}; border-radius: 6px; padding: 2px 7px">In use</span></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">You are a senior Rust engineer. Explain ownership and unsafe code plainly…</span>
+      <span style="font-size: 12px; color: #9BA0A8">coding · rust · ~640 tok · 2 variables</span>
+    </a>
+    <a href="PromptEdit.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 13px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="display: flex; align-items: center; gap: 8px"><span style="flex: 1; font-size: 15px; font-weight: 500">Rust → Kotlin Porter</span><svg width="15" height="15" viewBox="0 0 24 24" fill="#FDD86B" role="img" aria-label="Favorite"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"></path></svg></span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">Translate Rust modules to idiomatic Kotlin for Fabric mods…</span>
+      <span style="font-size: 12px; color: #9BA0A8">coding · minecraft · ~410 tok</span>
+    </a>
+    <a href="PromptEdit.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 13px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="font-size: 15px; font-weight: 500">Unsafe Code Auditor</span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">Review every unsafe block. State the invariant it relies on…</span>
+      <span style="font-size: 12px; color: #9BA0A8">review · rust · ~290 tok · default model: deepseek-coder-v2</span>
+    </a>
+    <a href="PromptEdit.dc.html" style="display: flex; flex-direction: column; gap: 4px; padding: 13px 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="font-size: 15px; font-weight: 500">Terse Rust Pair</span>
+      <span style="font-size: 13px; line-height: 1.4; color: #9BA0A8">Answer in code first. Two sentences of prose max…</span>
+      <span style="font-size: 12px; color: #9BA0A8">coding · ~120 tok</span>
+    </a>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px 16px 30px 16px">
+    <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Import .md / .json</button>
+    <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Export all</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

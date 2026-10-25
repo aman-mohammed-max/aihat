@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Endpoint offline</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="gemma-3-12b" sub="LM Studio (laptop)" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" more-href="ChatMenu.dc.html" accent="#FDBA74" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 8px 16px; overflow: hidden">
+    <div style="align-self: flex-end; max-width: 82%; background: #22252A; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45">Summarise today's crash log</div>
+
+    <section role="alert" style="background: #17191C; border-radius: 18px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; gap: 10px">
+        <span style="width: 30px; height: 30px; border-radius: 15px; background: #3A2C1C; color: #FDBA74; display: flex; align-items: center; justify-content: center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 8v5M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg></span>
+        <span style="font-size: 15.5px; font-weight: 600">Couldn't reach LM Studio</span>
+      </div>
+      <p style="margin: 0; font-size: 14px; line-height: 1.5; color: #C9CCD1">No reply from <span style="font-family: 'Geist Mono', monospace; font-size: 12.5px">192.168.1.23:1234/v1</span> after 10 seconds. Check that the server is running and the phone is on the same Wi-Fi.</p>
+      <details style="font-size: 12.5px; color: #9BA0A8"><summary style="cursor: pointer; min-height: 32px; display: flex; align-items: center">Technical details</summary><pre style="margin: 6px 0 0 0; font-family: 'Geist Mono', monospace; font-size: 11.5px; white-space: pre-wrap; color: #9BA0A8">POST /v1/chat/completions
+ETIMEDOUT after 10000 ms</pre></details>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <button style="height: 42px; border-radius: 21px; border: none; background: #ECEDEF; color: #0E0F11; font-size: 13.5px; font-weight: 600">Retry</button>
+        <a href="ModelSheet.dc.html" style="height: 42px; border-radius: 21px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13.5px">Switch model</a>
+        <a href="ProviderDetail.dc.html" style="height: 42px; border-radius: 21px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 13.5px">Endpoint</a>
+      </div>
+    </section>
+
+    <div style="display: flex; align-items: center; gap: 10px; background: #17191C; border-radius: 14px; padding: 10px 12px">
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: #F2A2A2"></span>
+      <span style="flex: 1; font-size: 13px; line-height: 1.4; color: #C9CCD1">OpenRouter rejected your key (401). Other providers still work.</span>
+      <a href="ProviderDetail.dc.html" style="font-size: 13px; color: {{accent}}; text-decoration: none">Fix</a>
+    </div>
+  </main>
+
+  <dc-import name="Composer" placeholder="Message gemma-3-12b" accent="{{accent}}" hint-size="100%,130px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

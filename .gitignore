@@ -41,3 +41,10 @@ example
 # generated native folders
 /ios
 /android
+
+# design handoff zip (its contents are already in handoff/)
+handoff/*.zip
+
+# misc
+.DS_Store
+out/

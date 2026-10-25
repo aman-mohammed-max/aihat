@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Spec inspector</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="back" left-href="GenCard.dc.html" title="UI spec" sub="Developer view" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="margin: 8px 16px 12px 16px; background: #17191C; border-radius: 12px; padding: 4px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px">
+    <sc-for list="{{tabs}}" as="t" hint-placeholder-count="3">
+      <button aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="height: 36px; border: none; border-radius: 9px; font-size: 14px; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+    </sc-for>
+  </div>
+
+  <div style="display: flex; gap: 6px; padding: 0 16px 12px 16px">
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #C9CCD1; background: #17191C; border-radius: 999px; padding: 5px 10px"><span style="width: 6px; height: 6px; border-radius: 3px; background: {{accent}}"></span>Valid for catalog</span>
+    <span style="font-size: 12px; color: #C9CCD1; background: #17191C; border-radius: 999px; padding: 5px 10px">9 elements</span>
+    <span style="font-size: 12px; color: #C9CCD1; background: #17191C; border-radius: 999px; padding: 5px 10px">1.1 KB</span>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; padding: 0 16px">
+    <sc-if value="{{showJson}}" hint-placeholder-val="{{ true }}">
+      <pre style="margin: 0; height: 100%; box-sizing: border-box; background: #131518; border-radius: 16px; padding: 14px; font-family: 'Geist Mono', monospace; font-size: 11.5px; line-height: 1.65; color: #C9CCD1; white-space: pre-wrap; overflow: hidden">{
+  "root": "card-1",
+  "state": { "metric": "speed" },
+  "elements": {
+    "card-1": {
+      "type": "Card",
+      "props": { "title": "Your coding models" },
+      "children": ["chips", "list", "cta"]
+    },
+    "chips": {
+      "type": "Chip",
+      "props": {
+        "options": ["Speed", "Context", "Tool calls OK"],
+        "value": { "$state": "/metric" }
+      }
+    },
+    "list": {
+      "type": "ProgressBar",
+      "repeat": { "$state": "/models" },
+      "props": { "label": "$item.name", "value": "$item.score" }
+    },
+    "cta": {
+      "type": "Button",
+      "props": { "label": "Use qwen3-32b" },
+      "action": {
+        "name": "setDefaultModel",
+        "params": { "id": "qwen3-32b" }
+      }
+    }
+  }
+}</pre>
+    </sc-if>
+    <sc-if value="{{showTree}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; font-family: 'Geist Mono', monospace; font-size: 13px">
+        <div style="padding: 10px 4px; border-bottom: 1px solid #1E2125">Card <span style="color: #9BA0A8">card-1</span></div>
+        <div style="padding: 10px 4px 10px 22px; border-bottom: 1px solid #1E2125">Chip <span style="color: #9BA0A8">chips · bound $state/metric</span></div>
+        <div style="padding: 10px 4px 10px 22px; border-bottom: 1px solid #1E2125">ProgressBar ×4 <span style="color: #9BA0A8">repeat models</span></div>
+        <div style="padding: 10px 4px 10px 22px; border-bottom: 1px solid #1E2125">Button <span style="color: #9BA0A8">→ setDefaultModel</span></div>
+        <div style="padding: 10px 4px 10px 22px">Button <span style="color: #9BA0A8">Details</span></div>
+      </div>
+    </sc-if>
+    <sc-if value="{{showStream}}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 6px; font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #C9CCD1">
+        <div style="background: #131518; border-radius: 10px; padding: 10px">+ 0.00s  root = card-1</div>
+        <div style="background: #131518; border-radius: 10px; padding: 10px">+ 0.21s  add elements/card-1</div>
+        <div style="background: #131518; border-radius: 10px; padding: 10px">+ 0.38s  add elements/chips</div>
+        <div style="background: #131518; border-radius: 10px; padding: 10px">+ 0.64s  add elements/list</div>
+        <div style="background: #131518; border-radius: 10px; padding: 10px">+ 0.90s  add elements/cta</div>
+        <div style="background: #131518; border-radius: 10px; padding: 10px; color: {{accent}}">✓ 1.02s  done · 9 patches</div>
+      </div>
+    </sc-if>
+  </div>
+
+  <div style="padding: 12px 16px 30px 16px; display: flex; gap: 8px">
+    <button style="flex: 1; height: 46px; border-radius: 23px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Save as template</button>
+    <button style="flex: 1; height: 46px; border-radius: 23px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px">Report bad UI</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'json' };
+  }
+  renderVals() {
+    const tab = this.state.tab;
+    const tabs = [['json', 'JSON'], ['tree', 'Tree'], ['stream', 'Stream']].map(([id, label]) => ({
+      label, on: tab === id, bg: tab === id ? '#2E3238' : 'transparent', fg: tab === id ? '#ECEDEF' : '#9BA0A8', pick: () => this.setState({ tab: id })
+    }));
+    return { accent: this.props.accent ?? '#C6F46B', tabs, showJson: tab === 'json', showTree: tab === 'tree', showStream: tab === 'stream' };
+  }
+}
+</script>
+</body>
+</html>

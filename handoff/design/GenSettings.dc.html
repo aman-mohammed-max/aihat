@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generative UI settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Generative UI" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 20px; padding: 10px 16px 0 16px">
+    <div style="background: #17191C; border-radius: 16px; padding: 14px; display: flex; align-items: center; gap: 12px">
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 15px; font-weight: 500">Let replies include UI</span><span style="font-size: 12.5px; line-height: 1.4; color: #9BA0A8">Cards, forms and small apps drawn with your app's own components</span></span>
+      <button aria-label="Generative UI" aria-pressed="true" style="width: 44px; height: 26px; border-radius: 13px; border: none; background: {{accent}}; position: relative; padding: 0; flex-shrink: 0"><span style="position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; border-radius: 10px; background: #0E0F11"></span></button>
+    </div>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Where it can appear</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">In chat only</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Chat + full-screen apps</button>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 4px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Per model</h2>
+      <div style="display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 4px"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13.5px">qwen3-32b</span><span style="font-size: 12px; color: #9BA0A8">Structured output</span><button aria-label="qwen3-32b" aria-pressed="true" style="width: 40px; height: 24px; border-radius: 12px; border: none; background: {{accent}}; position: relative; padding: 0"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 9px; background: #0E0F11"></span></button></div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 4px"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13.5px">llama-3.3-70b</span><span style="font-size: 12px; color: #9BA0A8">JSON mode</span><button aria-label="llama-3.3-70b" aria-pressed="true" style="width: 40px; height: 24px; border-radius: 12px; border: none; background: {{accent}}; position: relative; padding: 0"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 9px; background: #0E0F11"></span></button></div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 4px"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13.5px">deepseek-coder-v2</span><span style="font-size: 12px; color: #9BA0A8">Prompt only</span><button aria-label="deepseek-coder-v2" aria-pressed="false" style="width: 40px; height: 24px; border-radius: 12px; border: none; background: #2C3036; position: relative; padding: 0"><span style="position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 9px; background: #9BA0A8"></span></button></div>
+      <div style="display: flex; align-items: center; gap: 10px; height: 46px; padding: 0 4px"><span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13.5px; color: #9BA0A8">on-device 1.2B</span><span style="font-size: 12px; color: #9BA0A8">Too small · text only</span></div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <a href="GenCatalog.dc.html" style="display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Components &amp; actions</span><span style="font-size: 13px; color: #9BA0A8">30 · 5</span><span style="color: #6F747C">›</span></a>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">If the UI is invalid</span><span style="font-size: 13px; color: #9BA0A8">Show as text</span><span style="color: #6F747C">›</span></a>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Saved templates</span><span style="font-size: 13px; color: #9BA0A8">3</span><span style="color: #6F747C">›</span></a>
+      <div style="display: flex; align-items: center; gap: 12px; height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Show “View spec” (developer)</span><button aria-label="Developer spec view" aria-pressed="true" style="width: 40px; height: 24px; border-radius: 12px; border: none; background: {{accent}}; position: relative; padding: 0"><span style="position: absolute; top: 3px; right: 3px; width: 18px; height: 18px; border-radius: 9px; background: #0E0F11"></span></button></div>
+    </section>
+  </div>
+  <div style="height: 30px"></div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

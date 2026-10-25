@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Sidebar.dc.html" title="Settings" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 12px; padding: 0 16px 24px 16px">
+    <div style="display: flex; align-items: center; gap: 12px; padding: 4px 4px 2px 4px">
+      <span style="width: 40px; height: 40px; border-radius: 20px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center; font-size: 16px; font-weight: 600">A</span>
+      <span style="display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15.5px; font-weight: 500">Aman</span><span style="font-size: 12.5px; color: #9BA0A8">Local profile · backed up to Google Drive</span></span>
+    </div>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">General</h2>
+      <a href="Appearance.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 3a9 9 0 010 18z" fill="#9BA0A8" stroke="none"></path></svg><span style="flex: 1">Appearance</span><span style="font-size: 13px; color: #9BA0A8">System</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ChatDefaults.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a8 8 0 01-11.6 7.1L4 20l1-4.6A8 8 0 1121 12z"></path></svg><span style="flex: 1">Chat defaults</span><span style="font-size: 13px; color: #9BA0A8">qwen3-32b</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Models &amp; tools</h2>
+      <a href="Providers.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="7" rx="2"></rect><rect x="3" y="13" width="18" height="7" rx="2"></rect></svg><span style="flex: 1">Providers &amp; endpoints</span><span style="font-size: 13px; color: #9BA0A8">5</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Skills.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"></path></svg><span style="flex: 1">Skills</span><span style="font-size: 13px; color: #9BA0A8">4 on</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Mcp.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3v4M15 3v4M7 7h10v4a5 5 0 01-10 0zM12 16v5"></path></svg><span style="flex: 1">MCP servers &amp; connectors</span><span style="font-size: 13px; color: #9BA0A8">5</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="GenSettings.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="18" height="7" rx="1.5"></rect></svg><span style="flex: 1">Generative UI</span><span style="font-size: 13px; color: #9BA0A8">On</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Media &amp; search</h2>
+      <a href="Audio.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"></rect><path d="M5 11a7 7 0 0014 0M12 18v3"></path></svg><span style="flex: 1">Voice, speech &amp; translation</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Images.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="3"></rect><circle cx="9" cy="9" r="1.5"></circle><path d="M21 15l-5-5L5 21"></path></svg><span style="flex: 1">Images</span><span style="font-size: 13px; color: #9BA0A8">ComfyUI</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="WebSearch.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M3 12h18M12 3a14 14 0 010 18M12 3a14 14 0 000 18"></path></svg><span style="flex: 1">Web search</span><span style="font-size: 13px; color: #9BA0A8">SearXNG</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Files.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 3H6a2 2 0 00-2 2v14a2 2 0 002 2h12a2 2 0 002-2V9z"></path><path d="M14 3v6h6"></path></svg><span style="flex: 1">Files &amp; documents</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Data</h2>
+      <a href="Backup.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 01-.6-10A6 6 0 0118 9a4.5 4.5 0 01-.5 9z"></path></svg><span style="flex: 1">Sync &amp; backup</span><span style="font-size: 13px; color: #9BA0A8">Drive</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Privacy.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2"></rect><path d="M8 11V8a4 4 0 018 0v3"></path></svg><span style="flex: 1">Privacy &amp; API keys</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="About.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 42px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 8h.01M12 11v5"></path></svg><span style="flex: 1">About</span><span style="font-size: 13px; color: #9BA0A8">v0.1.0</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

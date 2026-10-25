@@ -1,0 +1,84 @@
+name: Release
+
+# Push a version tag to build both apps and publish ONE GitHub Release with the files attached:
+#
+#   git tag v0.1.0-beta.2
+#   git push origin v0.1.0-beta.2
+#
+# A tag with a hyphen (v0.1.0-beta.2, v1.0.0-rc.1) is published as a PRE-RELEASE, i.e. marked as beta.
+# A plain tag (v1.0.0) is published as a normal release.
+# If one platform fails, the other is still published and the notes say which files are included.
+
+on:
+  push:
+    tags: ['v*']
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  android:
+    uses: ./.github/workflows/android-apk.yml
+    with:
+      label: ${{ github.ref_name }}
+    secrets: inherit
+
+  ios:
+    uses: ./.github/workflows/ios-ipa.yml
+    with:
+      label: ${{ github.ref_name }}
+    secrets: inherit
+
+  publish:
+    needs: [android, ios]
+    if: ${{ always() && (needs.android.result == 'success' || needs.ios.result == 'success') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: AI-Hat-*
+          merge-multiple: true
+          path: dist
+
+      - name: Write the release notes
+        run: |
+          cd dist
+          {
+            if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+              echo '> **Beta.** AI Hat is still in beta. Expect rough edges, and please report problems under Issues.'
+              echo
+            fi
+            echo '## Install'
+            echo
+            for f in *.apk; do [ -e "$f" ] || continue; cat <<NOTE
+          **Android:** download \`$f\`, open it on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
+
+          NOTE
+            done
+            for f in *.ipa; do [ -e "$f" ] || continue; cat <<NOTE
+          **iPhone / iPad:** \`$f\` is **unsigned**, so it will not install by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
+
+          NOTE
+            done
+            echo '## Checksums (SHA-256)'
+            echo
+            echo '```'
+            sha256sum *
+            echo '```'
+          } > ../notes.md
+          cat ../notes.md
+
+      - name: Publish
+        uses: softprops/action-gh-release@v2
+        with:
+          name: AI Hat ${{ github.ref_name }}
+          prerelease: ${{ contains(github.ref_name, '-') }}
+          body_path: notes.md
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: dist/*

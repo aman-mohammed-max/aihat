@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web search settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Web search" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 0 16px">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">When to search</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Only when I ask</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Automatic</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Always</button>
+      </div>
+      <span style="font-size: 12px; color: #9BA0A8; padding-left: 4px">Automatic lets models with tool calling decide.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 0 4px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Search engine</h2>
+      <div style="display: flex; flex-direction: column; gap: 10px; padding: 12px; border-radius: 14px; background: #17191C">
+        <div style="display: flex; align-items: center; gap: 12px">
+          <span style="width: 20px; height: 20px; border-radius: 10px; border: 6px solid {{accent}}; box-sizing: border-box; flex-shrink: 0"></span>
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">SearXNG</span><span style="font-size: 12px; color: #9BA0A8">Self-hosted, no key, private</span></span>
+        </div>
+        <label for="sx" style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">SearXNG URL</label>
+        <input id="sx" value="http://192.168.1.40:8888" style="height: 42px; box-sizing: border-box; border-radius: 10px; border: 1px solid #2C3036; background: #0E0F11; color: #ECEDEF; padding: 0 10px; font-family: 'Geist Mono', monospace; font-size: 13px">
+      </div>
+      <button style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: none; background: transparent; color: #ECEDEF; text-align: left"><span style="width: 20px; height: 20px; border-radius: 10px; border: 1.5px solid #4A4F57; box-sizing: border-box"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Brave Search API</span><span style="font-size: 12px; color: #9BA0A8">Needs an API key</span></span></button>
+      <button style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: none; background: transparent; color: #ECEDEF; text-align: left"><span style="width: 20px; height: 20px; border-radius: 10px; border: 1.5px solid #4A4F57; box-sizing: border-box"></span><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Tavily</span><span style="font-size: 12px; color: #9BA0A8">Needs an API key</span></span></button>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Results per search</span><span style="font-size: 13px; color: #9BA0A8">6</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Read full pages, not just snippets</span><dc-import name="Toggle" on="{{ true }}" label="Read full pages" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Safe search</span><dc-import name="Toggle" on="{{ true }}" label="Safe search" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Never use these sites</span><span style="font-size: 13px; color: #9BA0A8">2</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

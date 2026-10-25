@@ -1,0 +1,106 @@
+name: Android APK
+
+# Builds an installable release APK.
+#   By hand: GitHub → Actions → "Android APK" → Run workflow. The APK is under the run's Artifacts.
+#   For a public release, push a tag instead (see release.yml), which builds this and the iOS app together.
+#
+# With no secrets it is signed with the debug key Expo generates: fine for installing on your own phone.
+# For a key of your own, add these repository secrets (Settings → Secrets and variables → Actions):
+#   ANDROID_KEYSTORE_BASE64   the .jks/.keystore file, base64-encoded   (base64 -w0 my.keystore)
+#   ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD
+
+on:
+  workflow_dispatch:
+    inputs:
+      abis:
+        description: CPU architectures to include (fewer builds faster and gives a smaller file)
+        default: arm64-v8a,armeabi-v7a
+  workflow_call:
+    inputs:
+      abis:
+        type: string
+        default: arm64-v8a,armeabi-v7a
+      label:
+        description: Used in the file name, for example the release tag
+        type: string
+        default: ''
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Number this build
+        run: |
+          node -e "
+            const fs = require('fs'); const a = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+            a.expo.android.versionCode = Number(process.env.RUN);
+            fs.writeFileSync('app.json', JSON.stringify(a, null, 2));
+          "
+        env:
+          RUN: ${{ github.run_number }}
+
+      - name: Generate the Android project
+        run: npx expo prebuild --platform android --no-install --clean
+
+      - name: Sign with my keystore (only when the secrets are set)
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+          echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import re
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          release = """signingConfigs {
+                  release {
+                      storeFile file(System.getenv('ANDROID_KEYSTORE_PATH'))
+                      storePassword System.getenv('ANDROID_KEYSTORE_PASSWORD')
+                      keyAlias System.getenv('ANDROID_KEY_ALIAS')
+                      keyPassword System.getenv('ANDROID_KEY_PASSWORD')
+                  }"""
+          assert 'signingConfigs {' in s, 'signingConfigs block not found'
+          s = s.replace('signingConfigs {', release, 1)
+          s, n = re.subn(r'(buildTypes \{.*?release \{.*?)signingConfig signingConfigs\.debug', r'\1signingConfig signingConfigs.release', s, count=1, flags=re.S)
+          assert n == 1, 'release signingConfig line not found'
+          open(p, 'w').write(s)
+          PY
+
+      - name: Build the release APK
+        working-directory: android
+        run: >
+          ./gradlew assembleRelease --no-daemon --stacktrace
+          -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a,armeabi-v7a' }}
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
+
+      - name: Name the file
+        run: |
+          mkdir -p out
+          cp android/app/build/outputs/apk/release/*.apk "out/AI-Hat-${{ inputs.label || format('build-{0}', github.run_number) }}.apk"
+          ls -lh out
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Hat-apk
+          path: out/*.apk
+          if-no-files-found: error

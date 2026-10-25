@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Image viewer</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="close" left-href="MediaChat.dc.html" title="1 of 4" sub="1024 × 1024 · PNG" right="more" more-href="MessageSheet.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 16px; padding: 0 16px">
+    <div role="img" aria-label="Generated pixel-art icon, image 1 of 4" style="width: 358px; height: 358px; border-radius: 18px; background: #1C2A1E; display: flex; align-items: center; justify-content: center"><span style="width: 150px; height: 150px; background: {{accent}}; border-radius: 18px"></span></div>
+    <div style="display: flex; justify-content: center; gap: 6px" aria-hidden="true">
+      <span style="width: 18px; height: 6px; border-radius: 3px; background: #ECEDEF"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #4A4F57"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #4A4F57"></span>
+      <span style="width: 6px; height: 6px; border-radius: 3px; background: #4A4F57"></span>
+    </div>
+    <p style="margin: 0; font-size: 13.5px; line-height: 1.5; color: #9BA0A8">“32×32 pixel-art app icon from launcher_sketch.jpg, flat colours, dark outline” · seed 48213</p>
+  </main>
+
+  <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 12px 16px 34px 16px">
+    <button style="height: 64px; border-radius: 14px; border: none; background: #17191C; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"></path></svg>Save</button>
+    <a href="Backup.dc.html" style="height: 64px; border-radius: 14px; background: #17191C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; text-decoration: none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 18a5 5 0 01-.6-10A6 6 0 0118 9a4.5 4.5 0 01-.5 9z"></path></svg>Drive</a>
+    <a href="MediaChat.dc.html" style="height: 64px; border-radius: 14px; background: #17191C; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px; text-decoration: none"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"></path></svg>Vary</a>
+    <button style="height: 64px; border-radius: 14px; border: none; background: #17191C; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; font-size: 12px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12v7a1 1 0 001 1h14a1 1 0 001-1v-7M16 6l-4-4-4 4M12 2v13"></path></svg>Share</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

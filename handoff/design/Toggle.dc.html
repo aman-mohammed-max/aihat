@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Toggle component</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0}
+button{cursor:pointer}
+</style>
+</helmet>
+<button aria-label="{{label}}" aria-pressed="{{on}}" onClick="{{flip}}" style="width: 44px; height: 26px; border-radius: 13px; border: none; position: relative; padding: 0; flex-shrink: 0; display: block; background: {{track}}"><span style="position: absolute; top: 3px; width: 20px; height: 20px; border-radius: 10px; left: {{left}}; background: {{knob}}"></span></button>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"on":{"editor":"boolean","default":true},"label":{"editor":"text","default":"Toggle"},"accent":{"editor":"color","default":"#C6F46B"},"$preview":{"width":44,"height":26}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { on: props.on === undefined ? true : !!props.on };
+  }
+  renderVals() {
+    const on = this.state.on;
+    const accent = this.props.accent ?? '#C6F46B';
+    return {
+      on, label: this.props.label ?? 'Toggle',
+      track: on ? accent : '#2C3036', knob: on ? '#0E0F11' : '#9BA0A8', left: on ? '21px' : '3px',
+      flip: () => this.setState({ on: !on })
+    };
+  }
+}
+</script>
+</body>
+</html>

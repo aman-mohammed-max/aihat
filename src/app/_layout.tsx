@@ -1,18 +1,108 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from 'expo-router';
+import { Geist_400Regular, Geist_500Medium, Geist_600SemiBold } from '@expo-google-fonts/geist';
+import { GeistMono_400Regular, GeistMono_500Medium } from '@expo-google-fonts/geist-mono';
+import { useFonts } from 'expo-font';
+import { Stack } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
-import { useColorScheme } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
+import { configureReanimatedLogger, ReanimatedLogLevel } from 'react-native-reanimated';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import { PrivacyShield } from '@/components/PrivacyShield';
+import { autoBackupIfDue } from '@/lib/backup';
+import { Toast } from '@/components/Toast';
+import { useChats } from '@/store/chats';
+import { useCommands } from '@/store/commands';
+import { useLibrary } from '@/store/library';
+import { useProviders } from '@/store/providers';
+import { useSettings } from '@/store/settings';
+import { useTheme } from '@/theme';
+
+// react-native-drawer-layout passes dependency arrays that Reanimated 4 ignores on native; the warning is noise.
+configureReanimatedLogger({ level: ReanimatedLogLevel.error, strict: false });
 
 SplashScreen.preventAutoHideAsync();
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+const sheet = { presentation: 'transparentModal', animation: 'fade', headerShown: false, contentStyle: { backgroundColor: 'transparent' } } as const;
+
+export default function RootLayout() {
+  const { colors, isDark } = useTheme();
+  const [fontsLoaded, fontError] = useFonts({ Geist_400Regular, Geist_500Medium, Geist_600SemiBold, GeistMono_400Regular, GeistMono_500Medium });
+  const [dataReady, setDataReady] = useState(false);
+
+  useEffect(() => {
+    Promise.all([useSettings.getState().load(), useProviders.getState().load(), useLibrary.getState().load(), useCommands.getState().load()])
+      .then(() => useChats.getState().housekeeping())
+      .then(() => autoBackupIfDue())
+      .catch(() => {})
+      .finally(() => setDataReady(true));
+  }, []);
+
+  const ready = (fontsLoaded || fontError) && dataReady;
+  useEffect(() => {
+    if (ready) SplashScreen.hideAsync();
+  }, [ready]);
+  if (!ready) return null;
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.bg }}>
+      <SafeAreaProvider>
+          <StatusBar style={isDark ? 'light' : 'dark'} />
+          <PrivacyShield />
+          <Toast />
+          <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+            <Stack.Screen name="(drawer)" />
+            <Stack.Screen name="about" />
+            <Stack.Screen name="add-mcp" />
+            <Stack.Screen name="add-provider" />
+            <Stack.Screen name="add-skill" />
+            <Stack.Screen name="appearance" />
+            <Stack.Screen name="audio" />
+            <Stack.Screen name="backup" />
+            <Stack.Screen name="chat-defaults" />
+            <Stack.Screen name="command-edit" />
+            <Stack.Screen name="commands" />
+            <Stack.Screen name="connector-auth" />
+            <Stack.Screen name="connectors" />
+            <Stack.Screen name="files" />
+            <Stack.Screen name="gen-app" />
+            <Stack.Screen name="gen-catalog" />
+            <Stack.Screen name="gen-settings" />
+            <Stack.Screen name="gen-spec" />
+            <Stack.Screen name="image-viewer" />
+            <Stack.Screen name="images" />
+            <Stack.Screen name="mcp" />
+            <Stack.Screen name="mcp-detail" />
+            <Stack.Screen name="privacy" />
+            <Stack.Screen name="prompt-edit" />
+            <Stack.Screen name="prompts" />
+            <Stack.Screen name="provider-detail" />
+            <Stack.Screen name="providers" />
+            <Stack.Screen name="search-chats" />
+            <Stack.Screen name="settings" />
+            <Stack.Screen name="skill-detail" />
+            <Stack.Screen name="skills" />
+            <Stack.Screen name="voice" />
+            <Stack.Screen name="web-search" />
+            {/* Every sheet / dialog is a transparent modal over the current screen. */}
+            <Stack.Screen name="(modals)/model-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/image-options" options={sheet} />
+            <Stack.Screen name="(modals)/model-edit" options={sheet} />
+            <Stack.Screen name="(modals)/prompt-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/chat-menu" options={sheet} />
+            <Stack.Screen name="(modals)/params-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/message-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/tools-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/rename" options={sheet} />
+            <Stack.Screen name="(modals)/delete-chat" options={sheet} />
+            <Stack.Screen name="(modals)/picker" options={sheet} />
+            <Stack.Screen name="(modals)/attach-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/sources-sheet" options={sheet} />
+            <Stack.Screen name="(modals)/gen-action" options={sheet} />
+            <Stack.Screen name="(modals)/tool-detail" options={sheet} />
+          </Stack>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

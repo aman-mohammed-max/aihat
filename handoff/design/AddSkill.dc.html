@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Add skill</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="cancel" left-href="Skills.dc.html" title="Add skill" right="text" right-text="Add" right-href="SkillDetail.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 18px; padding: 8px 16px 0 16px">
+    <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+      <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Git URL</button>
+      <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Upload .zip</button>
+      <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Write new</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="gu" style="font-size: 12px; font-weight: 500; color: #9BA0A8; padding-left: 4px">Repository or folder URL</label>
+      <input id="gu" value="github.com/aman/skills/tree/main/commit-writer" style="height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid {{accent}}; background: #17191C; color: #ECEDEF; padding: 0 12px; font-family: 'Geist Mono', monospace; font-size: 12.5px">
+      <span style="font-size: 12px; color: #9BA0A8; padding-left: 4px">Must contain a SKILL.md at the top.</span>
+    </div>
+
+    <section style="background: #17191C; border-radius: 16px; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+      <div style="display: flex; align-items: center; gap: 8px"><span style="width: 7px; height: 7px; border-radius: 4px; background: {{accent}}"></span><span style="font-size: 12.5px; color: #9BA0A8">Found a skill</span></div>
+      <span style="font-family: 'Geist Mono', monospace; font-size: 15px">commit-writer</span>
+      <span style="font-size: 13.5px; line-height: 1.5; color: #C9CCD1">Writes a commit message from a staged diff in the repo's own style.</span>
+      <span style="font-size: 12.5px; color: #9BA0A8">4 files · 9 KB · MIT licence</span>
+      <div style="display: flex; gap: 10px; align-items: flex-start; background: #2A2219; border-radius: 12px; padding: 10px 12px">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#FDBA74" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M12 8v5M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
+        <span style="font-size: 12.5px; line-height: 1.45; color: #F4D9BC">Includes a script it may run. Scripts run in a sandbox with no network unless you allow it.</span>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Turn on after adding</span><dc-import name="Toggle" on="{{ true }}" label="Turn on after adding" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Keep updated from Git</span><dc-import name="Toggle" on="{{ false }}" label="Keep updated" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+  </div>
+
+  <div style="padding: 10px 16px 30px 16px">
+    <a href="SkillDetail.dc.html" style="height: 48px; border-radius: 24px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 15px; font-weight: 600">Add skill</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

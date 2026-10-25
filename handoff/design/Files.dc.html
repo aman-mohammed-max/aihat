@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Files and documents</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Files & documents" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 0 16px">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">How files reach the model</h2>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">Whole file</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">Search inside</button>
+      </div>
+      <span style="font-size: 12px; line-height: 1.45; color: #9BA0A8; padding: 0 4px">Search inside splits files into passages and sends only the relevant ones. Best for long PDFs.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Search inside</h2>
+      <a href="ModelSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Embedding model</span><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; color: #9BA0A8">nomic-embed</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Passage size</span><span style="font-size: 13px; color: #9BA0A8">800 tokens</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Passages per question</span><span style="font-size: 13px; color: #9BA0A8">6</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Uploads</h2>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Read text in scanned PDFs</span><span style="font-size: 12px; color: #9BA0A8">On-device OCR</span></span><dc-import name="Toggle" on="{{ true }}" label="Read text in scanned PDFs" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Largest file</span><span style="font-size: 13px; color: #9BA0A8">50 MB</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Storage on this phone</h2>
+      <div style="display: flex; flex-direction: column; gap: 8px; padding: 0 4px">
+        <div style="display: flex; justify-content: space-between; font-size: 13px"><span style="color: #C9CCD1">Files 184 MB · images 96 MB · models 1.3 GB</span></div>
+        <div style="height: 6px; border-radius: 3px; background: #2C3036; display: flex; overflow: hidden"><span style="width: 10%; background: {{accent}}"></span><span style="width: 6%; background: #7DD3FC"></span><span style="width: 40%; background: #6F747C"></span></div>
+      </div>
+      <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px; margin-top: 4px">Clear files from deleted chats</button>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

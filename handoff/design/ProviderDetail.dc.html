@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Provider detail</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Providers.dc.html" title="OpenRouter" sub="openrouter.ai/api/v1" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 0 16px">
+    <div role="alert" style="display: flex; gap: 10px; align-items: flex-start; background: #2E1E1E; border-radius: 14px; padding: 12px 14px">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#F2A2A2" stroke-width="2" stroke-linecap="round" aria-hidden="true" style="flex-shrink: 0; margin-top: 2px"><path d="M12 8v5M12 16.5v.5"></path><circle cx="12" cy="12" r="9"></circle></svg>
+      <span style="font-size: 13px; line-height: 1.45; color: #F7D4D4">The server rejected this key (401). Paste a new one to use these models again.</span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="dk" style="font-size: 12px; font-weight: 500; color: #9BA0A8; padding-left: 4px">API key</label>
+      <div style="display: flex; gap: 8px">
+        <input id="dk" type="password" value="sk-or-v1-xxxxxxxx" style="flex: 1; min-width: 0; height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid #F2A2A2; background: #17191C; color: #ECEDEF; padding: 0 12px; font-size: 14px">
+        <button style="height: 46px; border-radius: 12px; border: none; background: #22252A; color: #ECEDEF; font-size: 13.5px; padding: 0 14px">Paste</button>
+      </div>
+    </div>
+
+    <section style="display: flex; flex-direction: column">
+      <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 4px 6px 4px"><h2 style="margin: 0; font-size: 12px; font-weight: 500; color: #9BA0A8">Models · 8 of 312 shown in picker</h2><button style="height: 30px; border: none; background: transparent; color: #9BA0A8; font-size: 12.5px; padding: 0">Refresh</button></div>
+      <dc-import name="SearchBar" placeholder="Search 312 models" hint-size="100%,44px"></dc-import>
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13px">deepseek-coder-v2</span><span style="font-size: 11.5px; color: #9BA0A8">32k · [PRICE] / 1M tokens</span></span><dc-import name="Toggle" on="{{ true }}" label="deepseek-coder-v2" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px; border-bottom: 1px solid #1E2125"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13px">qwen3-235b-a22b</span><span style="font-size: 11.5px; color: #9BA0A8">tools · 128k · [PRICE] / 1M</span></span><dc-import name="Toggle" on="{{ true }}" label="qwen3-235b" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <div style="display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 4px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-family: 'Geist Mono', monospace; font-size: 13px">llama-3.2-11b-vision</span><span style="font-size: 11.5px; color: #9BA0A8">vision · 128k · free</span></span><dc-import name="Toggle" on="{{ false }}" label="llama-3.2-11b-vision" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Default provider</span><dc-import name="Toggle" on="{{ false }}" label="Default provider" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <a href="ParamsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Default model settings</span><span style="font-size: 13px; color: #9BA0A8">Temp 0.7</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Headers &amp; timeout</span><span style="font-size: 13px; color: #9BA0A8">1 header · 60 s</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px 16px 30px 16px">
+    <button style="height: 46px; border-radius: 23px; border: none; background: {{accent}}; color: #0E0F11; font-size: 14.5px; font-weight: 600">Save &amp; test</button>
+    <a href="Providers.dc.html" style="height: 46px; border-radius: 23px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px; color: #F2A2A2">Remove</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Choice picker</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Voice & speech" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <a href="Audio.dc.html" aria-label="Close" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6)"></a>
+
+  <section role="dialog" aria-label="Translate into" style="position: absolute; left: 0; right: 0; bottom: 0; top: 230px; background: #17191C; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #3A3F46; margin-top: 8px"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 0 20px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Translate into</h2>
+      <a href="Audio.dc.html" style="height: 44px; display: flex; align-items: center; padding: 0 12px; color: {{accent}}; text-decoration: none; font-size: 15px; font-weight: 600">Done</a>
+    </div>
+    <div style="padding: 6px 16px 8px 16px">
+      <dc-import name="SearchBar" placeholder="Search languages" hint-size="100%,44px"></dc-import>
+    </div>
+    <div role="radiogroup" aria-label="Language" style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0 16px">
+      <sc-for list="{{options}}" as="o" hint-placeholder-count="7">
+        <button role="radio" aria-checked="{{o.on}}" onClick="{{o.pick}}" style="display: flex; align-items: center; gap: 12px; min-height: 50px; padding: 0 4px; border: none; border-bottom: 1px solid #22252A; background: transparent; color: #ECEDEF; text-align: left; font-size: 15px">
+          <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span>{{o.label}}</span><span style="font-size: 12px; color: #9BA0A8">{{o.note}}</span></span>
+          <sc-if value="{{o.on}}" hint-placeholder-val="{{ false }}"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="{{accent}}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5L20 7"></path></svg></sc-if>
+        </button>
+      </sc-for>
+    </div>
+    <p style="margin: 0; padding: 10px 20px 28px 20px; font-size: 12px; line-height: 1.45; color: #9BA0A8; border-top: 1px solid #22252A">Every row in settings that shows a value opens a sheet like this one.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { picked: 'en' };
+  }
+  renderVals() {
+    const list = [['en', 'English', 'Default'], ['hi', 'Hindi', 'हिन्दी'], ['ml', 'Malayalam', 'മലയാളം'], ['ta', 'Tamil', 'தமிழ்'], ['ar', 'Arabic', 'العربية'], ['ja', 'Japanese', '日本語'], ['de', 'German', 'Deutsch']];
+    return {
+      accent: this.props.accent ?? '#C6F46B',
+      options: list.map(([id, label, note]) => ({ label, note, on: this.state.picked === id, pick: () => this.setState({ picked: id }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

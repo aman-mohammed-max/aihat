@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generated UI streaming in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" more-href="ChatMenu.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 14px; padding: 10px 16px; overflow: hidden">
+    <div style="align-self: flex-end; max-width: 80%; background: #22252A; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45">Make me a checklist to ship the QEMU mod beta</div>
+
+    <section aria-label="Generated checklist, still loading" aria-busy="true" style="background: #17191C; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600">Beta launch checklist</h3>
+        <span style="font-size: 12px; color: #9BA0A8">1 of 6 done</span>
+      </div>
+      <div style="height: 6px; border-radius: 3px; background: #26292E"><div style="width: 17%; height: 6px; border-radius: 3px; background: {{accent}}"></div></div>
+
+      <label style="display: flex; align-items: center; gap: 12px; min-height: 44px">
+        <input type="checkbox" checked style="width: 20px; height: 20px; accent-color: {{accent}}; margin: 0">
+        <span style="flex: 1; font-size: 14.5px; color: #9BA0A8; text-decoration: line-through">Fix fd leak on VM restart</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 12px; min-height: 44px">
+        <input type="checkbox" style="width: 20px; height: 20px; accent-color: {{accent}}; margin: 0">
+        <span style="flex: 1; font-size: 14.5px">Test on Fabric 1.21 and NeoForge</span>
+        <span style="font-size: 11px; color: #FDBA74; border: 1px solid #5A4128; border-radius: 6px; padding: 2px 6px">High</span>
+      </label>
+      <label style="display: flex; align-items: center; gap: 12px; min-height: 44px">
+        <input type="checkbox" style="width: 20px; height: 20px; accent-color: {{accent}}; margin: 0">
+        <span style="flex: 1; font-size: 14.5px">Write install guide</span>
+      </label>
+
+      <div aria-hidden="true" style="display: flex; align-items: center; gap: 12px; height: 44px">
+        <span style="width: 20px; height: 20px; border-radius: 5px; background: #24272C"></span>
+        <span style="width: 62%; height: 12px; border-radius: 6px; background: #24272C"></span>
+      </div>
+      <div aria-hidden="true" style="display: flex; align-items: center; gap: 12px; height: 44px; opacity: 0.6">
+        <span style="width: 20px; height: 20px; border-radius: 5px; background: #24272C"></span>
+        <span style="width: 48%; height: 12px; border-radius: 6px; background: #24272C"></span>
+      </div>
+      <div aria-hidden="true" style="height: 44px; border-radius: 22px; background: #24272C; opacity: 0.4"></div>
+    </section>
+
+    <div style="display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: #9BA0A8">
+      <span style="width: 14px; height: 14px; border-radius: 7px; border: 2px solid #2C3036; border-top-color: {{accent}}; box-sizing: border-box"></span>
+      <span style="flex: 1">Building UI · 14 of about 22 elements</span>
+      <span style="font-family: 'Geist Mono', monospace">JSONL patch 9</span>
+    </div>
+  </main>
+
+  <footer style="display: flex; justify-content: center; padding: 8px 12px 34px 12px">
+    <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: #17191C; color: #ECEDEF; font-size: 14px; padding: 0 18px; display: flex; align-items: center; gap: 8px"><span style="width: 10px; height: 10px; border-radius: 2px; background: #ECEDEF"></span>Stop generating</button>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

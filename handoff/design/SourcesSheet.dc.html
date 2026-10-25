@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Web sources</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="llama-3.3-70b" sub="Groq" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <a href="SearchChat.dc.html" aria-label="Close" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6)"></a>
+
+  <section role="dialog" aria-label="Sources" style="position: absolute; left: 0; right: 0; bottom: 0; top: 108px; background: #17191C; border-radius: 28px 28px 0 0; display: flex; flex-direction: column; overflow: hidden">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #3A3F46; margin-top: 8px"></span>
+    <div style="display: flex; align-items: center; justify-content: space-between; padding: 6px 8px 0 20px">
+      <h2 style="margin: 0; font-size: 17px; font-weight: 600">Sources</h2>
+      <a href="SearchChat.dc.html" style="height: 44px; display: flex; align-items: center; padding: 0 12px; color: {{accent}}; text-decoration: none; font-size: 15px; font-weight: 600">Done</a>
+    </div>
+
+    <div style="padding: 8px 20px 10px 20px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid #22252A">
+      <span style="font-size: 12px; font-weight: 500; color: #9BA0A8">Searched for</span>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>fabric api changelog</span>
+      <span style="display: flex; align-items: center; gap: 8px; font-size: 14px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="M20 20l-3.5-3.5"></path></svg>fabric api release breaking changes</span>
+    </div>
+
+    <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 4px 16px 0 16px">
+      <a href="#" style="display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #22252A; text-decoration: none">
+        <span style="width: 24px; height: 24px; border-radius: 7px; background: #2E3238; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0">1</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 12px; color: #9BA0A8">fabricmc.net</span><span style="font-size: 14.5px">[Release notes title]</span><span style="font-size: 12.5px; line-height: 1.4; color: #9BA0A8">[Snippet the answer used from this page]</span></span>
+      </a>
+      <a href="#" style="display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #22252A; text-decoration: none">
+        <span style="width: 24px; height: 24px; border-radius: 7px; background: #2E3238; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0">2</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 12px; color: #9BA0A8">github.com</span><span style="font-size: 14.5px">[Changelog title]</span><span style="font-size: 12.5px; line-height: 1.4; color: #9BA0A8">[Snippet the answer used from this page]</span></span>
+      </a>
+      <a href="#" style="display: flex; gap: 12px; padding: 12px 4px; border-bottom: 1px solid #22252A; text-decoration: none">
+        <span style="width: 24px; height: 24px; border-radius: 7px; background: #2E3238; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0">3</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 12px; color: #9BA0A8">docs.fabricmc.net</span><span style="font-size: 14.5px">[Docs page title]</span></span>
+      </a>
+      <a href="#" style="display: flex; gap: 12px; padding: 12px 4px; text-decoration: none">
+        <span style="width: 24px; height: 24px; border-radius: 7px; background: #2E3238; display: flex; align-items: center; justify-content: center; font-size: 12px; flex-shrink: 0">4</span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 3px"><span style="font-size: 12px; color: #9BA0A8">github.com</span><span style="font-size: 14.5px">[Issue or PR title]</span></span>
+      </a>
+      <span style="font-size: 12px; color: #9BA0A8; padding: 6px 4px">+2 pages read but not cited</span>
+    </div>
+
+    <div style="padding: 10px 16px 28px 16px; border-top: 1px solid #22252A">
+      <a href="WebSearch.dc.html" style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14px">Web search settings</a>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

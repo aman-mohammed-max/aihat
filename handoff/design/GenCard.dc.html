@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Generated card in chat</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}a:hover{color:#FFFFFF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+
+  <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="llama-3.3-70b" sub="Groq" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" more-href="ChatMenu.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 16px; padding: 10px 16px; overflow: hidden">
+    <div style="align-self: flex-end; max-width: 80%; background: #22252A; border-radius: 18px; padding: 10px 14px; font-size: 15px; line-height: 1.45">Which of my models should I use for coding?</div>
+
+    <p style="margin: 0; font-size: 15px; line-height: 1.5; color: #E3E5E8">Here's how your enabled models compare, using your last 7 days of usage.</p>
+
+    <section aria-label="Generated card" style="background: #17191C; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 14px">
+      <div style="display: flex; align-items: center; justify-content: space-between">
+        <h3 style="margin: 0; font-size: 16px; font-weight: 600">Your coding models</h3>
+        <span style="font-size: 11px; color: #9BA0A8; border: 1px solid #2C3036; border-radius: 6px; padding: 2px 6px">4 models</span>
+      </div>
+      <div style="display: flex; gap: 6px">
+        <sc-for list="{{metrics}}" as="m" hint-placeholder-count="3">
+          <button aria-pressed="{{m.on}}" onClick="{{m.pick}}" style="height: 32px; border-radius: 16px; padding: 0 12px; font-size: 13px; border: {{m.border}}; background: {{m.bg}}; color: {{m.fg}}">{{m.label}}</button>
+        </sc-for>
+      </div>
+      <div style="display: flex; flex-direction: column; gap: 12px">
+        <sc-for list="{{rows}}" as="r" hint-placeholder-count="4">
+          <div style="display: flex; flex-direction: column; gap: 6px">
+            <div style="display: flex; align-items: baseline; gap: 8px">
+              <span style="flex: 1; font-family: 'Geist Mono', monospace; font-size: 13px">{{r.name}}</span>
+              <span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; color: #C9CCD1">{{r.value}}</span>
+            </div>
+            <div style="height: 6px; border-radius: 3px; background: #26292E; overflow: hidden"><div style="height: 6px; border-radius: 3px; width: {{r.width}}; background: {{r.color}}"></div></div>
+          </div>
+        </sc-for>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button style="flex: 1; height: 44px; border-radius: 22px; border: none; background: {{accent}}; color: #0E0F11; font-size: 14px; font-weight: 600">Use {{best}}</button>
+        <button style="height: 44px; border-radius: 22px; border: 1px solid #2C3036; background: transparent; color: #ECEDEF; font-size: 14px; padding: 0 16px">Details</button>
+      </div>
+    </section>
+
+    <span style="display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: #9BA0A8">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"></rect><rect x="14" y="3" width="7" height="7" rx="1.5"></rect><rect x="3" y="14" width="18" height="7" rx="1.5"></rect></svg>
+      Generated UI · 9 elements · <a href="GenSpec.dc.html" style="color: #C9CCD1">View spec</a>
+    </span>
+  </main>
+
+  <dc-import name="Composer" placeholder="Message llama-3.3-70b" accent="{{accent}}" hint-size="100%,130px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { metric: 'speed' };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#C6F46B';
+    const data = {
+      speed:   { unit: ' tok/s', vals: [['qwen3-32b', 182], ['llama-3.3-70b', 96], ['deepseek-coder-v2', 141], ['on-device 1.2B', 38]] },
+      context: { unit: 'k',      vals: [['qwen3-32b', 128], ['llama-3.3-70b', 128], ['deepseek-coder-v2', 32], ['on-device 1.2B', 32]] },
+      tools:   { unit: '%',      vals: [['qwen3-32b', 94], ['llama-3.3-70b', 88], ['deepseek-coder-v2', 61], ['on-device 1.2B', 40]] }
+    }[this.state.metric];
+    const max = Math.max(...data.vals.map(v => v[1]));
+    const sorted = [...data.vals].sort((a, b) => b[1] - a[1]);
+    const rows = sorted.map(([name, v], i) => ({
+      name, value: v + data.unit, width: Math.round(v / max * 100) + '%', color: i === 0 ? accent : '#5A6069'
+    }));
+    const metrics = [['speed', 'Speed'], ['context', 'Context'], ['tools', 'Tool calls OK']].map(([id, label]) => {
+      const on = this.state.metric === id;
+      return { label, on, bg: on ? '#ECEDEF' : 'transparent', fg: on ? '#0E0F11' : '#C9CCD1', border: on ? 'none' : '1px solid #2C3036', pick: () => this.setState({ metric: id }) };
+    });
+    return { accent, rows, metrics, best: sorted[0][0] };
+  }
+}
+</script>
+</body>
+</html>

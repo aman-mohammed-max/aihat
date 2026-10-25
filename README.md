@@ -1,56 +1,184 @@
-# Welcome to your Expo app 👋
+<div align="center">
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+<img src="assets/images/icon.png" alt="AI Hat icon" width="112">
 
-## Get started
+# AI Hat
 
-1. Install dependencies
+**A dark-first mobile chat app for any OpenAI-compatible endpoint.**
+Chat, draw images, talk, search the web, read PDFs and build small UIs, all from servers you choose.
 
-   ```bash
-   npm install
-   ```
+[![Beta](https://img.shields.io/badge/status-beta-orange)](#known-limitations-beta)
+[![Latest release](https://img.shields.io/github/v/release/aman-mohammed-max/aihat?include_prereleases&label=release)](https://github.com/aman-mohammed-max/aihat/releases)
+[![Downloads](https://img.shields.io/github/downloads/aman-mohammed-max/aihat/total?label=downloads)](https://github.com/aman-mohammed-max/aihat/releases)
+![Android and iOS](https://img.shields.io/badge/platform-Android%20%7C%20iOS-lightgrey)
+![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020)
+[![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-2. Start the app
+[**Download**](#download) · [Quick start](#quick-start) · [Commands](#slash-commands) · [Build it yourself](#build-the-apps-yourself) · [Report a bug](https://github.com/aman-mohammed-max/aihat/issues/new?template=bug_report.md)
 
-   ```bash
-   npx expo start
-   ```
+</div>
 
-In the output, you'll find options to open the app in a
+> **⚠️ This is a beta.** It works, but expect rough edges, and some things are not built yet (see [Known limitations](#known-limitations-beta)). It has no account system and no servers of its own. Your messages go only to the endpoints you add.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Download
 
-You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+Get the latest build from the **[Releases page](https://github.com/aman-mohammed-max/aihat/releases)**. Every release lists its files and their checksums.
 
-## Get a fresh project
+| Platform | File | How to install |
+|---|---|---|
+| **Android** | `AI-Hat-vX.Y.Z.apk` | 1. Download it on your phone. 2. Open it and allow "Install unknown apps" for your browser or Files app. 3. Tap Install. |
+| **iPhone / iPad** | `AI-Hat-vX.Y.Z-unsigned.ipa` | The IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. A free Apple ID's apps expire after 7 days and need re-signing. |
 
-When you're ready, run:
+Android may warn that the app isn't from the Play Store. That's expected: it's a beta distributed here, not through a store.
+
+Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself), which takes one click on GitHub.
+
+## What it does
+
+- **Chat with any OpenAI-compatible server**: vLLM, Ollama, LM Studio, OpenRouter, Groq, [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) or your own. Replies stream in; add as many endpoints as you like and switch per chat.
+- **Slash commands**: type `/` for 40+ commands, and add your own. [`/image`](#slash-commands) has the chat model write a detailed image prompt and then draws it.
+- **Images**: your endpoint's `/v1/images/generations`, ComfyUI or AUTOMATIC1111. Choose the model, aspect ratio and count from the chat box.
+- **Voice**: dictate with Whisper-style transcription (and translate), and have replies read aloud with pause and stop.
+- **Web search** with sources: SearXNG, Brave, Tavily, or your endpoint's `/v1/search`. Models with tool calling can search by themselves.
+- **Files**: text, Markdown, CSV and code, plus **PDF, Word, PowerPoint and Excel**, read on the phone. Long files are searched by meaning instead of sent whole (needs an embeddings endpoint).
+- **Generative UI**: ask for a checklist, form or dashboard and get an interactive one in the chat, drawn with the app's own components ([json-render](https://json-render.dev)).
+- **Tools**: system prompt library with variables, skills, and MCP servers (HTTP) with a per-tool Auto / Ask / Off setting.
+- **Reasoning effort** (`low` to `high`), temperature and other model settings, per chat.
+- **Yours to keep**: chats are stored on the phone in SQLite, API keys in the OS keystore (never backed up), JSON backup and restore, optional app lock with Face ID or fingerprint.
+- **Looks**: dark by default, light theme, six accent colours, text size, button shape, and haptics tuned for iPhone and Android.
+
+## Screenshots
+
+These are the **design mockups** the app is built from. Real screenshots will replace them.
+
+<table>
+<tr>
+<td align="center"><img src="handoff/screens/NewChat.png" width="200" alt="New chat"><br><sub>New chat</sub></td>
+<td align="center"><img src="handoff/screens/Main.png" width="200" alt="Chat"><br><sub>Chat</sub></td>
+<td align="center"><img src="handoff/screens/ModelSheet.png" width="200" alt="Model picker"><br><sub>Model picker</sub></td>
+<td align="center"><img src="handoff/screens/GenCard.png" width="200" alt="Generated UI"><br><sub>Generated UI</sub></td>
+</tr>
+</table>
+
+## Quick start
+
+1. **Open the app → Add an endpoint.** Pick a preset (or Custom), enter the base URL **including `/v1`**, add a key if the server needs one, and tap *Test & add*. The model list is fetched automatically.
+2. **Start chatting.** Tap the model name at the top to switch models.
+3. **Try a command.** Type `/` and look around, or try `/image a cozy cabin in snow`.
+
+### Use a different server for each feature
+
+Images, speech, dictation, file search and web search each have their own **Endpoint** and **Model** rows (Settings → Images, Voice & speech, Web search, Files & documents). By default they follow your default endpoint. Pick another one you added, or add one just for that feature.
+
+| Feature | What the app calls |
+|---|---|
+| Chat | `POST /v1/chat/completions`, `GET /v1/models` |
+| Images | `POST /v1/images/generations` (or ComfyUI / A1111) |
+| Read aloud | `POST /v1/audio/speech` |
+| Dictation | `POST /v1/audio/transcriptions` and `/translations` |
+| File search | `POST /v1/embeddings` |
+| Web search | `POST /v1/search` on your endpoint, or SearXNG / Brave / Tavily |
+
+> **Gateways that don't list or label every model** (FreeLLMAPI, for example, may not list its image and audio models): open the feature's **Model** row and choose **Add a custom model**. Tap a common id such as `whisper-large-v3-turbo` or `gemini-2.5-flash-preview-tts`, or type the id your provider shows. Tap **Refresh** any time to fetch new models.
+
+## Slash commands
+
+Type `/` in the chat box, or tap the `/` button. Commands that need text insert themselves; the rest run right away. Settings → **Commands** lists everything and lets you write your own (a name plus a prompt, with `{input}` for the text after it).
+
+| Command | What it does |
+|---|---|
+| `/image <idea>` | The chat model writes a detailed image prompt, then the image model draws it. Options: `--model id`, `--ratio 16:9`, `--n 2`, `--raw` (skip the rewrite). |
+| `/search <question>` | Search the web, then answer with sources. |
+| `/ui <what to build>` | Reply with an interactive UI. |
+| `/prompt <description>` | The model writes a new system prompt, saves it, and uses it in this chat. |
+| `/effort off\|low\|medium\|high` | How much the model should think. |
+| `/model`, `/temp`, `/system`, `/tools` | Change the model, temperature, system prompt or tools. |
+| `/new`, `/clear`, `/rename`, `/title`, `/pin`, `/archive`, `/delete` | Manage the chat. |
+| `/summarize`, `/translate`, `/explain`, `/tldr`, `/fix`, `/review`, `/proofread`, `/rewrite`, `/plan`, `/brainstorm` | Ready-made prompts. |
+| `/copy`, `/read`, `/retry`, `/export`, `/files`, `/voice`, `/refresh` | Work with replies, files and models. |
+
+Start a message with `//` to send a real slash.
+
+## Files it can read
+
+Plain text, Markdown, CSV, JSON, code, **PDF**, **Word (.docx)**, **PowerPoint (.pptx)** and **Excel (.xlsx)**. Scanned PDFs (pictures of pages) and password-protected files can't be read. The app tells you why instead of silently dropping them.
+
+## Privacy
+
+There is no account, no analytics and no server of ours. Messages, images and files go only to the endpoints **you** add. API keys and tokens are kept in the phone's secure keystore and are never written to backups. If you use a cloud endpoint, your messages go to that company, so choose accordingly.
+
+## Known limitations (beta)
+
+- **iOS builds are unsigned** unless you add signing secrets, so they need AltStore, SideStore or Sideloadly.
+- **Developed and tested mainly on iPhone.** The Android build is newer and has had less testing.
+- **No on-device models**, and dictation needs a transcription endpoint (the phone's built-in dictation isn't used).
+- **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
+- **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
+- **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
+- Not available on the web.
+
+## Build the apps yourself
+
+You don't need a Mac or Android Studio. GitHub builds both (free on a public repository):
+
+1. **Fork** this repository (or use your own copy).
+2. Open the **Actions** tab, choose **Android APK** or **iOS IPA**, and press **Run workflow**.
+3. When it finishes, download the file from the run's **Artifacts**.
+
+To publish a **release** with both files attached, push a version tag:
 
 ```bash
-npm run reset-project
+git tag v0.1.0-beta.2
+git push origin v0.1.0-beta.2
 ```
 
-This command will move the starter code to the **example** directory and create a blank **src/app** directory where you can start developing.
+The **Release** workflow builds the APK and IPA, then creates one GitHub Release with the files, install notes and checksums. A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the other is still published.
 
-### Other setup steps
+### Signing (optional)
 
-- To set up ESLint for linting, run `npx expo lint`, or follow our guide on ["Using ESLint and Prettier"](https://docs.expo.dev/guides/using-eslint/)
-- If you'd like to set up unit testing, follow our guide on ["Unit Testing with Jest"](https://docs.expo.dev/develop/unit-testing/)
-- Learn more about the TypeScript setup in this template in our guide on ["Using TypeScript"](https://docs.expo.dev/guides/typescript/)
+With no setup the APK is signed with a debug key (fine for your own phone) and the IPA is unsigned. For your own signing, add these under **Settings → Secrets and variables → Actions**:
 
-## Learn more
+| Secret | For |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | A signed APK with your own key |
+| `IOS_CERT_P12_BASE64`, `IOS_CERT_PASSWORD`, `IOS_PROVISION_PROFILE_BASE64`, `IOS_TEAM_ID` | A signed IPA (needs a paid Apple Developer account) |
 
-To learn more about developing your project with Expo, look at the following resources:
+Optional variables: `IOS_EXPORT_METHOD` (`ad-hoc` by default) and `IOS_CODE_SIGN_IDENTITY`. The app and bundle id is `com.aihat.app`; change it in `app.json` before publishing anywhere.
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Run it from source
 
-## Join the community
+You need Node 22.
 
-Join our community of developers creating universal apps.
+```bash
+git clone https://github.com/aman-mohammed-max/aihat.git
+cd aihat
+npm install
+npx expo start -c        # scan the QR code with Expo Go
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Before sending changes: `npx tsc --noEmit` and `npx expo lint` (the **Check** workflow runs both).
+
+**Troubleshooting**
+- `AggregateError [ETIMEDOUT]` with `--tunnel`: your network can't reach Expo's tunnel service. Try `NODE_OPTIONS="--dns-result-order=ipv4first --no-network-family-autoselection" npx expo start --tunnel`, or skip the tunnel and use the same Wi-Fi.
+- On a Chromebook (Linux container), forward TCP port 8081 in ChromeOS settings and run `REACT_NATIVE_PACKAGER_HOSTNAME=<your Wi-Fi IP> npx expo start`.
+
+## Project layout
+
+```
+src/app          screens and routes (Expo Router)
+src/components   shared UI: header, composer, sheets, command palette…
+src/store        app state (Zustand) and the SQLite data
+src/api          OpenAI-compatible and MCP clients, image engines
+src/lib          commands, PDF / Office readers, search, speech, titles
+src/genui        generative UI (json-render catalog, renderer, parser)
+handoff          the design mockups and spec the app follows
+.github          build, release and check workflows
+```
+
+## Contributing
+
+Bug reports and ideas are welcome: [open an issue](https://github.com/aman-mohammed-max/aihat/issues/new?template=bug_report.md). Include the app version (Settings → About), your phone, and which endpoint and model you used. Never paste API keys. Pull requests are checked by the **Check** workflow.
+
+## License
+
+[MIT](LICENSE). Built with [Expo](https://expo.dev), React Native, [json-render](https://json-render.dev) and [fflate](https://github.com/101arrowz/fflate).

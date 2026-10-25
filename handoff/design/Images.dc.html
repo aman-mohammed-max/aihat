@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Image settings</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Images" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 0 16px">
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Image uploads</h2>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 52px; padding: 0 4px"><span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Send images to the model</span><span style="font-size: 12px; color: #9BA0A8">Only models marked “vision”</span></span><dc-import name="Toggle" on="{{ true }}" label="Send images to the model" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Shrink before sending</span><span style="font-size: 13px; color: #9BA0A8">1024 px</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Image generation</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <button style="height: 36px; border: none; border-radius: 9px; background: #2E3238; color: #ECEDEF; font-size: 13.5px">ComfyUI</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">OpenAI API</button>
+        <button style="height: 36px; border: none; border-radius: 9px; background: transparent; color: #9BA0A8; font-size: 13.5px">A1111</button>
+      </div>
+      <label for="iu" style="font-size: 12px; font-weight: 500; color: #9BA0A8; padding: 4px 0 0 4px">Server URL</label>
+      <input id="iu" value="http://192.168.1.40:8188" style="height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid #26292E; background: #17191C; color: #ECEDEF; padding: 0 12px; font-family: 'Geist Mono', monospace; font-size: 13.5px">
+      <div style="display: flex; flex-direction: column">
+        <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Model</span><span style="font-size: 13px; color: #9BA0A8">FLUX.1-schnell</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+        <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Workflow</span><span style="font-family: 'Geist Mono', monospace; font-size: 12.5px; color: #9BA0A8">flux_basic.json</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Defaults</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px">
+        <button style="height: 56px; border-radius: 12px; border: 1.5px solid {{accent}}; background: #17191C; color: #ECEDEF; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px"><span style="width: 18px; height: 18px; border: 1.5px solid currentColor; border-radius: 3px"></span>1:1</button>
+        <button style="height: 56px; border-radius: 12px; border: 1px solid #26292E; background: transparent; color: #C9CCD1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px"><span style="width: 14px; height: 22px; border: 1.5px solid currentColor; border-radius: 3px"></span>2:3</button>
+        <button style="height: 56px; border-radius: 12px; border: 1px solid #26292E; background: transparent; color: #C9CCD1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; font-size: 12px"><span style="width: 24px; height: 14px; border: 1.5px solid currentColor; border-radius: 3px"></span>16:9</button>
+      </div>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Images per prompt</span><span style="font-size: 13px; color: #9BA0A8">4</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Let the chat model improve my prompt</span><dc-import name="Toggle" on="{{ false }}" label="Improve my prompt" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

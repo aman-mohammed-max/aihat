@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Chat options</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; position: relative; overflow: hidden">
+  <div aria-hidden="true" style="position: absolute; inset: 0">
+    <dc-import name="Header" left="menu" left-href="Sidebar.dc.html" title="qwen3-32b" sub="Home vLLM" title-href="ModelSheet.dc.html" right="both" right-href="NewChat.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+  </div>
+  <a href="Main.dc.html" aria-label="Close" style="position: absolute; inset: 0; background: rgba(0,0,0,0.6)"></a>
+
+  <section role="dialog" aria-label="Chat options" style="position: absolute; left: 0; right: 0; bottom: 0; background: #17191C; border-radius: 28px 28px 0 0; padding: 8px 16px 28px 16px; display: flex; flex-direction: column">
+    <span aria-hidden="true" style="align-self: center; width: 36px; height: 5px; border-radius: 3px; background: #3A3F46"></span>
+    <div style="padding: 14px 4px 10px 4px; display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid #22252A">
+      <span style="font-size: 16px; font-weight: 600">QEMU wrapper leaking fds</span>
+      <span style="font-size: 12.5px; color: #9BA0A8">qwen3-32b · Rust Systems Mentor · 14 messages</span>
+    </div>
+
+    <a href="Rename.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h8"></path><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z"></path></svg><span style="flex: 1">Rename</span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6l-1 6 4 4H6l4-4z"></path><path d="M12 13v8"></path></svg><span style="flex: 1">Pin to top</span></a>
+    <a href="PromptSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h9"></path></svg><span style="flex: 1">System prompt</span><span style="font-size: 13px; color: #9BA0A8">Rust Systems Mentor</span></a>
+    <a href="ParamsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></svg><span style="flex: 1">Model settings</span><span style="font-size: 13px; color: #9BA0A8">Temp 0.7</span></a>
+    <a href="ToolsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.7 6.3a4 4 0 00-5.4 5.4L3 18l3 3 6.3-6.3a4 4 0 005.4-5.4l-2.5 2.5-2.5-.5-.5-2.5z"></path></svg><span style="flex: 1">Tools</span><span style="font-size: 13px; color: #9BA0A8">4 on</span></a>
+    <a href="#" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="#9BA0A8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 21h14"></path></svg><span style="flex: 1">Export</span><span style="font-size: 13px; color: #9BA0A8">Markdown · PDF · Drive</span></a>
+    <a href="DeleteChat.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 50px; padding: 0 4px; text-decoration: none; font-size: 15px; color: #F2A2A2"><svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"></path></svg><span style="flex: 1">Delete chat</span></a>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

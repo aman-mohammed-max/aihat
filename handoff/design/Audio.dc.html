@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voice, speech and translation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Voice & speech" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 4px 16px 0 16px">
+    <section style="display: flex; flex-direction: column; gap: 4px">
+      <h2 style="margin: 0 0 4px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Speech to text</h2>
+      <button style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: none; background: #17191C; color: #ECEDEF; text-align: left">
+        <span style="width: 20px; height: 20px; border-radius: 10px; border: 6px solid {{accent}}; box-sizing: border-box; flex-shrink: 0"></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">On this device</span><span style="font-size: 12px; color: #9BA0A8">Whisper small · 244 MB · offline</span></span>
+        <span style="font-size: 13px; color: #9BA0A8">Change</span>
+      </button>
+      <button style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: none; background: transparent; color: #ECEDEF; text-align: left">
+        <span style="width: 20px; height: 20px; border-radius: 10px; border: 1.5px solid #4A4F57; box-sizing: border-box; flex-shrink: 0"></span>
+        <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">OpenAI-compatible endpoint</span><span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8">Home vLLM · /v1/audio/transcriptions</span></span>
+      </button>
+      <button style="display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 14px; border: none; background: transparent; color: #ECEDEF; text-align: left">
+        <span style="width: 20px; height: 20px; border-radius: 10px; border: 1.5px solid #4A4F57; box-sizing: border-box; flex-shrink: 0"></span>
+        <span style="flex: 1; font-size: 15px">Phone's built-in dictation</span>
+      </button>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Translation</h2>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Translate what I say</span><dc-import name="Toggle" on="{{ true }}" label="Translate what I say" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Into</span><span style="font-size: 13px; color: #9BA0A8">English</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ModelSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Translate with</span><span style="font-size: 13px; color: #9BA0A8">Endpoint · NLLB</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+    </section>
+
+    <section style="display: flex; flex-direction: column">
+      <h2 style="margin: 0 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Text to speech</h2>
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Voice engine</span><span style="font-size: 13px; color: #9BA0A8">Kokoro · on device</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Voice</span><span style="font-size: 13px; color: #9BA0A8">af_sky</span><button aria-label="Play a sample" style="width: 34px; height: 34px; border-radius: 17px; border: none; background: #17191C; color: #ECEDEF; display: flex; align-items: center; justify-content: center"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M7 4l13 8-13 8z"></path></svg></button></div>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 46px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Read replies aloud</span><dc-import name="Toggle" on="{{ false }}" label="Read replies aloud" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

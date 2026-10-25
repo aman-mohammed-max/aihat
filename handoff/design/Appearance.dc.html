@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Appearance</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Settings.dc.html" title="Appearance" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="margin: 4px 16px 18px 16px; border-radius: 20px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: {{pv.bg}}; border: 1px solid {{pv.line}}">
+    <div style="align-self: flex-end; padding: 8px 12px; font-size: 13px; background: {{pv.bubble}}; color: {{pv.text}}; border-radius: {{pv.bubbleRadius}}">Summarise this PR</div>
+    <div style="font-size: {{pv.fontSize}}; line-height: 1.5; color: {{pv.text}}">It adds a Drop impl so QMP sockets close when the VM restarts.</div>
+    <div style="display: flex; justify-content: flex-end">
+      <span style="height: 32px; padding: 0 14px; display: flex; align-items: center; font-size: 13px; font-weight: 600; color: #0E0F11; background: {{accent}}; border-radius: {{pv.btnRadius}}">Send</span>
+    </div>
+  </div>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 20px; padding: 0 16px">
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Theme</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <sc-for list="{{themes}}" as="t" hint-placeholder-count="3">
+          <button aria-pressed="{{t.on}}" onClick="{{t.pick}}" style="height: 36px; border: none; border-radius: 9px; font-size: 13.5px; background: {{t.bg}}; color: {{t.fg}}">{{t.label}}</button>
+        </sc-for>
+      </div>
+      <span style="font-size: 12px; color: #9BA0A8; padding-left: 4px">System follows your phone's light or dark mode.</span>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 10px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Accent colour · buttons, switches, links</h2>
+      <div style="display: flex; gap: 12px; padding-left: 2px">
+        <sc-for list="{{accents}}" as="a" hint-placeholder-count="6">
+          <button aria-label="{{a.name}}" aria-pressed="{{a.on}}" onClick="{{a.pick}}" style="width: 44px; height: 44px; border-radius: 22px; padding: 0; background: {{a.hex}}; border: 3px solid {{a.ring}}; box-shadow: inset 0 0 0 2px #0E0F11"></button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Button shape</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <sc-for list="{{shapes}}" as="s" hint-placeholder-count="3">
+          <button aria-pressed="{{s.on}}" onClick="{{s.pick}}" style="height: 36px; border: none; border-radius: 9px; font-size: 13.5px; background: {{s.bg}}; color: {{s.fg}}">{{s.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+
+    <section style="display: flex; flex-direction: column; gap: 8px">
+      <h2 style="margin: 0 0 0 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Text size</h2>
+      <div style="display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px; background: #17191C; border-radius: 12px; padding: 4px">
+        <sc-for list="{{sizes}}" as="z" hint-placeholder-count="3">
+          <button aria-pressed="{{z.on}}" onClick="{{z.pick}}" style="height: 36px; border: none; border-radius: 9px; font-size: 13.5px; background: {{z.bg}}; color: {{z.fg}}">{{z.label}}</button>
+        </sc-for>
+      </div>
+    </section>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { theme: 'system', accent: '#C6F46B', shape: 'pill', size: 'm' };
+  }
+  seg(items, key) {
+    return items.map(([id, label]) => {
+      const on = this.state[key] === id;
+      return { id, label, on, bg: on ? '#2E3238' : 'transparent', fg: on ? '#ECEDEF' : '#9BA0A8', pick: () => this.setState({ [key]: id }) };
+    });
+  }
+  renderVals() {
+    const s = this.state;
+    const light = s.theme === 'light';
+    const accents = [['Lime', '#C6F46B'], ['Sky', '#7DD3FC'], ['Peach', '#FDBA74'], ['Lilac', '#C4B5FD'], ['Rose', '#F9A8D4'], ['Snow', '#ECEDEF']].map(([name, hex]) => ({
+      name, hex, on: s.accent === hex, ring: s.accent === hex ? hex : 'transparent', pick: () => this.setState({ accent: hex })
+    }));
+    return {
+      accent: s.accent,
+      themes: this.seg([['system', 'System'], ['light', 'Light'], ['dark', 'Dark']], 'theme'),
+      shapes: this.seg([['pill', 'Pill'], ['rounded', 'Rounded'], ['square', 'Square']], 'shape'),
+      sizes: this.seg([['s', 'Small'], ['m', 'Default'], ['l', 'Large']], 'size'),
+      accents,
+      pv: {
+        bg: light ? '#FFFFFF' : '#131518',
+        line: light ? '#E4E4E7' : '#26292E',
+        text: light ? '#17181A' : '#ECEDEF',
+        bubble: light ? '#F2F2F3' : '#22252A',
+        bubbleRadius: s.shape === 'square' ? '6px' : '16px',
+        btnRadius: { pill: '16px', rounded: '9px', square: '3px' }[s.shape],
+        fontSize: { s: '13px', m: '14.5px', l: '16.5px' }[s.size]
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

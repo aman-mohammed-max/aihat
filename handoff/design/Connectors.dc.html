@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Connectors</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="back" left-href="Sidebar.dc.html" title="Connectors" sub="2 connected" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="padding: 4px 16px 8px 16px">
+    <dc-import name="SearchBar" placeholder="Search connectors" hint-size="100%,44px"></dc-import>
+  </div>
+  <p style="margin: 0; padding: 4px 20px 6px 20px; font-size: 13px; line-height: 1.45; color: #9BA0A8">Ready-made MCP servers for apps you use. Sign in once; choose per chat when they're on.</p>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; padding: 0 16px">
+    <h2 style="margin: 10px 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Connected</h2>
+    <a href="McpDetail.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">D</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Google Drive</span><span style="font-size: 12.5px; color: #9BA0A8">Search, read, save files · backups</span></span>
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span>
+    </a>
+    <a href="McpDetail.dc.html" style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px; border-bottom: 1px solid #1E2125; text-decoration: none">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">G</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">GitHub</span><span style="font-size: 12.5px; color: #9BA0A8">Code search, issues, pull requests</span></span>
+      <span style="width: 8px; height: 8px; border-radius: 4px; background: {{accent}}"></span>
+    </a>
+
+    <h2 style="margin: 16px 0 2px 4px; font-size: 12px; font-weight: 500; color: #9BA0A8">Available</h2>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px; border-bottom: 1px solid #1E2125">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">i</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">iCloud Drive</span><span style="font-size: 12.5px; color: #9BA0A8">Files and backups on Apple devices</span></span>
+      <a href="ConnectorAuth.dc.html" style="height: 34px; border-radius: 17px; border: 1px solid #2C3036; display: flex; align-items: center; padding: 0 12px; text-decoration: none; font-size: 13px">Connect</a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px; border-bottom: 1px solid #1E2125">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">N</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Notion</span><span style="font-size: 12.5px; color: #9BA0A8">Pages and databases</span></span>
+      <a href="ConnectorAuth.dc.html" style="height: 34px; border-radius: 17px; border: 1px solid #2C3036; display: flex; align-items: center; padding: 0 12px; text-decoration: none; font-size: 13px">Connect</a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px; border-bottom: 1px solid #1E2125">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">C</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Google Calendar</span><span style="font-size: 12.5px; color: #9BA0A8">Read and create events</span></span>
+      <a href="ConnectorAuth.dc.html" style="height: 34px; border-radius: 17px; border: 1px solid #2C3036; display: flex; align-items: center; padding: 0 12px; text-decoration: none; font-size: 13px">Connect</a>
+    </div>
+    <div style="display: flex; align-items: center; gap: 12px; min-height: 58px; padding: 0 4px">
+      <span style="width: 36px; height: 36px; border-radius: 10px; background: #22252A; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600">S</span>
+      <span style="flex: 1; display: flex; flex-direction: column; gap: 2px"><span style="font-size: 15px">Slack</span><span style="font-size: 12.5px; color: #9BA0A8">Search and post messages</span></span>
+      <a href="ConnectorAuth.dc.html" style="height: 34px; border-radius: 17px; border: 1px solid #2C3036; display: flex; align-items: center; padding: 0 12px; text-decoration: none; font-size: 13px">Connect</a>
+    </div>
+  </div>
+
+  <div style="padding: 10px 16px 30px 16px">
+    <a href="AddMcp.dc.html" style="height: 46px; border-radius: 23px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px">Add a custom MCP server</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Edit system prompt</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&amp;family=Geist+Mono:wght@400;500&amp;display=swap">
+<style>
+body{margin:0}
+a{color:#ECEDEF}
+button{font-family:inherit;cursor:pointer}
+input,textarea{font-family:inherit}
+</style>
+</helmet>
+<div style="width: 390px; height: 844px; box-sizing: border-box; background: #0E0F11; color: #ECEDEF; font-family: Geist, system-ui, sans-serif; display: flex; flex-direction: column; overflow: hidden">
+  <dc-import name="Header" left="cancel" left-href="Prompts.dc.html" title="Edit prompt" right="text" right-text="Save" right-href="Prompts.dc.html" accent="{{accent}}" hint-size="100%,100px"></dc-import>
+
+  <div style="flex: 1; overflow: hidden; display: flex; flex-direction: column; gap: 16px; padding: 8px 16px 0 16px">
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <label for="pn" style="font-size: 12px; font-weight: 500; color: #9BA0A8; padding-left: 4px">Name</label>
+      <input id="pn" value="Rust Systems Mentor" style="height: 46px; box-sizing: border-box; border-radius: 12px; border: 1px solid #26292E; background: #17191C; color: #ECEDEF; padding: 0 12px; font-size: 15px">
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; justify-content: space-between; padding: 0 4px"><label for="pt" style="font-size: 12px; font-weight: 500; color: #9BA0A8">Prompt</label><span style="font-family: 'Geist Mono', monospace; font-size: 11.5px; color: #9BA0A8">~640 tokens</span></div>
+      <textarea id="pt" rows="9" style="box-sizing: border-box; border-radius: 12px; border: 1px solid {{accent}}; background: #17191C; color: #ECEDEF; padding: 12px; font-size: 14px; line-height: 1.55; resize: none">You are a senior Rust engineer helping with a Minecraft mod that embeds a QEMU VM.
+
+Explain ownership and unsafe code plainly. Prefer std over crates. Answer in {language}. Today is {date}.
+
+When you suggest code, keep it under 40 lines and say what you changed.</textarea>
+      <div style="display: flex; gap: 6px; flex-wrap: wrap; padding-top: 2px">
+        <span style="font-size: 12px; color: #9BA0A8; align-self: center; padding-right: 2px">Insert</span>
+        <button style="height: 30px; border-radius: 8px; border: none; background: #22252A; color: #ECEDEF; font-family: 'Geist Mono', monospace; font-size: 12px; padding: 0 8px">{date}</button>
+        <button style="height: 30px; border-radius: 8px; border: none; background: #22252A; color: #ECEDEF; font-family: 'Geist Mono', monospace; font-size: 12px; padding: 0 8px">{language}</button>
+        <button style="height: 30px; border-radius: 8px; border: none; background: #22252A; color: #ECEDEF; font-family: 'Geist Mono', monospace; font-size: 12px; padding: 0 8px">{model}</button>
+        <button style="height: 30px; border-radius: 8px; border: none; background: #22252A; color: #ECEDEF; font-family: 'Geist Mono', monospace; font-size: 12px; padding: 0 8px">+ custom</button>
+      </div>
+    </div>
+
+    <section style="display: flex; flex-direction: column">
+      <a href="Picker.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Tags</span><span style="font-size: 13px; color: #9BA0A8">coding, rust</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ModelSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Preferred model</span><span style="font-size: 13px; color: #9BA0A8">Any</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <a href="ToolsSheet.dc.html" style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px; text-decoration: none; font-size: 15px"><span style="flex: 1">Turn on with this prompt</span><span style="font-size: 13px; color: #9BA0A8">code-review, github</span><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6F747C" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6"></path></svg></a>
+      <div style="display: flex; align-items: center; gap: 14px; min-height: 48px; padding: 0 4px"><span style="flex: 1; font-size: 15px">Favorite</span><dc-import name="Toggle" on="{{ true }}" label="Favorite" accent="{{accent}}" hint-size="44px,26px"></dc-import></div>
+    </section>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 10px 16px 30px 16px">
+    <a href="Main.dc.html" style="height: 46px; border-radius: 23px; background: {{accent}}; color: #0E0F11; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px; font-weight: 600">Start a chat</a>
+    <a href="Prompts.dc.html" style="height: 46px; border-radius: 23px; border: 1px solid #2C3036; display: flex; align-items: center; justify-content: center; text-decoration: none; font-size: 14.5px; color: #F2A2A2">Delete</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"accent":{"editor":"color","default":"#C6F46B","options":["#C6F46B","#7DD3FC","#FDBA74","#C4B5FD"]},"$preview":{"width":390,"height":844}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#C6F46B' };
+  }
+}
+</script>
+</body>
+</html>
