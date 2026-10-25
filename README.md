@@ -42,10 +42,12 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 - **Chat with any OpenAI-compatible server**: vLLM, Ollama, LM Studio, OpenRouter, Groq, [FreeLLMAPI](https://github.com/tashfeenahmed/freellmapi) or your own. Replies stream in; add as many endpoints as you like and switch per chat.
 - **Slash commands**: type `/` for 40+ commands, and add your own. [`/image`](#slash-commands) has the chat model write a detailed image prompt and then draws it.
 - **Images**: your endpoint's `/v1/images/generations`, ComfyUI or AUTOMATIC1111. Choose the model, aspect ratio and count from the chat box.
-- **Voice**: dictate with Whisper-style transcription (and translate), and have replies read aloud with pause and stop.
+- **Voice**: tap the mic for a small bar above the message box (no full screen): a red dot, a timer, a level meter and, when the phone's own speech service does the listening, **your words as you speak**. Or dictate through your own Whisper-style endpoint. Optional translation. Replies can be read aloud with pause and stop.
 - **Web search** with sources: SearXNG, Brave, Tavily, or your endpoint's `/v1/search`. Models with tool calling can search by themselves.
 - **Files**: text, Markdown, CSV and code, plus **PDF, Word, PowerPoint and Excel**, read on the phone. Long files are searched by meaning instead of sent whole (needs an embeddings endpoint).
 - **Generative UI**: ask for a checklist, form or dashboard and get an interactive one in the chat, drawn with the app's own components ([json-render](https://json-render.dev)).
+- **Marketplace**: browse and add **skills** (from claude-plugins.dev, skills.sh or any public GitHub repository) and **MCP servers** (from the official MCP registry), after reading what you're adding.
+- **Skills and MCP as commands**: every skill and every MCP server is also a slash command (`/pdf fill in this form`, `/github list my open pull requests`). Skills marked Automatic are listed to the model and opened only when a task matches, so many skills cost little.
 - **Tools**: system prompt library with variables, skills, and MCP servers (HTTP) with a per-tool Auto / Ask / Off setting.
 - **Reasoning effort** (`low` to `high`), temperature and other model settings, per chat.
 - **Always shows what it's doing**: a small activity box names the current step (searching the web, reading a file, improving your prompt, drawing, running a tool) with a timer and the query or prompt behind it.
@@ -89,7 +91,7 @@ Images, speech, dictation, file search and web search each have their own **Endp
 
 ## Slash commands
 
-Type `/` in the chat box, or tap the `/` button. Commands that need text insert themselves; the rest run right away. Settings → **Commands** lists everything and lets you write your own (a name plus a prompt, with `{input}` for the text after it).
+Type `/` in the chat box, or tap the `/` button. Commands that need text insert themselves; the rest run right away. Once you have skills or MCP servers, the list gets **Skills** and **MCP** filters. Settings → **Commands** lists everything and lets you write your own (a name plus a prompt, with `{input}` for the text after it).
 
 | Command | What it does |
 |---|---|
@@ -102,6 +104,12 @@ Type `/` in the chat box, or tap the `/` button. Commands that need text insert 
 | `/new`, `/clear`, `/rename`, `/title`, `/pin`, `/archive`, `/delete` | Manage the chat. |
 | `/summarize`, `/translate`, `/explain`, `/tldr`, `/fix`, `/review`, `/proofread`, `/rewrite`, `/plan`, `/brainstorm` | Ready-made prompts. |
 | `/copy`, `/read`, `/retry`, `/export`, `/files`, `/voice`, `/refresh` | Work with replies, files and models. |
+| `/status`, `/usage`, `/doctor` | Show what this chat is using, tokens and time used, and whether the endpoint answers. |
+| `/compact [focus]`, `/fork`, `/resume` | Continue from a summary in a fresh chat, copy the chat into a new one, or reopen an earlier chat. |
+| `/theme`, `/feedback` | Switch dark or light, or report a problem. |
+| `/market` | Browse and add skills and MCP servers. |
+| `/<skill> <what to do>` | Use one of your skills for this message, for example `/pdf merge these two files`. It is loaded in full, even if the skill is set to "When I ask". |
+| `/<server> [what to do]` | Turn an MCP server's tools on for this chat and, if you add text, ask. `/<server> off` turns them off. |
 
 Start a message with `//` to send a real slash.
 
@@ -111,13 +119,15 @@ Plain text, Markdown, CSV, JSON, code, **PDF**, **Word (.docx)**, **PowerPoint (
 
 ## Privacy
 
-There is no account, no analytics and no server of ours. Messages, images and files go only to the endpoints **you** add. API keys and tokens are kept in the phone's secure keystore and are never written to backups. If you use a cloud endpoint, your messages go to that company, so choose accordingly.
+There is no account, no analytics and no server of ours. Messages, images and files go only to the endpoints **you** add. The exceptions are things you ask for: **dictation with the phone's speech service** sends your voice to Apple or Google unless you turn on "Only on this phone" (or dictate with your own endpoint), and the **marketplace** talks to registry.modelcontextprotocol.io, claude-plugins.dev, skills.sh and GitHub when you open it. API keys and tokens are kept in the phone's secure keystore and are never written to backups. If you use a cloud endpoint, your messages go to that company, so choose accordingly.
 
 ## Known limitations (beta)
 
-- **iOS builds are unsigned** unless you add signing secrets, so they need AltStore, SideStore or Sideloadly.
+- **iOS builds are unsigned**, so they need AltStore, SideStore or Sideloadly.
 - **Developed and tested mainly on iPhone.** The Android build is newer and has had less testing.
-- **No on-device models**, and dictation needs a transcription endpoint (the phone's built-in dictation isn't used).
+- **No on-device language models.** Live-text dictation uses the phone's speech service (Apple on iPhone, Google on Android), which is a native module that **Expo Go doesn't include**: in Expo Go the mic uses your transcription endpoint instead. It is untested on real phones so far; please report problems.
+- **Skills are instructions only.** Scripts and extra files that a skill refers to are not run or read. Skills and MCP servers are written by other people: read before you add. The skills.sh search is the public endpoint its own command line tool uses; it isn't a documented API and may change.
+- **MCP servers that ask you to sign in with a browser (OAuth)** can't be added yet, and neither can servers that only run on a computer. Hosted servers that take a token can.
 - **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
 - **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
 - **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
@@ -142,17 +152,6 @@ git push origin v0.1.0-beta.2
 ```
 
 A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the other is still published. You can also run **Android APK** or **iOS IPA** alone from the Actions tab to get just one file as a downloadable artifact.
-
-### Signing (optional)
-
-With no setup the APK is signed with a debug key (fine for your own phone) and the IPA is unsigned. For your own signing, add these under **Settings → Secrets and variables → Actions**:
-
-| Secret | For |
-|---|---|
-| `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` | A signed APK with your own key |
-| `IOS_CERT_P12_BASE64`, `IOS_CERT_PASSWORD`, `IOS_PROVISION_PROFILE_BASE64`, `IOS_TEAM_ID` | A signed IPA (needs a paid Apple Developer account) |
-
-Optional variables: `IOS_EXPORT_METHOD` (`ad-hoc` by default) and `IOS_CODE_SIGN_IDENTITY`. The app and bundle id is `com.amanm.aihat`; change it in `app.json` before publishing anywhere.
 
 ## Run it from source
 

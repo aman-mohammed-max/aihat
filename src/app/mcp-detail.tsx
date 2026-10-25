@@ -5,6 +5,7 @@ import { View } from 'react-native';
 import { Button, Card, ListRow, Screen, SectionTitle, Text } from '@/components';
 import { connect, listTools } from '@/api/mcp';
 import { deleteApiKey } from '@/lib/keys';
+import { useCommandList } from '@/lib/commands';
 import { pick } from '@/lib/pick';
 import { useLibrary, type McpTool } from '@/store/library';
 
@@ -15,7 +16,9 @@ export default function McpDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const s = useLibrary((x) => x.servers.find((k) => k.id === id));
   const [msg, setMsg] = useState('');
+  const commands = useCommandList();
   if (!s) return null;
+  const command = commands.find((c) => c.kind === 'mcp' && c.ref === s.id)?.name;
 
   const refresh = async () => {
     setMsg('Connecting…');
@@ -53,7 +56,10 @@ export default function McpDetail() {
           ))}
         </Card>
       </View>
-      <Card><ListRow label="Use in new chats" toggle={{ on: s.enabledByDefault, onChange: (enabledByDefault) => useLibrary.getState().saveServer({ ...s, enabledByDefault }) }} last /></Card>
+      <Card>
+        <ListRow label="Use in new chats" toggle={{ on: s.enabledByDefault, onChange: (enabledByDefault) => useLibrary.getState().saveServer({ ...s, enabledByDefault }) }} />
+        <ListRow label="Command" sub="Turns this server on for a chat, then asks." value={command ? `/${command}` : ''} last />
+      </Card>
     </Screen>
   );
 }

@@ -53,7 +53,7 @@
       [
         "expo-audio",
         {
-          "microphonePermission": "Allow AI Hat to use the microphone for dictation and translation."
+          "microphonePermission": "Allow AI Hat to use the microphone to dictate messages."
         }
       ],
       [
@@ -69,7 +69,14 @@
           "faceIDPermission": "Allow AI Hat to lock the app with Face ID."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "Allow AI Hat to use the microphone to dictate messages.",
+          "speechRecognitionPermission": "Allow AI Hat to turn your speech into text while you dictate."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

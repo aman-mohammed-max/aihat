@@ -59,6 +59,9 @@ export function getDb() {
     if (!cols.includes('archived')) await db.execAsync('ALTER TABLE chats ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
     if (!cols.includes('title_locked')) await db.execAsync('ALTER TABLE chats ADD COLUMN title_locked INTEGER NOT NULL DEFAULT 0');
     if (!cols.includes('temporary')) await db.execAsync('ALTER TABLE chats ADD COLUMN temporary INTEGER NOT NULL DEFAULT 0');
+    const mcpCols = (await db.getAllAsync<{ name: string }>('PRAGMA table_info(mcp_servers)')).map((c) => c.name);
+    if (!mcpCols.includes('auth_header')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_header TEXT');
+    if (!mcpCols.includes('auth_template')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_template TEXT');
     return db;
   });
   return dbPromise;

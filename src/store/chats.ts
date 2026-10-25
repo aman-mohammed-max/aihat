@@ -15,6 +15,7 @@ import { cleanTitle, initialTitle, isTrivial, shouldRetitle, titleMessages } fro
 import { getDb, json } from '@/db';
 import { now, uid } from '@/lib/id';
 
+import { skillMenu } from '@/lib/skills';
 import { genUiSystemPrompt } from '@/genui/catalog';
 import { wantsUI } from '@/genui/parse';
 
@@ -56,12 +57,14 @@ type State = {
   create: (init?: Partial<Chat>) => Promise<string>;
   patch: (id: string, patch: Partial<Chat>) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: { title: string; url: string }[]; ui?: boolean; search?: boolean }) => Promise<void>;
+  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: { title: string; url: string }[]; ui?: boolean; search?: boolean; skills?: string[] }) => Promise<void>;
   /** Delete temporary chats and archive chats older than the "archive after" setting. Run once at startup. */
   housekeeping: () => Promise<void>;
   sendImage: (chatId: string, prompt: string, opts?: ImageSendOptions) => Promise<void>;
   clear: (chatId: string) => Promise<void>;
   branch: (chatId: string, uptoMessageId: string) => Promise<string>;
+  /** Add an assistant message to a chat without calling the model (used to start a chat from a summary). */
+  addAssistantMessage: (chatId: string, content: string) => Promise<void>;
   stop: (chatId: string) => void;
   regenerate: (chatId: string) => Promise<void>;
   deleteMessage: (chatId: string, messageId: string) => Promise<void>;
@@ -104,6 +107,9 @@ const genUiOn = (modelId: string, text: string, forced?: boolean) => {
 };
 
 const WEB_SEARCH = 'web_search';
+const USE_SKILL = 'use_skill';
+/** A skill loaded into the conversation is capped so one huge SKILL.md can't fill the model's context. */
+const MAX_SKILL_CHARS = 60_000;
 const MAX_INLINE_CHARS = 100_000;
 
 const sanitize = (n: string) => n.replace(/[^a-zA-Z0-9_-]/g, '_').slice(0, 64);
@@ -230,6 +236,12 @@ export const useChats = create<State>((set, get) => ({
     for (const m of copies) await saveMessage(m);
     set((s) => ({ messages: { ...s.messages, [id]: copies } }));
     return id;
+  },
+
+  async addAssistantMessage(chatId, content) {
+    const m: Message = { id: uid(), chatId, role: 'assistant', content, attachments: [], toolCalls: [], citations: [], createdAt: now() };
+    await saveMessage(m);
+    set((s) => ({ messages: { ...s.messages, [chatId]: [...(s.messages[chatId] ?? []), m] } }));
   },
 
   stop(chatId) {
@@ -384,7 +396,13 @@ export const useChats = create<State>((set, get) => ({
 
       const lib = useLibrary.getState();
       const prompt = lib.prompts.find((p) => p.id === chat.promptId);
-      const skills = lib.skills.filter((s) => s.enabled && s.mode !== 'onAsk');
+      // Skills: "Always" ones are in the prompt in full, "Automatic" ones are listed and loaded by the model when a task
+      // matches (so many installed skills cost little), and "When I ask" ones only run through their /command.
+      const on = lib.skills.filter((s) => s.enabled);
+      const forced = on.filter((s) => opts.skills?.includes(s.id));
+      const always = on.filter((s) => s.mode === 'always' && !forced.includes(s));
+      const auto = on.filter((s) => s.mode === 'auto' && !forced.includes(s));
+      const skillText = (s: { name: string; description: string; body: string }) => `## Skill: ${s.name}\n${s.description}\n${s.body.slice(0, MAX_SKILL_CHARS)}`;
       let ragContext = '';
       try {
         if ((get().messages[chatId] ?? []).some((m) => m.attachments.some((a) => a.indexed))) act('Searching your files…', 'Finding the passages that match your question');
@@ -395,7 +413,9 @@ export const useChats = create<State>((set, get) => ({
       }
       const system = [
         prompt ? applyVariables(prompt.body, prompt.variables, chat.modelId) : '',
-        ...skills.map((s) => `## Skill: ${s.name}\n${s.description}\n${s.body}`),
+        ...always.map(skillText),
+        ...forced.map((s) => `The user chose the “${s.name}” skill for this message. Follow it.\n\n${skillText(s)}`),
+        skillMenu(auto),
         genUiOn(chat.modelId, text, opts.ui) ? genUiSystemPrompt() : '',
         ragContext,
       ].filter(Boolean).join('\n\n');
@@ -407,10 +427,15 @@ export const useChats = create<State>((set, get) => ({
       for (const server of servers) {
         for (const tool of server.tools) {
           if (tool.policy === 'off') continue;
-          const fname = sanitize(`${server.name}__${tool.name}`);
+          // Function names are limited to 64 characters: shorten the server part, never the tool's own name.
+          const fname = sanitize(`${server.name.slice(0, 24)}__${tool.name}`);
           toolMap.set(fname, { server, tool });
           tools.push({ type: 'function', function: { name: fname, description: tool.description, parameters: tool.schema ?? { type: 'object', properties: {} } } });
         }
+      }
+
+      if (auto.length) {
+        tools.push({ type: 'function', function: { name: USE_SKILL, description: 'Load the full instructions of one of your skills by name.', parameters: { type: 'object', properties: { name: { type: 'string', description: 'The skill name, exactly as listed' } }, required: ['name'] } } });
       }
 
       if (useSettings.getState().searchMode === 'auto') {
@@ -453,6 +478,24 @@ export const useChats = create<State>((set, get) => ({
 
         wire.push({ role: 'assistant', content: roundText || null, tool_calls: pending });
         for (const call of pending) {
+          if (call.function.name === USE_SKILL) {
+            let wanted = '';
+            try {
+              wanted = String(JSON.parse(call.function.arguments || '{}').name ?? '');
+            } catch {
+              /* the model sent broken JSON; the reply below lists the valid names */
+            }
+            const hit = auto.find((k) => k.name.toLowerCase() === wanted.trim().toLowerCase());
+            const run: ToolRun = { id: call.id, name: USE_SKILL, skill: hit?.name ?? (wanted || 'skill'), args: call.function.arguments, status: 'running' };
+            update({ toolCalls: [...assistant.toolCalls, run] });
+            const out = hit
+              ? `# ${hit.name}\n\n${hit.body.slice(0, MAX_SKILL_CHARS)}`
+              : `Error: there is no skill called "${wanted}". Available skills: ${auto.map((k) => k.name).join(', ')}.`;
+            if (hit) act(`Using the “${hit.name}” skill…`, hit.description.slice(0, 160));
+            update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, status: hit ? 'done' : 'error', result: hit ? `Loaded ${hit.body.length.toLocaleString()} characters of instructions.` : out, error: hit ? undefined : out } : t)) });
+            wire.push({ role: 'tool', tool_call_id: call.id, content: out });
+            continue;
+          }
           if (call.function.name === WEB_SEARCH) {
             const run: ToolRun = { id: call.id, name: WEB_SEARCH, args: call.function.arguments, status: 'running' };
             update({ toolCalls: [...assistant.toolCalls, run] });

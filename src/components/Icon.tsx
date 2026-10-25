@@ -36,6 +36,7 @@ const paths: Record<string, string[]> = {
   layout: ['M3 5h18v14H3z', 'M3 10h18M10 10v9'],
   // The app mark: a chat bubble with an AI spark inside.
   logo: ['M8 3.5h8A3.5 3.5 0 0119.5 7v6A3.5 3.5 0 0116 16.5h-4.5L8 20v-3.5A3.5 3.5 0 014.5 13V7A3.5 3.5 0 018 3.5z', 'M12 6.6q.45 2.9 3.4 3.4-2.95.5-3.4 3.4-.45-2.9-3.4-3.4 2.95-.5 3.4-3.4z'],
+  store: ['M4 9l1.5-5h13L20 9', 'M4 9a2.5 2.5 0 005 0 2.5 2.5 0 005 0 2.5 2.5 0 005 0', 'M5 12v8h14v-8', 'M10 20v-5h4v5'],
   pause: ['M8 5v14M16 5v14'],
   play: ['M7 4l13 8-13 8z'],
   stop: ['M6 6h12v12H6z'],

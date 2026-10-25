@@ -15,7 +15,10 @@ export default function Mcp() {
   return (
     <Screen header={{ title: 'MCP servers' }} footer={<Button label="Add MCP server" flex onPress={() => router.push('/add-mcp')} />}>
       <SearchBar value={q} onChangeText={setQ} placeholder="Search servers and tools" />
-      <Card><ListRow icon="link" label="Connectors" sub="One-tap GitHub, Notion, Drive…" onPress={() => router.push('/connectors')} last /></Card>
+      <Card>
+        <ListRow icon="store" label="Browse MCP servers" sub="Find hosted servers in the public registry" onPress={() => router.push({ pathname: '/market', params: { tab: 'mcp' } })} />
+        <ListRow icon="link" label="Connectors" sub="One-tap GitHub, Notion, Drive…" onPress={() => router.push('/connectors')} last />
+      </Card>
       <View>
         <SectionTitle>Your servers</SectionTitle>
         {list.length === 0 && <Text color="muted">No servers yet.</Text>}

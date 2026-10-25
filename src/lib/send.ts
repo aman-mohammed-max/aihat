@@ -1,7 +1,7 @@
 import { useChats, type Attachment } from '@/store/chats';
 import { useSettings } from '@/store/settings';
 
-export type SubmitOptions = { files?: Attachment[]; search?: boolean; ui?: boolean; image?: boolean };
+export type SubmitOptions = { files?: Attachment[]; search?: boolean; ui?: boolean; image?: boolean; /** Skill ids to load in full for this message (a /skill-name command). */ skills?: string[] };
 
 /**
  * Send one message the way the chat box does: image turn, web-search-assisted turn, UI turn or plain.
@@ -10,5 +10,5 @@ export type SubmitOptions = { files?: Attachment[]; search?: boolean; ui?: boole
  */
 export async function submit(chatId: string, text: string, o: SubmitOptions = {}) {
   if (o.image) return useChats.getState().sendImage(chatId, text, { refine: useSettings.getState().imageImprove });
-  await useChats.getState().send(chatId, text, [...(o.files ?? [])], { ui: o.ui, search: o.search });
+  await useChats.getState().send(chatId, text, [...(o.files ?? [])], { ui: o.ui, search: o.search, skills: o.skills });
 }

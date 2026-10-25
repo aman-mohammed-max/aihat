@@ -7,6 +7,7 @@ import { runCommandText } from '@/lib/commands';
 import { setViewing } from '@/lib/notify';
 import { submit } from '@/lib/send';
 import { useChats } from '@/store/chats';
+import { useDictation } from '@/store/dictation';
 import { useDraft } from '@/store/draft';
 import { useLibrary } from '@/store/library';
 import { useProviders, isChatModel } from '@/store/providers';
@@ -16,6 +17,7 @@ import { useTheme } from '@/theme';
 import { ChatView } from './ChatView';
 import { Composer } from './Composer';
 import { CommandPalette } from './CommandPalette';
+import { DictationBar } from './DictationBar';
 import { SpeechBar } from './SpeechBar';
 import { Header } from './Header';
 import { Icon } from './Icon';
@@ -40,6 +42,7 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
   const approval = useChats((s) => s.approval);
   const draft = useDraft();
   const defaults = useSettings();
+  const dictating = useDictation((s) => s.phase !== 'idle');
 
   useEffect(() => {
     if (chatId) useChats.getState().loadMessages(chatId);
@@ -160,6 +163,7 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
       )}
 
       <SpeechBar />
+      <DictationBar />
       <CommandPalette
         text={draft.text}
         onInsert={(text) => draft.set({ text })}
@@ -189,7 +193,8 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
         onToggleImage={() => draft.set({ imageOn: false })}
         onAdd={() => router.push('/attach-sheet')}
         onTools={() => router.push({ pathname: '/tools-sheet', params })}
-        onVoice={() => router.push('/voice')}
+        onVoice={() => useDictation.getState().begin()}
+        voiceActive={dictating}
         onSlash={() => draft.set({ text: draft.text.startsWith('/') ? '' : '/' })}
       />
     </KeyboardAvoidingView>

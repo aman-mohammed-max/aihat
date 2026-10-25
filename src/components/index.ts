@@ -2,6 +2,7 @@ export { Button, Card, Chip, ListRow, Segmented, SectionTitle } from './Controls
 export { Composer, type ComposerFile } from './Composer';
 export { EndpointRoute } from './EndpointRoute';
 export { Field } from './Field';
+export { ActivityBox, PulseDots, StatusLine } from './Motion';
 export { Header } from './Header';
 export { ImageOptionsForm } from './ImageOptions';
 export { Screen, Section } from './Screen';

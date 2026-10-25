@@ -1,21 +1,25 @@
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
 import { useMemo } from 'react';
-import { Alert, Share } from 'react-native';
+import { Alert, Linking, Share } from 'react-native';
 
 import { ASPECTS } from '@/api/images';
+import { listModels } from '@/api/openai';
 import { useChats, generateTitle } from '@/store/chats';
 import { useCommands } from '@/store/commands';
+import { useDictation } from '@/store/dictation';
 import { useDraft } from '@/store/draft';
-import { useLibrary } from '@/store/library';
+import { useLibrary, type McpServer, type Skill } from '@/store/library';
 import { isChatModel, useProviders } from '@/store/providers';
 import { useSettings } from '@/store/settings';
 import { toast } from '@/store/toast';
 
 import { pickFiles } from './attach';
+import { quickComplete, resolveChatModel } from './llm';
 import { generateSystemPrompt } from './promptgen';
 import { pick } from './pick';
 import { submit } from './send';
+import { skillCommandNames } from './skills';
 import { speak, stopSpeaking } from './tts';
 
 export type CommandCtx = {
@@ -24,7 +28,7 @@ export type CommandCtx = {
   ensureChat: () => Promise<string>;
 };
 
-export type CommandGroup = 'Create' | 'This chat' | 'Model' | 'Write with the model' | 'Go to' | 'Yours';
+export type CommandGroup = 'Create' | 'This chat' | 'Model' | 'Write with the model' | 'Go to' | 'Yours' | 'Skills' | 'MCP servers';
 
 export type Command = {
   name: string;
@@ -41,6 +45,10 @@ export type Command = {
   options?: () => void;
   run: (args: string, ctx: CommandCtx) => Promise<void> | void;
   custom?: boolean;
+  /** Set on commands generated from an installed skill or MCP server (they appear under their own filter in the list). */
+  kind?: 'skill' | 'mcp';
+  /** For those: the id of the skill or server the command belongs to. */
+  ref?: string;
 };
 
 // ---------- parsing ----------
@@ -332,12 +340,91 @@ export const BUILT_IN: Command[] = [
     },
   },
   { name: 'stop', group: 'This chat', summary: 'Stop reading aloud, or stop the reply in progress', run: (_a, ctx) => { stopSpeaking(); if (ctx.chatId) useChats.getState().stop(ctx.chatId); } },
-  { name: 'voice', aliases: ['mic', 'dictate'], group: 'This chat', summary: 'Dictate a message', run: () => router.push('/voice') },
+  { name: 'voice', aliases: ['mic', 'dictate'], group: 'This chat', summary: 'Dictate a message (live text from the phone)', run: () => useDictation.getState().begin() },
   {
     name: 'files', aliases: ['attach'], group: 'This chat', summary: 'Attach files (text, Markdown, CSV, code, PDF, Word, PowerPoint)',
     run: async () => {
       const files = await pickFiles();
       files.forEach(useDraft.getState().addFile);
+    },
+  },
+
+  {
+    name: 'status', group: 'This chat', summary: 'Show the model, endpoint, tools and skills this chat is using',
+    run: (_a, ctx) => {
+      const c = chatOf(ctx.chatId);
+      const { provider, modelId } = resolveChatModel(c);
+      const lib = useLibrary.getState();
+      const st = useSettings.getState();
+      const p = { ...st.defaultParams, ...(c?.params ?? {}) };
+      const on = lib.skills.filter((s) => s.enabled);
+      const servers = lib.servers.filter((s) => c?.toolIds.includes(s.id) && s.connected);
+      Alert.alert('Status', [
+        `Model: ${modelId ?? 'none'}${provider ? ` (${provider.name})` : ''}`,
+        `Thinking: ${p.reasoning ?? 'off'} · temperature ${p.temperature ?? 0.7}`,
+        `Tools on: ${servers.length ? servers.map((s) => s.name).join(', ') : 'none'}`,
+        `Skills: ${on.length} on (${on.filter((s) => s.mode === 'auto').length} automatic, ${on.filter((s) => s.mode === 'always').length} always)`,
+        `Web search: ${st.searchMode}`,
+        `Messages in this chat: ${(c ? useChats.getState().messages[c.id] ?? [] : []).length}`,
+      ].join('\n'));
+    },
+  },
+  {
+    name: 'usage', aliases: ['cost', 'tokens'], group: 'This chat', summary: 'Tokens and time used in this chat (as the endpoint reports them)',
+    run: (_a, ctx) => {
+      const list = ctx.chatId ? useChats.getState().messages[ctx.chatId] ?? [] : [];
+      const replies = list.filter((m) => m.role === 'assistant');
+      const tokens = replies.reduce((n, m) => n + (m.tokens ?? 0), 0);
+      const ms = replies.reduce((n, m) => n + (m.ms ?? 0), 0);
+      if (!replies.length) return toast('No replies yet');
+      Alert.alert('Usage in this chat', `${replies.length} repl${replies.length === 1 ? 'y' : 'ies'}\n${tokens ? `${tokens.toLocaleString()} tokens written` : 'The endpoint did not report token counts'}\n${(ms / 1000).toFixed(1)} s of generating\n\nPrices depend on your provider, so no cost is shown.`);
+    },
+  },
+  {
+    name: 'compact', aliases: ['condense'], group: 'This chat', args: '[focus]', summary: 'Summarise this chat and continue in a fresh chat that starts from the summary',
+    run: async (args, ctx) => {
+      const c = chatOf(ctx.chatId);
+      const list = (c ? useChats.getState().messages[c.id] ?? [] : []).filter((m) => m.content && !m.error);
+      if (!c || list.length < 2) return toast('There is nothing to summarise yet');
+      toast('Summarising…');
+      try {
+        const transcript = list.map((m) => `${m.role === 'user' ? 'User' : 'Assistant'}: ${strip(m.content)}`).join('\n\n').slice(-60_000);
+        const summary = await quickComplete({
+          chat: c,
+          system: 'You condense a conversation so it can continue in a fresh chat. Keep decisions, facts, names, numbers, code identifiers, open questions and what the user wants next. Plain Markdown, under 400 words. No preamble.',
+          user: `${args ? `Focus on: ${args}\n\n` : ''}${transcript}`,
+          maxTokens: 800,
+          temperature: 0.2,
+        });
+        if (!summary) throw new Error('The model returned nothing.');
+        const id = await useChats.getState().create({ title: `${c.title} (summary)`, providerId: c.providerId, modelId: c.modelId, promptId: c.promptId, params: c.params, toolIds: c.toolIds });
+        await useChats.getState().addAssistantMessage(id, `**Summary of the earlier chat**\n\n${summary}`);
+        router.replace(`/chat/${id}`);
+      } catch (e: any) {
+        Alert.alert('Could not summarise', e?.message ?? 'Try again.');
+      }
+    },
+  },
+  {
+    name: 'fork', aliases: ['branch'], group: 'This chat', summary: 'Copy this chat into a new one and continue from there',
+    run: async (_a, ctx) => {
+      const last = ctx.chatId ? [...(useChats.getState().messages[ctx.chatId] ?? [])].pop() : undefined;
+      if (!ctx.chatId || !last) return toast('Nothing to fork yet');
+      router.replace(`/chat/${await useChats.getState().branch(ctx.chatId, last.id)}`);
+    },
+  },
+  {
+    name: 'doctor', group: 'Model', summary: 'Check that the endpoint answers, and how fast',
+    run: async (_a, ctx) => {
+      const { provider } = resolveChatModel(chatOf(ctx.chatId));
+      if (!provider) return toast('Add an endpoint first');
+      toast(`Checking ${provider.name}…`);
+      try {
+        const r = await listModels(provider);
+        Alert.alert(`${provider.name} is reachable`, `${r.ids.length} models listed · ${r.latencyMs} ms`);
+      } catch (e: any) {
+        Alert.alert(`${provider.name} didn’t answer`, e?.message ?? 'Check the address and your connection.');
+      }
     },
   },
 
@@ -369,17 +456,88 @@ export const BUILT_IN: Command[] = [
 
   // Go to
   { name: 'settings', group: 'Go to', summary: 'Open Settings', run: () => router.push('/settings') },
+  { name: 'resume', aliases: ['history', 'chats'], group: 'Go to', summary: 'Find and reopen an earlier chat', run: () => router.push('/search-chats') },
+  {
+    name: 'theme', group: 'Go to', args: '[dark|light|system]', summary: 'Switch between dark, light and the phone’s setting',
+    run: (args) => {
+      const st = useSettings.getState();
+      const order = ['system', 'dark', 'light'] as const;
+      const want = args.trim().toLowerCase();
+      const next = (order as readonly string[]).includes(want) ? (want as (typeof order)[number]) : order[(order.indexOf(st.mode) + 1) % order.length];
+      st.set({ mode: next });
+      toast(`Theme: ${next}`);
+    },
+  },
+  { name: 'feedback', aliases: ['bug'], group: 'Go to', summary: 'Report a problem or suggest something (opens GitHub)', run: () => void Linking.openURL('https://github.com/aman-mohammed-max/aihat/issues/new/choose') },
   { name: 'providers', aliases: ['endpoints'], group: 'Go to', summary: 'Manage endpoints and models', run: () => router.push('/providers') },
   { name: 'prompts', group: 'Go to', summary: 'Your system prompts', run: () => router.push('/prompts') },
-  { name: 'skills', group: 'Go to', summary: 'Skills', run: () => router.push('/skills') },
-  { name: 'mcp', group: 'Go to', summary: 'MCP servers', run: () => router.push('/mcp') },
+  { name: 'skills', group: 'Go to', summary: 'Your skills (each also works as its own /command)', run: () => router.push('/skills') },
+  { name: 'mcp', group: 'Go to', summary: 'MCP servers (each also works as its own /command)', run: () => router.push('/mcp') },
+  { name: 'market', aliases: ['marketplace', 'store', 'browse'], group: 'Go to', summary: 'Browse and add skills and MCP servers', run: () => router.push('/market') },
   { name: 'commands', aliases: ['help', '?'], group: 'Go to', summary: 'All commands, and your own', run: () => router.push('/commands') },
 ];
 
 // ---------- registry ----------
 
-/** Built-in commands plus the user's own. A custom command with the same name replaces a built-in one. */
-export function allCommands(custom = useCommands.getState().items): Command[] {
+const brief = (t: string, n = 110) => {
+  const one = t.replace(/\s+/g, ' ').trim();
+  return one.length > n ? `${one.slice(0, n - 1)}…` : one;
+};
+
+/** `/pdf fill in this form`: one command per turned-on skill. It loads that skill in full for the message. */
+function skillCommands(skills: Skill[], taken: Set<string>): Command[] {
+  const on = skills.filter((s) => s.enabled);
+  const names = skillCommandNames(on, taken, 'skill');
+  return on.map((s) => {
+    const name = names.get(s.id)!;
+    return {
+      name, kind: 'skill', ref: s.id, group: 'Skills', args: '<what to do>', needsArgs: true,
+      summary: brief(s.description || `Use the ${s.name} skill`),
+      run: async (args, ctx) => {
+        if (!args) return toast(`Say what to do after /${name}`);
+        await submit(await ctx.ensureChat(), args, { skills: [s.id] });
+      },
+    };
+  });
+}
+
+/** `/github list my open pull requests`: turns that server's tools on for this chat, then asks. `/github off` turns them off. */
+function serverCommands(servers: McpServer[], taken: Set<string>): Command[] {
+  const names = skillCommandNames(servers, taken, 'mcp');
+  return servers.map((s) => {
+    const name = names.get(s.id)!;
+    const usable = s.tools.filter((t) => t.policy !== 'off').length;
+    return {
+      name, kind: 'mcp', ref: s.id, group: 'MCP servers', args: '[what to do | off]', needsArgs: false,
+      summary: s.connected ? `${s.name} · ${usable} tool${usable === 1 ? '' : 's'}. Turns them on for this chat.` : `${s.name} isn’t connected yet. Tap to set it up.`,
+      run: async (args, ctx) => {
+        const server = useLibrary.getState().servers.find((x) => x.id === s.id);
+        if (!server) return;
+        if (!server.connected) {
+          toast(`${server.name} isn’t connected yet`);
+          return router.push({ pathname: '/mcp-detail', params: { id: server.id } });
+        }
+        const id = await ctx.ensureChat();
+        const chat = chatOf(id);
+        if (!chat) return;
+        if (/^(off|stop|disable)$/i.test(args)) {
+          await useChats.getState().patch(id, { toolIds: chat.toolIds.filter((t) => t !== server.id) });
+          return toast(`${server.name} tools are off for this chat`);
+        }
+        if (!chat.toolIds.includes(server.id)) await useChats.getState().patch(id, { toolIds: [...chat.toolIds, server.id] });
+        if (!args) return toast(`${server.name} tools are on for this chat`);
+        await submit(id, args);
+      },
+    };
+  });
+}
+
+/** Built-in commands, the user's own, and one command for each skill and MCP server. A custom command with the same name replaces a built-in one. */
+export function allCommands(
+  custom = useCommands.getState().items,
+  skills: Skill[] = useLibrary.getState().skills,
+  servers: McpServer[] = useLibrary.getState().servers,
+): Command[] {
   const mine: Command[] = custom.map((c) => ({
     name: c.name, group: 'Yours', custom: true, args: c.template.includes('{input}') ? '<text>' : '[text]',
     summary: c.description || c.template.replace(/\s+/g, ' ').slice(0, 70),
@@ -392,7 +550,11 @@ export function allCommands(custom = useCommands.getState().items): Command[] {
     },
   }));
   const names = new Set(mine.map((c) => c.name));
-  return [...mine, ...BUILT_IN.filter((c) => !names.has(c.name))];
+  const base = [...mine, ...BUILT_IN.filter((c) => !names.has(c.name))];
+  const taken = new Set(base.flatMap((c) => [c.name, ...(c.aliases ?? [])]));
+  const fromSkills = skillCommands(skills, taken);
+  fromSkills.forEach((c) => taken.add(c.name));
+  return [...base, ...fromSkills, ...serverCommands(servers, taken)];
 }
 
 export const findCommand = (name: string, list = allCommands()) => list.find((c) => c.name === name || c.aliases?.includes(name));
@@ -409,7 +571,9 @@ export function matchCommands(query: string, list: Command[]) {
 /** React hook: the merged command list, updating when custom commands change. */
 export function useCommandList() {
   const items = useCommands((s) => s.items);
-  return useMemo(() => allCommands(items), [items]);
+  const skills = useLibrary((s) => s.skills);
+  const servers = useLibrary((s) => s.servers);
+  return useMemo(() => allCommands(items, skills, servers), [items, skills, servers]);
 }
 
 /** Run `/name args` if it is a known command. Returns false when the text is just a message. */

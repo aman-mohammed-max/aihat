@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
 import { matchCommands, splitCommand, findCommand, useCommandList, type Command } from '@/lib/commands';
@@ -48,14 +48,54 @@ export function CommandPalette({ text, onInsert, onRun }: Props) {
   }
 
   if (!typing || matches.length === 0) return null;
+  return <PaletteList matches={matches} onInsert={onInsert} onRun={onRun} />;
+}
+
+type Tab = 'all' | 'commands' | 'skills' | 'mcp';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'commands', label: 'Commands' },
+  { id: 'skills', label: 'Skills' },
+  { id: 'mcp', label: 'MCP' },
+];
+const inTab = (c: Command, t: Tab) => t === 'all' || (t === 'skills' ? c.kind === 'skill' : t === 'mcp' ? c.kind === 'mcp' : !c.kind);
+
+/** The list itself. It exists only while a command is being typed, so its filter resets each time. */
+function PaletteList({ matches, onInsert, onRun }: { matches: Command[]; onInsert: (text: string) => void; onRun: (text: string) => void }) {
+  const { colors } = useTheme();
+  const [tab, setTab] = useState<Tab>('all');
+  const count = (t: Tab) => matches.filter((c) => inTab(c, t)).length;
+  // Filter chips only appear once there is a skill or MCP server to filter for.
+  const showTabs = count('skills') + count('mcp') > 0;
+  const shown = matches.filter((c) => inTab(c, showTabs ? tab : 'all'));
+
   return (
-    <View style={{ marginHorizontal: 12, marginBottom: 6, borderRadius: 16, backgroundColor: colors.surface, maxHeight: 300, overflow: 'hidden' }}>
+    <View style={{ marginHorizontal: 12, marginBottom: 6, borderRadius: 16, backgroundColor: colors.surface, maxHeight: 320, overflow: 'hidden' }}>
+      {showTabs && (
+        <View style={{ flexDirection: 'row', gap: 6, paddingHorizontal: 10, paddingTop: 8, paddingBottom: 2 }}>
+          {TABS.filter((t) => t.id === 'all' || count(t.id) > 0).map((t) => {
+            const on = tab === t.id;
+            return (
+              <Pressable
+                key={t.id}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: on }}
+                onPress={() => { haptic.select(); setTab(t.id); }}
+                hitSlop={{ top: 6, bottom: 6 }}
+                style={{ height: 30, borderRadius: 15, paddingHorizontal: 12, justifyContent: 'center', backgroundColor: on ? colors.accentSoft : colors.surface2 }}>
+                <Text size={12.5} weight={on ? 'medium' : 'regular'} color={on ? 'accent' : 'muted'}>{t.label} {count(t.id)}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       <ScrollView keyboardShouldPersistTaps="always" contentContainerStyle={{ paddingVertical: 4 }}>
-        {matches.slice(0, 40).map((c) => (
+        {shown.length === 0 && <Text size={13} color="muted" style={{ padding: 14 }}>Nothing here matches.</Text>}
+        {shown.slice(0, 60).map((c) => (
           <Pressable
             key={c.name}
             accessibilityRole="button"
-            accessibilityLabel={`/${c.name}. ${c.summary}`}
+            accessibilityLabel={`/${c.name}${c.kind ? `, ${c.kind === 'mcp' ? 'MCP server' : 'skill'}` : ''}. ${c.summary}`}
             onPress={() => {
               haptic.select();
               if (c.needsArgs) onInsert(`/${c.name} `);
@@ -69,6 +109,11 @@ export function CommandPalette({ text, onInsert, onRun }: Props) {
               </Text>
               <Text size={12.5} color="muted" numberOfLines={2}>{c.summary}</Text>
             </View>
+            {c.kind ? (
+              <View style={{ height: 22, borderRadius: 11, paddingHorizontal: 8, justifyContent: 'center', backgroundColor: colors.surface2 }}>
+                <Text size={11} color="muted">{c.kind === 'mcp' ? 'MCP' : 'Skill'}</Text>
+              </View>
+            ) : null}
             {c.custom ? <Icon name="edit" size={13} color={colors.faint} /> : null}
           </Pressable>
         ))}

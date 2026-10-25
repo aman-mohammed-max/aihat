@@ -4,13 +4,16 @@ import { Alert, Share } from 'react-native';
 
 import { Card, ListRow, Text } from '@/components';
 import { RouteSheet } from '@/components/RouteOverlays';
+import { submit } from '@/lib/send';
 import { speak } from '@/lib/tts';
 import { useChats } from '@/store/chats';
+import { useSettings } from '@/store/settings';
 
 export default function MessageSheet() {
   const { chatId, messageId } = useLocalSearchParams<{ chatId: string; messageId: string }>();
   const msg = useChats((s) => s.messages[chatId]?.find((m) => m.id === messageId));
   const chat = useChats((s) => s.chats.find((c) => c.id === chatId));
+  const translateTo = useSettings((s) => s.translateTo);
   if (!msg) return null;
   const done = (fn: () => void | Promise<void>) => async () => { await fn(); router.back(); };
 
@@ -27,7 +30,7 @@ export default function MessageSheet() {
           const id = await useChats.getState().branch(chatId, messageId);
           router.replace(`/chat/${id}`);
         }} />
-        <ListRow icon="mic" label="Translate" onPress={() => router.replace('/voice')} />
+        <ListRow icon="globe" label={`Translate to ${translateTo}`} onPress={done(() => submit(chatId, `Translate this into ${translateTo}. Keep formatting, code and names unchanged.\n\n${msg.content}`))} />
         <ListRow icon="trash" label="Delete message" danger last onPress={done(() => useChats.getState().deleteMessage(chatId, messageId))} />
       </Card>
     </RouteSheet>

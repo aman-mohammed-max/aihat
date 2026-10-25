@@ -74,6 +74,9 @@ export default function RootLayout() {
             <Stack.Screen name="gen-spec" />
             <Stack.Screen name="image-viewer" />
             <Stack.Screen name="images" />
+            <Stack.Screen name="market" />
+            <Stack.Screen name="market-mcp" />
+            <Stack.Screen name="market-skill" />
             <Stack.Screen name="mcp" />
             <Stack.Screen name="mcp-detail" />
             <Stack.Screen name="privacy" />
@@ -85,7 +88,6 @@ export default function RootLayout() {
             <Stack.Screen name="settings" />
             <Stack.Screen name="skill-detail" />
             <Stack.Screen name="skills" />
-            <Stack.Screen name="voice" />
             <Stack.Screen name="web-search" />
             {/* Every sheet / dialog is a transparent modal over the current screen. */}
             <Stack.Screen name="(modals)/model-sheet" options={sheet} />

@@ -29,6 +29,8 @@ type Props = {
   onAdd?: () => void;
   onTools?: () => void;
   onVoice?: () => void;
+  /** The microphone is on (dictating): the button lights up. */
+  voiceActive?: boolean;
   /** Opens the command list (puts a / in the box). */
   onSlash?: () => void;
 };
@@ -69,7 +71,7 @@ function ModeChip({ icon, label, onPress, onClear }: { icon: IconName; label: st
 
 export function Composer({
   value, onChangeText, onSend, placeholder = 'Message', files = [], onRemoveFile,
-  searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, onSlash,
+  searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, voiceActive, onSlash,
 }: Props) {
   const { colors, body } = useTheme();
   const insets = useSafeAreaInsets();
@@ -121,8 +123,8 @@ export function Composer({
           {imageOn && <ModeChip icon="sparkle" label={imageLabel ? `Image · ${imageLabel}` : 'Image'} onPress={onImageOptions} onClear={onToggleImage} />}
           {uiOn && <ModeChip icon="layout" label="UI" onPress={onToggleUi} />}
           <View style={{ flex: 1 }} />
-          <RoundButton label="Dictate" onPress={onVoice}>
-            <Icon name="mic" size={19} color={colors.text2} />
+          <RoundButton label={voiceActive ? 'Stop dictating' : 'Dictate'} onPress={onVoice} bg={voiceActive ? colors.accentSoft : undefined}>
+            <Icon name="mic" size={19} color={voiceActive ? colors.accent : colors.text2} />
           </RoundButton>
           <RoundButton label="Send" onPress={onSend} bg={colors.accent}>
             <Icon name="send" size={18} color={colors.onAccent} strokeWidth={2.2} />

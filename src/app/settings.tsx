@@ -6,7 +6,7 @@ import { useRefreshModels } from '@/lib/useRefreshModels';
 
 const groups: { title: string; rows: { icon: IconName; label: string; path?: string; refresh?: boolean }[] }[] = [
   { title: 'General', rows: [{ icon: 'sparkle', label: 'Appearance', path: '/appearance' }, { icon: 'sliders', label: 'Chat defaults', path: '/chat-defaults' }] },
-  { title: 'Models & tools', rows: [{ icon: 'server', label: 'Providers', path: '/providers' }, { icon: 'prompt', label: 'Skills', path: '/skills' }, { icon: 'tool', label: 'MCP servers', path: '/mcp' }, { icon: 'sparkle', label: 'Generative UI', path: '/gen-settings' }, { icon: 'prompt', label: 'Commands', path: '/commands' }, { icon: 'refresh', label: 'Refresh all models', refresh: true }] },
+  { title: 'Models & tools', rows: [{ icon: 'server', label: 'Providers', path: '/providers' }, { icon: 'store', label: 'Marketplace', path: '/market' }, { icon: 'prompt', label: 'Skills', path: '/skills' }, { icon: 'tool', label: 'MCP servers', path: '/mcp' }, { icon: 'sparkle', label: 'Generative UI', path: '/gen-settings' }, { icon: 'prompt', label: 'Commands', path: '/commands' }, { icon: 'refresh', label: 'Refresh all models', refresh: true }] },
   { title: 'Media & search', rows: [{ icon: 'mic', label: 'Voice & speech', path: '/audio' }, { icon: 'image', label: 'Images', path: '/images' }, { icon: 'globe', label: 'Web search', path: '/web-search' }, { icon: 'file', label: 'Files & documents', path: '/files' }] },
   { title: 'Data', rows: [{ icon: 'refresh', label: 'Sync & backup', path: '/backup' }, { icon: 'lock', label: 'Privacy & API keys', path: '/privacy' }, { icon: 'info', label: 'About', path: '/about' }] },
 ];

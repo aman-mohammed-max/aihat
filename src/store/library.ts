@@ -15,6 +15,10 @@ export type McpTool = { name: string; description?: string; kind: 'read' | 'writ
 export type McpServer = {
   id: string; name: string; url: string; transport: 'http' | 'sse'; auth: 'none' | 'token' | 'oauth';
   tools: McpTool[]; enabledByDefault: boolean; isConnector: boolean; connected: boolean;
+  /** Header that carries the token when it isn't `Authorization` (for example `X-API-Key`). */
+  authHeader?: string | null;
+  /** How the token is written in that header, with `{token}` standing for it. Default `Bearer {token}`. */
+  authTemplate?: string | null;
 };
 
 type State = {
@@ -44,6 +48,7 @@ export const useLibrary = create<State>((set, get) => ({
     const servers = (await db.getAllAsync<any>('SELECT * FROM mcp_servers ORDER BY name')).map((r): McpServer => ({
       id: r.id, name: r.name, url: r.url, transport: r.transport, auth: r.auth, tools: json(r.tools, []),
       enabledByDefault: !!r.enabled_by_default, isConnector: !!r.is_connector, connected: !!r.connected,
+      authHeader: r.auth_header ?? null, authTemplate: r.auth_template ?? null,
     }));
     set({ prompts, skills, servers });
   },
@@ -87,12 +92,17 @@ export const useLibrary = create<State>((set, get) => ({
   async saveServer(s) {
     const db = await getDb();
     const id = s.id ?? uid();
+    // Editing a server without mentioning its header settings keeps them.
+    const prev = get().servers.find((x) => x.id === id);
+    const header = s.authHeader !== undefined ? s.authHeader : prev?.authHeader ?? null;
+    const template = s.authTemplate !== undefined ? s.authTemplate : prev?.authTemplate ?? null;
     await db.runAsync(
-      `INSERT INTO mcp_servers (id,name,url,transport,auth,tools,enabled_by_default,is_connector,connected) VALUES (?,?,?,?,?,?,?,?,?)
+      `INSERT INTO mcp_servers (id,name,url,transport,auth,tools,enabled_by_default,is_connector,connected,auth_header,auth_template) VALUES (?,?,?,?,?,?,?,?,?,?,?)
        ON CONFLICT(id) DO UPDATE SET name=excluded.name, url=excluded.url, transport=excluded.transport, auth=excluded.auth,
-         tools=excluded.tools, enabled_by_default=excluded.enabled_by_default, is_connector=excluded.is_connector, connected=excluded.connected`,
+         tools=excluded.tools, enabled_by_default=excluded.enabled_by_default, is_connector=excluded.is_connector, connected=excluded.connected,
+         auth_header=excluded.auth_header, auth_template=excluded.auth_template`,
       id, s.name, s.url, s.transport ?? 'http', s.auth ?? 'none', JSON.stringify(s.tools ?? []),
-      s.enabledByDefault === false ? 0 : 1, s.isConnector ? 1 : 0, s.connected ? 1 : 0,
+      s.enabledByDefault === false ? 0 : 1, s.isConnector ? 1 : 0, s.connected ? 1 : 0, header, template,
     );
     await get().load();
     return id;

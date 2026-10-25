@@ -35,6 +35,12 @@ export type Settings = {
   /** Per-feature endpoint routing (images, speech, transcription, embeddings, /v1/search). */
   routes: Record<Capability, Route>;
   translateTo: string;
+  /** Dictation (mic button): the phone's own recognizer shows live text; the endpoint records, then transcribes. */
+  dictationEngine: 'phone' | 'endpoint';
+  /** BCP-47 tag for the phone recognizer, or '' for the phone's own language. */
+  dictationLang: string;
+  /** Never send dictation audio to Apple or Google; refuse when the phone can't do it locally. */
+  dictationOnDevice: boolean;
   ttsEngine: 'device' | 'endpoint';
   ttsVoice: string;
   autoReadAloud: boolean;
@@ -110,6 +116,9 @@ export const DEFAULT_SETTINGS: Settings = {
     search: { providerId: null, model: '' },
   },
   translateTo: 'English',
+  dictationEngine: 'phone',
+  dictationLang: '',
+  dictationOnDevice: false,
   ttsEngine: 'device',
   ttsVoice: '',
   autoReadAloud: false,

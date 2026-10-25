@@ -1,5 +1,5 @@
 import { getApiKey } from '@/lib/keys';
-import type { McpTool } from '@/store/library';
+import { useLibrary, type McpTool } from '@/store/library';
 
 // Minimal MCP client over Streamable HTTP (JSON-RPC 2.0 via POST). SSE-framed replies are handled too.
 // `id` lets the client read the server's token from the keystore (key `mcp.<id>`).
@@ -10,10 +10,12 @@ let nextId = 1;
 
 async function rpc(c: Conn, method: string, params?: object, notify = false) {
   const token = c.token ?? (c.id ? await getApiKey(`mcp.${c.id}`) : null);
+  // The token goes in `Authorization: Bearer …` unless the server was set up with another header (from the marketplace).
+  const server = c.id ? useLibrary.getState().servers.find((x) => x.id === c.id) : undefined;
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Accept: 'application/json, text/event-stream',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token ? { [server?.authHeader || 'Authorization']: (server?.authTemplate || 'Bearer {token}').replace('{token}', token) } : {}),
   };
   const sid = sessions.get(c.url);
   if (sid) headers['Mcp-Session-Id'] = sid;
@@ -59,8 +61,16 @@ const guessKind = (name: string, annotations?: { readOnlyHint?: boolean; destruc
 };
 
 export async function listTools(c: Conn, previous: McpTool[] = []): Promise<McpTool[]> {
-  const result = await rpc(c, 'tools/list', {});
-  return (result.tools ?? []).map((t: any): McpTool => {
+  // Servers with many tools hand them out a page at a time.
+  const found: any[] = [];
+  let cursor: string | undefined;
+  for (let page = 0; page < 10; page++) {
+    const result = await rpc(c, 'tools/list', cursor ? { cursor } : {});
+    found.push(...(result.tools ?? []));
+    cursor = result.nextCursor;
+    if (!cursor) break;
+  }
+  return found.map((t: any): McpTool => {
     const prev = previous.find((p) => p.name === t.name);
     const kind = guessKind(t.name, t.annotations);
     return {

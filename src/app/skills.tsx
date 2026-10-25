@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, View } from 'react-native';
 
-import { Button, Card, Screen, SearchBar, SectionTitle, Text, Toggle } from '@/components';
+import { Button, Card, ListRow, Screen, SearchBar, SectionTitle, Text, Toggle } from '@/components';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
 
@@ -31,7 +31,8 @@ export default function Skills() {
   return (
     <Screen header={{ title: 'Skills' }} footer={<Button label="Add skill" flex onPress={() => router.push('/add-skill')} />}>
       <SearchBar value={q} onChangeText={setQ} placeholder="Search skills" />
-      <Text size={13} color="muted">Skills are instructions the model loads only when a task needs them.</Text>
+      <Card><ListRow icon="store" label="Browse skills" sub="Find and add skills from public libraries" onPress={() => router.push('/market')} last /></Card>
+      <Text size={13} color="muted">Skills are instructions the model loads only when a task needs them. Each one is also a command: type / and pick it, or type its name.</Text>
       {skills.length === 0 && <Text color="muted">No skills yet.</Text>}
       {group({ title: "On", items: list.filter((s) => s.enabled) })}
       {group({ title: "Off", items: list.filter((s) => !s.enabled) })}

@@ -1,0 +1,161 @@
+import { router, useLocalSearchParams } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { Linking, View } from 'react-native';
+
+import { Button, Card, Icon, ListRow, PulseDots, Screen, SectionTitle, Segmented, Text } from '@/components';
+import * as haptic from '@/lib/haptics';
+import { compact, loadSkill, recallSkill, skillSourceLabel } from '@/lib/market';
+import { parseSkillMd, slugify } from '@/lib/skills';
+import { useLibrary, type Skill } from '@/store/library';
+import { toast } from '@/store/toast';
+import { useTheme } from '@/theme';
+
+type Loaded = { key: string; md?: string; dir?: string; error?: string };
+
+const MODES: { value: Skill['mode']; label: string; sub: string }[] = [
+  { value: 'auto', label: 'Automatic', sub: 'The assistant sees its name and description and opens it when a task matches. Costs almost nothing until used.' },
+  { value: 'always', label: 'Always', sub: 'The whole text is added to every message. Best for short rules you always want.' },
+  { value: 'onAsk', label: 'When I ask', sub: 'Only runs when you type its /command.' },
+];
+
+const PREVIEW_CHARS = 2500;
+
+export default function MarketSkill() {
+  const { colors } = useTheme();
+  const { key } = useLocalSearchParams<{ key: string }>();
+  const listing = key ? recallSkill(key) : undefined;
+  const skills = useLibrary((s) => s.skills);
+  const [loaded, setLoaded] = useState<Loaded | null>(null);
+  const [mode, setMode] = useState<Skill['mode']>('auto');
+  const [full, setFull] = useState(false);
+  const [nonce, setNonce] = useState(0);
+
+  useEffect(() => {
+    if (!listing) return;
+    let alive = true;
+    loadSkill(listing).then(
+      (r) => alive && setLoaded({ key: `${key}|${nonce}`, md: r.md, dir: r.dir }),
+      (e) => alive && setLoaded({ key: `${key}|${nonce}`, error: e?.message ?? 'Could not load the skill.' }),
+    );
+    return () => {
+      alive = false;
+    };
+  }, [listing, key, nonce]);
+
+  const data = loaded?.key === `${key}|${nonce}` ? loaded : null;
+  const parsed = data?.md ? parseSkillMd(data.md) : null;
+
+  if (!listing) {
+    return (
+      <Screen header={{ title: 'Skill' }}>
+        <Text color="muted">Open this skill from the marketplace list.</Text>
+        <Button label="Back to the marketplace" variant="outline" onPress={() => router.replace('/market')} />
+      </Screen>
+    );
+  }
+
+  const name = parsed?.name || listing.name;
+  const description = parsed?.description || listing.description || '';
+  const label = data?.dir !== undefined ? skillSourceLabel(listing.source, data.dir) : '';
+  const existing = label ? skills.find((s) => s.source === label) : undefined;
+  const changed = !!existing && !!parsed && existing.body !== parsed.body;
+  const body = parsed?.body ?? '';
+  const mentionsFiles = /\b(scripts?|references?|assets?)\/[\w.-]+/i.test(body);
+
+  const add = async () => {
+    if (!parsed) return;
+    const id = await useLibrary.getState().saveSkill({
+      id: existing?.id,
+      name,
+      description,
+      version: parsed.meta.version || existing?.version || '1.0.0',
+      source: label,
+      body: parsed.body,
+      mode: existing?.mode ?? mode,
+      enabled: existing?.enabled ?? true,
+    });
+    haptic.success();
+    toast(existing ? `Updated ${name}` : `Added ${name}. Use it with /${slugify(name)}`);
+    if (!existing) router.replace({ pathname: '/skill-detail', params: { id } });
+  };
+
+  return (
+    <Screen
+      header={{ title: name }}
+      footer={
+        data?.md ? (
+          existing ? (
+            <>
+              {changed ? <Button label="Update" flex onPress={add} /> : null}
+              <Button label="Open skill" variant={changed ? 'outline' : 'primary'} flex onPress={() => router.replace({ pathname: '/skill-detail', params: { id: existing.id } })} />
+            </>
+          ) : (
+            <Button label="Add skill" flex onPress={add} />
+          )
+        ) : undefined
+      }>
+      <View style={{ gap: 4 }}>
+        <Text size={22} weight="semi">{name}</Text>
+        <Text size={12.5} color="muted">{[listing.source, listing.installs ? `${compact(listing.installs)} installs` : '', listing.stars ? `★ ${compact(listing.stars)}` : ''].filter(Boolean).join(' · ')}</Text>
+      </View>
+      {description ? <Text color="text2" style={{ lineHeight: 22 }}>{description}</Text> : null}
+
+      {!data && (
+        <View accessibilityRole="progressbar" accessibilityLabel="Loading the skill" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <PulseDots />
+          <Text color="muted" size={13.5}>Reading SKILL.md from GitHub…</Text>
+        </View>
+      )}
+      {data?.error && (
+        <View style={{ gap: 10 }}>
+          <Text color="warn">{data.error}</Text>
+          <View style={{ flexDirection: 'row', gap: 10 }}>
+            <Button label="Try again" variant="outline" height={40} onPress={() => setNonce((n) => n + 1)} />
+            <Button label="Open on GitHub" variant="outline" height={40} onPress={() => Linking.openURL(`https://github.com/${listing.source}`)} />
+          </View>
+        </View>
+      )}
+
+      {data?.md && (
+        <>
+          <View style={{ flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 14 }}>
+            <Icon name="warn" size={18} color={colors.warn} />
+            <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19 }}>
+              Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. AI Hat uses only these instructions{mentionsFiles ? ', not the scripts or other files that this skill refers to' : ''}.
+            </Text>
+          </View>
+
+          {!existing && (
+            <View style={{ gap: 8 }}>
+              <SectionTitle>How the assistant uses it</SectionTitle>
+              <Segmented<Skill['mode']> options={MODES.map((m) => ({ value: m.value, label: m.label }))} value={mode} onChange={setMode} />
+              <Text size={12.5} color="muted">{MODES.find((m) => m.value === mode)!.sub}</Text>
+              {mode === 'always' && body.length > 8000 && <Text size={12.5} color="warn">This one is long ({compact(body.length)} characters). “Always” would add all of it to every message; “Automatic” is a better fit.</Text>}
+            </View>
+          )}
+          {existing && (
+            <Card>
+              <ListRow icon="check" label="Already added" sub={changed ? 'The source has changed since you added it.' : 'Up to date with the source.'} last />
+            </Card>
+          )}
+
+          <View>
+            <SectionTitle>Instructions (SKILL.md)</SectionTitle>
+            <Card style={{ padding: 14, gap: 10 }}>
+              <Text mono size={12.5} color="text2" selectable>{full || body.length <= PREVIEW_CHARS ? body : `${body.slice(0, PREVIEW_CHARS).trimEnd()}…`}</Text>
+              {body.length > PREVIEW_CHARS && (
+                <Button label={full ? 'Show less' : `Show all ${body.length.toLocaleString()} characters`} variant="outline" height={38} onPress={() => setFull((f) => !f)} />
+              )}
+            </Card>
+          </View>
+
+          <Card>
+            <ListRow label="Source" value={label.replace('github.com/', '')} onPress={() => Linking.openURL(`https://github.com/${listing.source}/tree/HEAD/${data.dir ?? ''}`)} />
+            <ListRow label="Size" value={`${body.length.toLocaleString()} characters`} last={!parsed?.meta.license} />
+            {parsed?.meta.license ? <ListRow label="License" value={parsed.meta.license} last /> : null}
+          </Card>
+        </>
+      )}
+    </Screen>
+  );
+}
