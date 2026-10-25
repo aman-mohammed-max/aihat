@@ -34,7 +34,7 @@ export default function Mcp() {
             </View>
           ))}
         </Card>
-        <Text size={12.5} color="muted" style={{ marginTop: 10, paddingLeft: 4 }}>Phones can’t start local (stdio) servers. Run them on your computer behind an HTTP bridge, then add the URL here.</Text>
+        <Text size={12.5} color="muted" style={{ marginTop: 10, paddingLeft: 4 }}>Only servers with a web address work here. Servers that run as a program on a computer (“stdio” servers) can’t be started on a phone.</Text>
       </View>
     </Screen>
   );

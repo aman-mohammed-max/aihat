@@ -4,7 +4,7 @@ import { Pressable, ScrollView, View } from 'react-native';
 
 import { Button, Card, Chip, Icon, PulseDots, Screen, SearchBar, SectionTitle, Segmented, Text } from '@/components';
 import {
-  compact, computerPlan, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
+  compact, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
 } from '@/lib/market';
 import { useLibrary } from '@/store/library';
@@ -248,7 +248,6 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
 function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   const servers = useLibrary((s) => s.servers);
-  const [where, setWhere] = useState<'hosted' | 'computer'>('hosted');
   const [applied, setApplied] = useState('');
   const [nonce, setNonce] = useState(0);
   useEffect(() => {
@@ -256,20 +255,17 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
     return () => clearTimeout(t);
   }, [q]);
 
-  const list = useList<McpListing>(`mcp|${where}|${applied}|${nonce}`, true, async () => searchMcp(applied, undefined, where));
+  const list = useList<McpListing>(`mcp|${applied}|${nonce}`, true, async () => searchMcp(applied));
   const urls = useMemo(() => new Set(servers.map((s) => s.url.replace(/\/+$/, ''))), [servers]);
   const isAdded = (l: McpListing) => !!l.remote && urls.has(l.remote.url.replace(/\/+$/, ''));
   const open = (l: McpListing) => router.push({ pathname: '/market-mcp', params: { id: rememberMcp(l) } });
-  const featured = where === 'computer' ? [] : FEATURED_MCP.filter((f) => !applied || `${f.title} ${f.description} ${f.category}`.toLowerCase().includes(applied.toLowerCase()));
+  const featured = FEATURED_MCP.filter((f) => !applied || `${f.title} ${f.description} ${f.category}`.toLowerCase().includes(applied.toLowerCase()));
 
   return (
     <>
-      <Segmented<'hosted' | 'computer'> options={[{ value: 'hosted', label: 'Hosted online' }, { value: 'computer', label: 'On my computer' }]} value={where} onChange={setWhere} />
       <SearchBar value={q} onChangeText={setQ} placeholder="Search MCP servers" onSubmit={() => setApplied(q.trim())} />
       <Text size={12.5} color="muted" style={{ marginTop: -8 }}>
-        {where === 'hosted'
-          ? 'Servers that run online, from the official MCP registry. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.'
-          : 'Programs that run on your computer. A phone can’t start them, so AI Hat gives you one command to run there and then connects over your network. Needs Node.js on the computer.'}
+        Servers that run online, from the official MCP registry. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.
       </Text>
 
       {featured.length > 0 && (
@@ -284,15 +280,15 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       <View>
-        <SectionTitle>{where === 'computer' ? 'Servers for your computer' : applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
+        <SectionTitle>{applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
         {list.items.length > 0 && (
           <Card>
             {list.items.map((l, i) => (
-              <Row key={l.id} title={l.title} sub={l.description} meta={where === 'computer' ? `${l.publisher} · ${{ npx: 'npm', uvx: 'Python', docker: 'Docker' }[computerPlan(l).runner ?? 'npx']}` : l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
+              <Row key={l.id} title={l.title} sub={l.description} meta={l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
             ))}
           </Card>
         )}
-        <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? (where === 'computer' ? 'No servers for a computer match.' : 'No hosted servers match.') : undefined} onRetry={() => setNonce((n) => n + 1)} />
+        <Status loading={list.loading} error={list.error} empty={list.items.length === 0 ? 'No hosted servers match.' : undefined} onRetry={() => setNonce((n) => n + 1)} />
         {list.next && !list.loading && (
           <View style={{ paddingTop: 12 }}>
             <Button
@@ -302,7 +298,7 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
               disabled={list.loadingMore}
               onPress={() =>
                 list.loadMore(async (cur) => {
-                  const r = await searchMcp(applied, cur.next, where);
+                  const r = await searchMcp(applied, cur.next);
                   const have = new Set(cur.items.map((i) => i.id));
                   return { items: r.items.filter((i) => !have.has(i.id)), next: r.next };
                 })

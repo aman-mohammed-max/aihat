@@ -1,18 +1,14 @@
-import * as Clipboard from 'expo-clipboard';
-import * as Crypto from 'expo-crypto';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import { OAuthError, probeAuth } from '@/api/oauth';
 import { Button, Card, Chip, Field, Icon, ListRow, Screen, SectionTitle, Text } from '@/components';
-import { bridgeCommand, bridgeUrl, newKey } from '@/lib/bridge';
 import * as haptic from '@/lib/haptics';
 import { addAndConnect, removeServer } from '@/lib/mcp-connect';
-import { buildMcpConnection, computerPlan, planMcp, recallMcp, type McpListing } from '@/lib/market';
+import { buildMcpConnection, planMcp, recallMcp, type McpListing } from '@/lib/market';
 import { slugify } from '@/lib/skills';
 import { useLibrary } from '@/store/library';
-import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
 type Outcome = { ok: true; id: string; tools: number } | { ok: false; text: string };
@@ -204,123 +200,6 @@ function Hosted({ listing }: { listing: McpListing }) {
   );
 }
 
-// ---------------- a server that runs on a computer ----------------
-
-function Computer({ listing }: { listing: McpListing }) {
-  const { colors } = useTheme();
-  const servers = useLibrary((s) => s.servers);
-  const plan = computerPlan(listing);
-  // The key protects the bridge: made once here, used in the command and as the token when the server is added.
-  const [key] = useState(() => newKey((n) => Crypto.getRandomBytes(n)));
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [address, setAddress] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [outcome, setOutcome] = useState<Outcome | null>(null);
-
-  const get = (k: string, fallback?: string) => values[k] ?? fallback ?? '';
-  const missing = plan.fields.filter((f) => f.required && !get(f.key, f.default).trim());
-  const command = plan.supported ? bridgeCommand(plan.build(Object.fromEntries(plan.fields.map((f) => [f.key, get(f.key, f.default)]))), { key }) : '';
-  const url = bridgeUrl(address);
-  const existing = servers.find((s) => url && s.url === url);
-
-  const add = async () => {
-    if (!url || busy) return;
-    setBusy(true);
-    setOutcome(null);
-    try {
-      const r = await addAndConnect({ name: listing.title, url, transport: 'http', auth: 'token', enabledByDefault: false }, key);
-      haptic.success();
-      setOutcome({ ok: true, id: r.id, tools: r.tools });
-    } catch (e: any) {
-      if (e?.serverId) await removeServer(e.serverId).catch(() => {});
-      setOutcome({
-        ok: false,
-        text: e?.status === 401 ? 'The bridge refused the key. Run the command above again and use that exact key.' : `Couldn’t reach ${url}. Is the command still running, and are the phone and the computer on the same network? On iPhone, allow Local Network for AI Hat in Settings.`,
-      });
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <Screen
-      header={{ title: listing.title }}
-      footer={
-        outcome?.ok ? (
-          <Button label="Open server" flex onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: outcome.id } })} />
-        ) : plan.supported ? (
-          <Button label={busy ? 'Connecting…' : existing ? 'Already added' : 'Add and connect'} flex disabled={busy || !url || !!existing || missing.length > 0} onPress={add} />
-        ) : undefined
-      }>
-      <Header l={listing} />
-      {!plan.supported ? (
-        <Notice icon="info">{plan.reason ?? ''}</Notice>
-      ) : (
-        <>
-          <Notice icon="info">
-            {`This server is a program that runs on a computer. A phone can’t start it, so you run it on your computer behind a small bridge (supergateway, needs Node.js${plan.runner === 'uvx' ? ' and uv' : plan.runner === 'docker' ? ' and Docker' : ''}), then AI Hat connects to it over your network.`}
-          </Notice>
-
-          {plan.fields.length > 0 && (
-            <View style={{ gap: 14 }}>
-              <SectionTitle>Settings for the server</SectionTitle>
-              {plan.fields.map((f) =>
-                f.choices ? (
-                  <View key={f.key} style={{ gap: 8 }}>
-                    <Text size={12.5} weight="medium" color="muted">{f.label}{f.required ? '' : ' (optional)'}</Text>
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                      {f.choices.map((c) => <Chip key={c} label={c} selected={get(f.key, f.default) === c} onPress={() => setValues((v) => ({ ...v, [f.key]: c }))} />)}
-                    </View>
-                  </View>
-                ) : (
-                  <Field key={f.key} label={`${f.label}${f.required ? '' : ' (optional)'}`} value={get(f.key, f.default)} onChangeText={(t) => setValues((v) => ({ ...v, [f.key]: t }))} secureTextEntry={f.secret} hint={f.hint} />
-                ),
-              )}
-            </View>
-          )}
-
-          <View style={{ gap: 8 }}>
-            <SectionTitle>1. Run this on your computer</SectionTitle>
-            <Card style={{ padding: 14, gap: 12 }}>
-              <Text mono size={12} color="text2" selectable>{command}</Text>
-              <Button
-                label="Copy command"
-                variant="outline"
-                height={40}
-                onPress={async () => {
-                  await Clipboard.setStringAsync(command);
-                  haptic.success();
-                  toast('Command copied');
-                }}
-              />
-            </Card>
-            {hint('For macOS, Linux, or Windows through WSL or Git Bash. Leave it running while you use the server (stop it with Ctrl+C). The key in the command is made just for this server; anyone on your network who has it could use the server, so keep it private.')}
-          </View>
-
-          <View style={{ gap: 8 }}>
-            <SectionTitle>2. Tell AI Hat where it is</SectionTitle>
-            <Field label="Your computer’s address" value={address} onChangeText={setAddress} keyboardType="url" placeholder="192.168.1.20" hint="The phone and the computer must be on the same Wi-Fi (or share a network such as Tailscale). Find the address with: ipconfig getifaddr en0 (Mac), hostname -I (Linux) or ipconfig (Windows)." />
-            {url ? <Text mono size={12} color="muted">{url}</Text> : null}
-          </View>
-          {existing && (
-            <Card>
-              <ListRow icon="check" label="Already added" sub={existing.name} onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: existing.id } })} last />
-            </Card>
-          )}
-        </>
-      )}
-
-      {outcome && (
-        <Card>
-          <ListRow icon={outcome.ok ? 'check' : 'warn'} danger={!outcome.ok} label={outcome.ok ? `Connected · ${outcome.tools} tool${outcome.tools === 1 ? '' : 's'} found` : outcome.text} sub={outcome.ok ? 'Keep the command running on your computer while you use it. Tools that change things ask first.' : undefined} last />
-        </Card>
-      )}
-      <View style={{ height: 1, backgroundColor: colors.hairline }} />
-      <Links l={listing} />
-    </Screen>
-  );
-}
-
 export default function MarketMcp() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const listing = id ? recallMcp(id) : undefined;
@@ -332,5 +211,14 @@ export default function MarketMcp() {
       </Screen>
     );
   }
-  return listing.remote ? <Hosted listing={listing} /> : <Computer listing={listing} />;
+  if (!listing.remote) {
+    return (
+      <Screen header={{ title: listing.title }}>
+        <Header l={listing} />
+        <Notice icon="info">{planMcp(listing).reason ?? 'This server can’t be used from a phone.'}</Notice>
+        <Links l={listing} />
+      </Screen>
+    );
+  }
+  return <Hosted listing={listing} />;
 }

@@ -1,13 +1,16 @@
 import { Pressable, View } from 'react-native';
 
-import { Card, Icon, Screen, SectionTitle, Segmented, Text } from '@/components';
+import { Card, Icon, ListRow, Screen, SectionTitle, Segmented, Text } from '@/components';
 import * as haptic from '@/lib/haptics';
 import { useSettings } from '@/store/settings';
-import { accents, radii, useTheme, type ButtonShape, type TextSize, type ThemeMode } from '@/theme';
+import { accents, radii, useTheme, wallpaperColorsAvailable, type ButtonShape, type TextSize, type ThemeMode } from '@/theme';
 
 export default function Appearance() {
   const { colors, radius, body } = useTheme();
   const s = useSettings();
+  // Material You exists on Android 12 and later only; on iPhone the option isn't shown.
+  const canWallpaper = wallpaperColorsAvailable();
+  const fromWallpaper = canWallpaper && s.materialYou;
   return (
     <Screen header={{ title: 'Appearance' }}>
       <Card style={{ padding: 14, gap: 10 }}>
@@ -28,13 +31,23 @@ export default function Appearance() {
 
       <View style={{ gap: 8 }}>
         <SectionTitle>Accent colour · buttons, switches, links</SectionTitle>
-        <View style={{ flexDirection: 'row', gap: 12 }}>
-          {accents.map((a) => (
-            <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={a.name} accessibilityState={{ selected: s.accent === a.value }} onPress={() => { haptic.select(); s.set({ accent: a.value }); }} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: a.value, alignItems: 'center', justifyContent: 'center', borderWidth: s.accent === a.value ? 3 : 0, borderColor: colors.text }}>
-              {s.accent === a.value && <Icon name="check" size={18} color="#0E0F11" />}
-            </Pressable>
-          ))}
+        {canWallpaper && (
+          <Card>
+            <ListRow label="Colours from your wallpaper" sub="Material You: follows your Android wallpaper" toggle={{ on: s.materialYou, onChange: (materialYou) => s.set({ materialYou }) }} last />
+          </Card>
+        )}
+        <View style={{ flexDirection: 'row', gap: 12, opacity: fromWallpaper ? 0.4 : 1 }}>
+          {accents.map((a) => {
+            const on = !fromWallpaper && s.accent === a.value;
+            return (
+              // Picking a colour also stops following the wallpaper.
+              <Pressable key={a.id} accessibilityRole="button" accessibilityLabel={a.name} accessibilityState={{ selected: on }} onPress={() => { haptic.select(); s.set({ accent: a.value, materialYou: false }); }} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: a.value, alignItems: 'center', justifyContent: 'center', borderWidth: on ? 3 : 0, borderColor: colors.text }}>
+                {on && <Icon name="check" size={18} color="#0E0F11" />}
+              </Pressable>
+            );
+          })}
         </View>
+        {fromWallpaper && <Text size={12} color="muted">Using your wallpaper’s colours. Pick a colour to use it instead.</Text>}
       </View>
 
       <View style={{ gap: 8 }}>

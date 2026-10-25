@@ -9,7 +9,6 @@
 import * as Crypto from 'expo-crypto';
 import { gunzipSync, unzipSync } from 'fflate';
 
-import type { StdioSpec } from './bridge';
 import { parseSkillMd } from './skills';
 
 // ---------- shared ----------
@@ -62,20 +61,7 @@ export type McpListing = {
   websiteUrl?: string;
   /** The way to reach it from a phone: a hosted (remote) server. Undefined for servers that only run on a computer. */
   remote?: McpRemote;
-  /** How the registry says the server is installed (npm, pypi, docker…). Servers with these and no `remote` run on a computer. */
-  packages?: RegistryPackage[];
   featured?: boolean;
-};
-
-export type RegistryArg = { type?: 'positional' | 'named'; name?: string; value?: string; default?: string; description?: string; isRequired?: boolean; isSecret?: boolean; format?: string; choices?: string[] };
-export type RegistryPackage = {
-  registryType: string;
-  identifier: string;
-  version?: string;
-  runtimeHint?: string;
-  transport?: { type?: string };
-  packageArguments?: RegistryArg[];
-  environmentVariables?: { name: string; description?: string; isRequired?: boolean; isSecret?: boolean; default?: string; choices?: string[] }[];
 };
 
 const reverseDomain = (name: string) => name.split('/')[0].split('.').reverse().join('.');
@@ -94,7 +80,6 @@ export function normalizeRegistryEntry(entry: any): McpListing | null {
     publisher: reverseDomain(s.name),
     repoUrl: s.repository?.url,
     websiteUrl: s.websiteUrl,
-    packages: Array.isArray(s.packages) ? s.packages.filter((p: any) => p?.identifier && p?.registryType) : undefined,
     remote: r?.url
       ? {
           type: r.type,
@@ -106,14 +91,11 @@ export function normalizeRegistryEntry(entry: any): McpListing | null {
   };
 }
 
-/**
- * One page of registry results. `hosted` servers are reachable over the internet and work from a phone directly; `computer`
- * servers are programs to run on a computer (npm, Python or Docker) that the phone reaches through a bridge.
- */
-export async function searchMcp(query: string, cursor?: string, kind: 'hosted' | 'computer' = 'hosted'): Promise<{ items: McpListing[]; next?: string }> {
+/** One page of registry results. Servers that only run as a program on a computer are left out: a phone can't start them. */
+export async function searchMcp(query: string, cursor?: string): Promise<{ items: McpListing[]; next?: string }> {
   const items: McpListing[] = [];
   let next = cursor;
-  // Keep paging a little when a page has few matches.
+  // Most registry entries are hosted servers, but keep paging a little when a page has few.
   for (let page = 0; page < 3 && items.length < 20; page++) {
     const params = new URLSearchParams({ limit: '60', version: 'latest' });
     if (query.trim()) params.set('search', query.trim());
@@ -121,8 +103,7 @@ export async function searchMcp(query: string, cursor?: string, kind: 'hosted' |
     const d = await getJson<{ servers?: any[]; metadata?: { nextCursor?: string } }>(`${REGISTRY}?${params}`, 'The MCP registry');
     for (const e of d.servers ?? []) {
       const n = normalizeRegistryEntry(e);
-      if (!n) continue;
-      if (kind === 'hosted' ? n.remote : !n.remote && computerPlan(n).supported) items.push(n);
+      if (n?.remote) items.push(n);
     }
     next = d.metadata?.nextCursor || undefined;
     if (!next) break;
@@ -153,11 +134,11 @@ const vars = (s: string) => [...s.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((m) => m
 
 /**
  * Work out the questions to ask. The app's MCP client can send one secret in one header (`Authorization: Bearer …` or
- * a header like `X-API-Key`), and fill `{placeholders}` in the address. More than that needs a computer.
+ * a header like `X-API-Key`), and fill `{placeholders}` in the address. Anything more isn't supported.
  */
 export function planMcp(l: McpListing): McpPlan {
   const r = l.remote;
-  if (!r) return { supported: false, reason: 'This server only runs on a computer, so it can’t be added on a phone.', fields: [] };
+  if (!r) return { supported: false, reason: 'This server only runs as a program on a computer, so it can’t be used from a phone.', fields: [] };
   if (r.type === 'sse') return { supported: false, reason: 'This server uses the older SSE connection, which the app doesn’t speak yet.', fields: [] };
 
   const fields: McpField[] = [];
@@ -200,74 +181,6 @@ export function buildMcpConnection(l: McpListing, plan: McpPlan, values: Record<
   for (const f of plan.fields) if (f.key !== '@token') url = url.replaceAll(`{${f.key}}`, (values[f.key] ?? f.default ?? '').trim());
   const token = (values['@token'] ?? '').trim();
   return { url, headerName: plan.headerName, headerTemplate: plan.headerTemplate, token: token || undefined };
-}
-
-// ----- servers that run on a computer -----
-
-export type ComputerField = { key: string; label: string; hint?: string; secret: boolean; required: boolean; env: boolean; default?: string; choices?: string[] };
-export type ComputerPlan = {
-  supported: boolean;
-  reason?: string;
-  /** What the package is installed with: npx (npm), uvx (Python) or docker. */
-  runner?: 'npx' | 'uvx' | 'docker';
-  fields: ComputerField[];
-  /** The program to start, once the fields are filled. */
-  build: (values: Record<string, string>) => StdioSpec;
-};
-
-const argKey = (a: RegistryArg, i: number) => `arg:${i}:${a.name ?? 'value'}`;
-
-/** How to start a registry package on a computer. Only stdio packages from npm, PyPI and Docker images are handled. */
-export function computerPlan(l: McpListing): ComputerPlan {
-  const none = (reason: string): ComputerPlan => ({ supported: false, reason, fields: [], build: () => ({ command: '', args: [], env: {} }) });
-  const pkg = (l.packages ?? []).find((p) => (!p.transport?.type || p.transport.type === 'stdio') && ['npm', 'pypi', 'oci'].includes(p.registryType));
-  if (!pkg) return none((l.packages ?? []).length ? 'This server is packaged in a way the app can’t start for you (only npm, Python and Docker packages are supported). Its website may explain how to run it.' : 'This server has no package to run.');
-
-  const args = pkg.packageArguments ?? [];
-  const fields: ComputerField[] = [];
-  args.forEach((a, i) => {
-    if (a.value !== undefined || a.default !== undefined || a.isRequired) {
-      // A fixed value needs no question; a required one without a value does.
-      if (a.value !== undefined) return;
-      fields.push({ key: argKey(a, i), label: a.name ? `--${a.name}` : 'Value', hint: a.description, secret: !!a.isSecret, required: !!a.isRequired, env: false, default: a.default, choices: a.choices });
-    }
-  });
-  for (const e of pkg.environmentVariables ?? []) {
-    fields.push({ key: `env:${e.name}`, label: e.name, hint: e.description, secret: !!e.isSecret, required: !!e.isRequired && e.default === undefined, env: true, default: e.default, choices: e.choices });
-  }
-  // Required settings first.
-  fields.sort((x, y) => Number(y.required) - Number(x.required));
-
-  const runner = pkg.registryType === 'npm' ? 'npx' : pkg.registryType === 'pypi' ? 'uvx' : 'docker';
-  const version = pkg.version && pkg.version !== 'latest' ? pkg.version : '';
-  return {
-    supported: true,
-    runner,
-    fields,
-    build(values) {
-      const get = (f: string, fallback?: string) => (values[f] ?? '').trim() || fallback || '';
-      const tail: string[] = [];
-      args.forEach((a, i) => {
-        const v = a.value ?? get(argKey(a, i), a.default);
-        if (!v) return;
-        if (a.type === 'named' && a.name) {
-          if (a.format === 'boolean') {
-            if (v === 'true') tail.push(`--${a.name}`);
-          } else tail.push(`--${a.name}`, v);
-        } else tail.push(v);
-      });
-      const env: Record<string, string> = {};
-      for (const e of pkg.environmentVariables ?? []) {
-        const v = get(`env:${e.name}`, e.default);
-        if (v) env[e.name] = v;
-      }
-      if (pkg.registryType === 'npm') return { command: 'npx', args: ['-y', version ? `${pkg.identifier}@${version}` : pkg.identifier, ...tail], env };
-      if (pkg.registryType === 'pypi') return { command: 'uvx', args: [version ? `${pkg.identifier}==${version}` : pkg.identifier, ...tail], env };
-      // Docker: pass each setting on with `-e NAME`, which takes the value from the environment the bridge starts it in.
-      const image = version && !/[:@]/.test(pkg.identifier.split('/').pop() ?? '') ? `${pkg.identifier}:${version}` : pkg.identifier;
-      return { command: 'docker', args: ['run', '-i', '--rm', ...Object.keys(env).flatMap((k) => ['-e', k]), image, ...tail], env };
-    },
-  };
 }
 
 // ---------- Skills ----------

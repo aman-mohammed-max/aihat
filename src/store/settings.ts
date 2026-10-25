@@ -14,6 +14,8 @@ export type Settings = {
   // Appearance
   mode: ThemeMode;
   accent: string;
+  /** Android 12+: take the accent colours from the wallpaper (Material You) instead of `accent`. */
+  materialYou: boolean;
   buttonShape: ButtonShape;
   textSize: TextSize;
   // Chat defaults
@@ -93,6 +95,7 @@ export const DEFAULT_SETTINGS: Settings = {
   welcomed: false,
   mode: 'dark',
   accent: '#C6F46B',
+  materialYou: false,
   buttonShape: 'pill',
   textSize: 'default',
   defaultProviderId: null,

@@ -14,7 +14,7 @@
       "supportsTablet": false,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers and tools on your own network, for example a model server or an MCP bridge on your computer."
+        "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers you add that are on your local network."
       }
     },
     "android": {
