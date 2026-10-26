@@ -14,8 +14,16 @@
       "supportsTablet": true,
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
-        "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers you add that are on your local network."
-      }
+        "NSLocalNetworkUsageDescription": "AI Hat connects to AI servers you add that are on your local network.",
+        "UIRequiresFullScreen": false,
+        "UISupportedInterfaceOrientations~ipad": [
+          "UIInterfaceOrientationPortrait",
+          "UIInterfaceOrientationPortraitUpsideDown",
+          "UIInterfaceOrientationLandscapeLeft",
+          "UIInterfaceOrientationLandscapeRight"
+        ]
+      },
+      "requireFullScreen": false
     },
     "android": {
       "adaptiveIcon": {
