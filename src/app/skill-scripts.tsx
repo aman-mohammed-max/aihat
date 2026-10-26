@@ -177,9 +177,11 @@ export default function SkillScripts() {
                 </View>
               ))}
             </View>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <Button label="Not now" variant="outline" height={44} textSize={14} flex onPress={() => router.back()} />
-              <Button label={`Download (${MB(RUNTIME_BYTES)})`} height={44} textSize={14} flex onPress={() => { wantOn.current = true; void downloadRuntime(); }} />
+            <View style={{ gap: 4, paddingTop: 2 }}>
+              <Button label={`Download · ${MB(RUNTIME_BYTES)}`} height={48} onPress={() => { wantOn.current = true; void downloadRuntime(); }} />
+              <Pressable accessibilityRole="button" onPress={() => router.back()} style={({ pressed }) => ({ height: 44, alignItems: 'center', justifyContent: 'center', opacity: pressed ? 0.6 : 1 })}>
+                <Text size={14.5} color="muted">Not now</Text>
+              </Pressable>
             </View>
           </View>
         ) : rt.status === 'downloading' ? null : (
@@ -274,31 +276,56 @@ export default function SkillScripts() {
 
       {on && (
         <View style={{ gap: 8 }}>
-          <SectionTitle space={0}>Test it</SectionTitle>
-          <Note>Runs the built-in checks: Word, Excel, PDF and PowerPoint files, a runaway script being stopped, and (on a phone) that scripts can’t reach the internet.</Note>
-          <Button label={testing ? 'Testing…' : 'Run the checks'} variant="outline" height={44} textSize={14} disabled={testing} onPress={runTests} />
-          {startMs != null ? <Text size={12.5} color="muted" style={{ paddingHorizontal: 4 }}>{rt.coldMs ? `Python started in ${(rt.coldMs / 1000).toFixed(1)} s (first run)` : `Python was already running (ready in ${(startMs / 1000).toFixed(1)} s)`}{ran ? ` · ${passed} of ${ran} passed` : ''}</Text> : null}
-          {TESTS.map((t) => {
-            const s = tests[t.id];
-            if (!s) return null;
-            return (
-              <View key={t.id} style={{ backgroundColor: colors.surface, borderRadius: 14, padding: 12, gap: 6 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  {s.status === 'running' ? <ActivityIndicator size="small" color={colors.muted} /> : <Icon name={s.status === 'pass' ? 'check' : s.status === 'skip' ? 'info' : 'close'} size={16} color={s.status === 'pass' ? colors.accent : s.status === 'skip' ? colors.muted : colors.danger} strokeWidth={2} />}
-                  <Text size={14} style={{ flex: 1 }}>{t.title}</Text>
-                  {s.ms != null ? <Text mono size={12} color="muted">{`${(s.ms / 1000).toFixed(2)} s`}</Text> : null}
+          <SectionTitle space={0}>Check that it works</SectionTitle>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>
+            <View style={{ padding: 14, gap: 12 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <View style={{ width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.surface2 }}>
+                  {testing ? <ActivityIndicator size="small" color={colors.accent} /> : <Icon name={ran && passed === ran ? 'check' : ran ? 'alert' : 'tool'} size={18} color={ran && passed === ran ? colors.accent : ran ? colors.warn : colors.text2} strokeWidth={2} />}
                 </View>
-                {s.note ? <Text size={12} color="muted">{s.note}</Text> : null}
-                {s.problems ? <Text size={12} color="danger" selectable>{s.problems.join('\n')}</Text> : null}
-                {s.files?.map((f) => (
-                  <Pressable key={f.name} accessibilityRole="button" onPress={() => openOutput(f.uri, f.name).catch((e) => Alert.alert('Couldn’t open it', e.message))} style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Icon name="file" size={14} color={colors.accent} />
-                    <Text size={13} color="accent">{`Open ${f.name}`}</Text>
-                  </Pressable>
-                ))}
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text size={15} weight="medium">{testing ? `Checking… ${ran} of ${TESTS.length}` : ran ? `${passed} of ${ran} passed` : 'Not checked yet'}</Text>
+                  <Text size={12.5} color="muted">
+                    {startMs != null ? (rt.coldMs ? `Python started in ${(rt.coldMs / 1000).toFixed(1)} s` : 'Python was already running') : 'Makes Word, Excel, PDF and PowerPoint files, stops a runaway script, and checks there’s no internet'}
+                  </Text>
+                </View>
               </View>
-            );
-          })}
+              <Button label={testing ? 'Checking…' : ran ? 'Run the checks again' : 'Run the checks'} variant="outline" height={44} textSize={14} disabled={testing} onPress={runTests} />
+            </View>
+            {Object.keys(tests).length > 0 &&
+              TESTS.map((t) => {
+                const s = tests[t.id];
+                return (
+                  <View key={t.id} style={{ borderTopWidth: 1, borderTopColor: colors.hairline, paddingHorizontal: 14, paddingVertical: 11, gap: 6 }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={{ width: 18, alignItems: 'center' }}>
+                        {!s ? (
+                          <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: colors.border }} />
+                        ) : s.status === 'running' ? (
+                          <ActivityIndicator size="small" color={colors.muted} />
+                        ) : (
+                          <Icon name={s.status === 'pass' ? 'check' : s.status === 'skip' ? 'info' : 'close'} size={16} color={s.status === 'pass' ? colors.accent : s.status === 'skip' ? colors.muted : colors.danger} strokeWidth={2.2} />
+                        )}
+                      </View>
+                      <Text size={14} color={s ? 'text' : 'muted'} style={{ flex: 1 }} numberOfLines={1}>{t.title}</Text>
+                      {s?.ms != null ? <Text mono size={12} color="muted">{`${(s.ms / 1000).toFixed(1)} s`}</Text> : null}
+                    </View>
+                    {s?.note ? <Text size={12} color="muted" style={{ paddingLeft: 28 }}>{s.note}</Text> : null}
+                    {s?.problems ? <Text size={12} color="danger" selectable style={{ paddingLeft: 28, lineHeight: 17 }}>{s.problems.join('\n')}</Text> : null}
+                    {s?.files?.length ? (
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingLeft: 28 }}>
+                        {s.files.map((f) => (
+                          <Pressable key={f.name} accessibilityRole="button" accessibilityLabel={`Open ${f.name}`} onPress={() => openOutput(f.uri, f.name).catch((e) => Alert.alert('Couldn’t open it', e.message))} style={({ pressed }) => ({ flexDirection: 'row', alignItems: 'center', gap: 5, height: 28, paddingHorizontal: 10, borderRadius: 14, backgroundColor: colors.surface2, opacity: pressed ? 0.6 : 1 })}>
+                            <Icon name="file" size={13} color={colors.accent} />
+                            <Text size={12.5} color="accent">{f.name}</Text>
+                          </Pressable>
+                        ))}
+                      </View>
+                    ) : null}
+                  </View>
+                );
+              })}
+          </View>
         </View>
       )}
 

@@ -347,7 +347,7 @@ export function Button({ label, onPress, variant = 'primary', height = 46, flex,
         opacity: disabled ? 0.5 : pressed ? 0.85 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}>
-      <Text size={textSize} weight={filled ? 'semi' : 'regular'} color={fg} style={variant === 'dangerFill' ? { color: isDark ? '#2A0E0E' : '#FFFFFF' } : undefined}>{label}</Text>
+      <Text size={textSize} weight={filled ? 'semi' : 'regular'} color={fg} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8} style={variant === 'dangerFill' ? { color: isDark ? '#2A0E0E' : '#FFFFFF' } : undefined}>{label}</Text>
     </Pressable>
   );
 }

@@ -1,43 +1,84 @@
 import { createAudioPlayer, setAudioModeAsync, type AudioPlayer } from 'expo-audio';
 import * as Speech from 'expo-speech';
-import { Platform } from 'react-native';
 
 import { synthesize } from '@/api/openai';
 import { useSpeech } from '@/store/speech';
 import { useSettings } from '@/store/settings';
 
 import { requireRoute } from './endpoints';
+import { cleanForSpeech as clean, splitForSpeech as split } from './speech-text';
 import { saveBytes } from './media';
 
 let player: AudioPlayer | null = null;
-let ticket = 0; // bumps on every speak/stop so a slow download can't start playing after Cancel
+let ticket = 0; // bumps on every speak/stop, so nothing from an earlier reading keeps going after Stop
+
+// The phone's own voice reads one short piece at a time. Stop then ends it at once, Pause works on Android too
+// (it stops and later starts again from the same piece), and long replies stay under the voice's length limit.
+let pieces: string[] = [];
+let at = 0;
 
 const set = (p: Parameters<ReturnType<typeof useSpeech.getState>['set']>[0]) => useSpeech.getState().set(p);
 
-/** Reading markdown aloud sounds bad: drop code blocks and markup characters. */
-const clean = (t: string) => t.replace(/```[\s\S]*?```/g, ' code block. ').replace(/[`*_#>]/g, '').replace(/\[(.*?)\]\(.*?\)/g, '$1').trim();
+function stopPlayer() {
+  const p = player;
+  player = null;
+  if (!p) return;
+  try {
+    p.pause();
+  } catch {
+    /* already gone */
+  }
+  try {
+    p.remove();
+  } catch {
+    /* already gone */
+  }
+}
 
 export function stopSpeaking() {
   ticket++;
+  pieces = [];
+  at = 0;
   Speech.stop();
-  player?.remove();
-  player = null;
+  stopPlayer();
   set({ status: 'idle' });
+}
+
+/** Read pieces[at…] with the phone's voice, one after another. */
+function speakFrom(mine: number) {
+  if (mine !== ticket || at >= pieces.length) {
+    if (mine === ticket) set({ status: 'idle' });
+    return;
+  }
+  const next = () => {
+    if (mine !== ticket || useSpeech.getState().status !== 'playing') return;
+    at++;
+    speakFrom(mine);
+  };
+  Speech.speak(pieces[at], {
+    onDone: next,
+    onError: () => {
+      if (mine === ticket) set({ status: 'idle' });
+    },
+  });
 }
 
 export function pauseSpeaking() {
   if (useSpeech.getState().status !== 'playing') return;
-  if (player) player.pause();
-  else if (Platform.OS === 'ios') Speech.pause();
-  else return;
   set({ status: 'paused' });
+  if (player) player.pause();
+  else {
+    // Stop the current piece; Resume reads it again from its start.
+    ticket++;
+    Speech.stop();
+  }
 }
 
 export function resumeSpeaking() {
   if (useSpeech.getState().status !== 'paused') return;
-  if (player) player.play();
-  else Speech.resume();
   set({ status: 'playing' });
+  if (player) player.play();
+  else speakFrom(++ticket);
 }
 
 /** Read text aloud with the phone's voice, or through the speech endpoint chosen in Voice & speech. */
@@ -49,11 +90,10 @@ export async function speak(text: string) {
   const s = useSettings.getState();
 
   if (s.ttsEngine === 'device') {
-    set({ status: 'playing', canPause: Platform.OS === 'ios' });
-    const idle = () => {
-      if (mine === ticket) set({ status: 'idle' });
-    };
-    Speech.speak(input, { onDone: idle, onStopped: idle, onError: idle });
+    pieces = split(input);
+    at = 0;
+    set({ status: 'playing', canPause: true });
+    speakFrom(mine);
     return;
   }
 
@@ -61,15 +101,15 @@ export async function speak(text: string) {
   try {
     const { provider, model } = requireRoute('speech');
     const { bytes, ext } = await synthesize(provider, { model, input: input.slice(0, 4000), voice: s.ttsVoice });
-    if (mine !== ticket) return; // cancelled while downloading
+    if (mine !== ticket) return; // stopped while downloading
     await setAudioModeAsync({ playsInSilentMode: true });
+    if (mine !== ticket) return;
     const p = createAudioPlayer({ uri: saveBytes(bytes, ext) });
     player = p;
     p.addListener('playbackStatusUpdate', (st) => {
-      if (st.didJustFinish && mine === ticket) {
-        p.remove();
-        player = null;
-        set({ status: 'idle' });
+      if (st.didJustFinish && player === p) {
+        stopPlayer();
+        if (mine === ticket) set({ status: 'idle' });
       }
     });
     p.play();

@@ -48,20 +48,3 @@ export const success = () => fire('success');
 export const warning = () => fire('warning');
 /** Something failed. */
 export const error = () => fire('error');
-
-/**
- * Play the whole vocabulary once, ignoring the Haptics switch, so you can feel what your phone does.
- * Resolves with a short explanation when the device refused, or null when everything played.
- */
-export async function test(): Promise<string | null> {
-  const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-  try {
-    for (const k of ['select', 'tap', 'toggleOn', 'longPress', 'success', 'warning', 'error'] as Kind[]) {
-      await PLAY[k]();
-      await wait(260);
-    }
-    return null;
-  } catch (e: any) {
-    return e?.message ?? 'The phone refused the vibration.';
-  }
-}

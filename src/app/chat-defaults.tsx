@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import { router } from 'expo-router';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 
 import { Card, ListRow, Screen, SectionTitle } from '@/components';
 import { isDesktop } from '@/lib/device';
@@ -12,12 +12,6 @@ import { useProviders, isChatModel } from '@/store/providers';
 import { useSettings } from '@/store/settings';
 
 const ARCHIVE = [{ value: '0', label: 'Never' }, { value: '30', label: '30 days' }, { value: '90', label: '90 days' }, { value: '365', label: '1 year' }];
-
-/** Plays the haptic patterns once, even with the switch off, and says so when the phone refuses. */
-async function testHaptics() {
-  const problem = await haptic.test();
-  if (problem) Alert.alert('This phone didn’t vibrate', problem);
-}
 
 export default function ChatDefaults() {
   const s = useSettings();
@@ -51,7 +45,6 @@ export default function ChatDefaults() {
           <ListRow label="Show reasoning" toggle={{ on: s.showReasoning, onChange: (showReasoning) => s.set({ showReasoning }) }} />
           <ListRow label="Notify when a reply is ready" sub={!notificationsAvailable() ? 'Not available in this build of the app (the installed APK and IPA have it).' : isDesktop ? 'When you are in another window or another chat.' : 'When you are in another app or another chat. iPhone pauses apps soon after you leave, so very long replies may not notify.'} height={46} toggle={{ on: s.notifyReplies, onChange: (notifyReplies) => { s.set({ notifyReplies }); if (notifyReplies) void ensureNotifyPermission(); } }} />
           {!isDesktop && <ListRow label="Haptics" toggle={{ on: s.haptics, onChange: (haptics) => { s.set({ haptics }); if (haptics) setTimeout(() => haptic.toggle(true), 0); } }} />}
-          {!isDesktop && <ListRow label="Test haptics" sub="Plays seven short patterns. If you feel nothing, check System Haptics (iPhone) or Touch feedback and vibration (Android)." onPress={testHaptics} />}
         </Card>
       </View>
       <View>
