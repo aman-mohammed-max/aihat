@@ -66,8 +66,11 @@ const PAGE = 'https://runtime.aihat.invalid/';
 // The page's own console, for the failure notes.
 const leaks = [];
 await page.route('**/*', (r) => {
-  if (r.request().url() === PAGE) return r.fulfill({ contentType: 'text/html', body: HTML });
-  leaks.push(r.request().url());
+  const url = r.request().url();
+  if (url === PAGE) return r.fulfill({ contentType: 'text/html', body: HTML });
+  // In-memory files (the worker, Python's core) never touch the network. WebKit routes them here too.
+  if (/^(blob|data):/.test(url)) return r.continue();
+  leaks.push(url);
   return r.abort();
 });
 const wait = (test, ms = 180_000) =>
