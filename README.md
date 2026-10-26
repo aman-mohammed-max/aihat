@@ -151,7 +151,7 @@ Phones stay upright; tablets turn freely.
 
 ## Files it can read
 
-Plain text, Markdown, CSV, JSON, code, **PDF**, **Word (.docx)**, **PowerPoint (.pptx)** and **Excel (.xlsx)**. Scanned PDFs (pictures of pages) and password-protected files can't be read. The app tells you why instead of silently dropping them.
+Plain text, Markdown, CSV, JSON, code, **PDF**, **Word (.docx)**, **PowerPoint (.pptx)** and **Excel (.xlsx)**. **Scanned PDFs** (pictures of pages) are sent as page pictures, so pick a model marked **Vision** to read them (up to 20 pages; black-and-white fax-style scans can't be converted yet). Password-protected files can't be read. The app tells you why instead of silently dropping a file.
 
 ## Privacy
 
@@ -167,7 +167,6 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 - **Browser sign-in for MCP servers** works with servers that let apps register themselves (Notion, Linear, Sentry, Vercel, Stripe, Supabase, Figma, Canva, PayPal and others). Servers that don't (GitHub's, Asana's) need an access token. This has been tested against a stand-in sign-in service and the real servers' sign-in descriptions, not yet with a real login on a phone.
 - **MCP servers that only run as a program on a computer** (“stdio” servers, started with `npx`, `uvx` or `docker`) can't be used: a phone can't start them. Hosted servers work.
 - **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
-- **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
 - **The desktop apps are new and haven't been tried on a real Mac, Windows PC or Linux desktop yet.** The web build and its Bun backend were tested in Chromium on Linux; the windows themselves are built by GitHub Actions. They are unsigned (see Download), don't update themselves yet (download a new build from Releases), and on Linux the menu bar isn't shown (use the keyboard shortcuts). Dictation in the desktop app depends on the system web view's microphone support.
 - Not available as a website: the web build needs the desktop app's backend.
 

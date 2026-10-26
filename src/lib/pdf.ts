@@ -1,4 +1,4 @@
-import { inflateSync, unzlibSync } from 'fflate';
+import { inflateSync, unzlibSync, zlibSync } from 'fflate';
 
 /**
  * Minimal PDF text extractor in plain JavaScript (no native code).
@@ -6,7 +6,8 @@ import { inflateSync, unzlibSync } from 'fflate';
  * It scans the file for objects (including those packed in compressed object streams), walks the page tree,
  * decompresses each page's content stream and reads the text-showing operators, mapping character codes to
  * Unicode through each font's ToUnicode map or simple encoding. It handles normal text PDFs. It cannot read
- * scanned pages (no text layer), password-protected files, or fonts that carry no text map.
+ * password-protected files or fonts that carry no text map. For a scanned page (no text layer) it returns the page's
+ * picture instead (see pageImage), for a model that can see images to read.
  */
 
 type Name = { name: string };
@@ -561,7 +562,123 @@ function pageText(ctx: Ctx, content: Uint8Array, resources: Dict | undefined): s
 
 // ---------- entry ----------
 
-export type PdfResult = { text: string; pages: number; unreadable: number };
+// ---------- page pictures (scans) ----------
+
+export type PdfImage = { page: number; mime: 'image/jpeg' | 'image/png'; bytes: Uint8Array };
+
+const MAX_SCAN_PAGES = 20;
+const MAX_SCAN_BYTES = 20 * 1024 * 1024;
+
+const CRC = new Uint32Array(256).map((_, n) => {
+  let c = n;
+  for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+  return c >>> 0;
+});
+const crc32 = (b: Uint8Array) => {
+  let c = 0xffffffff;
+  for (const x of b) c = CRC[(c ^ x) & 255] ^ (c >>> 8);
+  return (c ^ 0xffffffff) >>> 0;
+};
+
+/** A PNG from rows that already start with a PNG filter byte (bit depth 1 or 8; gray or RGB). */
+function png(width: number, height: number, depth: number, rgb: boolean, rows: Uint8Array): Uint8Array {
+  const chunk = (type: string, data: Uint8Array) => {
+    const out = new Uint8Array(12 + data.length);
+    const v = new DataView(out.buffer);
+    v.setUint32(0, data.length);
+    for (let i = 0; i < 4; i++) out[4 + i] = type.charCodeAt(i);
+    out.set(data, 8);
+    v.setUint32(8 + data.length, crc32(out.subarray(4, 8 + data.length)));
+    return out;
+  };
+  const ihdr = new Uint8Array(13);
+  const v = new DataView(ihdr.buffer);
+  v.setUint32(0, width);
+  v.setUint32(4, height);
+  ihdr[8] = depth;
+  ihdr[9] = rgb ? 2 : 0;
+  const parts = [new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlibSync(rows)), chunk('IEND', new Uint8Array(0))];
+  const out = new Uint8Array(parts.reduce((n, x) => n + x.length, 0));
+  let at = 0;
+  for (const x of parts) { out.set(x, at); at += x.length; }
+  return out;
+}
+
+const filterNames = (doc: Doc, f: any) => (Array.isArray(doc.resolve(f)) ? doc.arr(f) : f ? [f] : []).map((x) => (isName(doc.resolve(x)) ? (doc.resolve(x) as Name).name : ''));
+
+/**
+ * One image XObject as a file a model can look at: JPEG data as it is, 8-bit gray / RGB and 1-bit gray (Flate
+ * compressed) wrapped as PNG. Null for kinds that would need a real image decoder (CCITT fax, JBIG2, JPEG 2000,
+ * indexed or CMYK colour).
+ */
+function imageFile(doc: Doc, st: Stream): Omit<PdfImage, 'page'> | null {
+  const d = st.dict;
+  const filters = filterNames(doc, d.Filter);
+  if (filters.length === 1 && (filters[0] === 'DCTDecode' || filters[0] === 'DCT')) return { mime: 'image/jpeg', bytes: doc.buf.slice(st.start, st.end) };
+  if (!(filters.length === 1 && (filters[0] === 'FlateDecode' || filters[0] === 'Fl'))) return null;
+
+  const w = doc.resolve(d.Width), h = doc.resolve(d.Height);
+  const mask = doc.resolve(d.ImageMask) === true;
+  const bpc = mask ? 1 : doc.resolve(d.BitsPerComponent);
+  let cs = doc.resolve(d.ColorSpace);
+  if (Array.isArray(cs) && isName(doc.resolve(cs[0])) && doc.resolve(cs[0]).name === 'ICCBased') {
+    const n = doc.dict(cs[1])?.N;
+    cs = { name: n === 1 ? 'DeviceGray' : n === 3 ? 'DeviceRGB' : '' };
+  }
+  const space = mask ? 'DeviceGray' : isName(cs) ? cs.name : '';
+  const colors = space === 'DeviceGray' || space === 'G' ? 1 : space === 'DeviceRGB' || space === 'RGB' ? 3 : 0;
+  if (typeof w !== 'number' || typeof h !== 'number' || !colors || !(bpc === 8 || (bpc === 1 && colors === 1))) return null;
+
+  const data = doc.decode(st);
+  if (!data) return null;
+  const rowBytes = Math.ceil((w * colors * bpc) / 8);
+  const predictor = doc.dict(Array.isArray(doc.resolve(d.DecodeParms)) ? doc.arr(d.DecodeParms)[0] : d.DecodeParms)?.Predictor;
+  let rows: Uint8Array;
+  if (typeof predictor === 'number' && predictor >= 10) {
+    if (data.length < (rowBytes + 1) * h) return null;
+    rows = data.subarray(0, (rowBytes + 1) * h); // already one PNG filter byte per row
+  } else {
+    if (data.length < rowBytes * h) return null;
+    rows = new Uint8Array((rowBytes + 1) * h);
+    for (let y = 0; y < h; y++) rows.set(data.subarray(y * rowBytes, (y + 1) * rowBytes), y * (rowBytes + 1) + 1);
+  }
+  // In PDF and PNG alike 0 is black; a Decode array of [1 0] (or a stencil mask) flips that.
+  const decode = doc.arr(d.Decode);
+  if (bpc === 1 && (decode[0] === 1) !== mask) {
+    if (predictor >= 10) return null; // flipping filtered rows would need unfiltering first
+    for (let y = 0; y < h; y++) for (let x = 1; x <= rowBytes; x++) rows[y * (rowBytes + 1) + x] ^= 0xff;
+  }
+  return { mime: 'image/png', bytes: png(w, h, bpc, colors === 3, rows) };
+}
+
+/** The biggest picture on a page (looking one level into form XObjects), which on a scanned page is the scan. */
+function pageImage(doc: Doc, resources: Dict | undefined, depth = 0): Stream | null {
+  let best: Stream | null = null;
+  let area = 0;
+  const xobjects = doc.dict(resources?.XObject) ?? {};
+  for (const key of Object.keys(xobjects)) {
+    const st = doc.resolve(xobjects[key]);
+    if (!isStream(st)) continue;
+    const sub = isName(doc.resolve(st.dict.Subtype)) ? (doc.resolve(st.dict.Subtype) as Name).name : '';
+    let cand: Stream | null = null;
+    if (sub === 'Image') cand = st;
+    else if (sub === 'Form' && depth < 1) cand = pageImage(doc, doc.dict(st.dict.Resources), depth + 1);
+    if (!cand) continue;
+    const a = (Number(doc.resolve(cand.dict.Width)) || 0) * (Number(doc.resolve(cand.dict.Height)) || 0);
+    if (a > area) { best = cand; area = a; }
+  }
+  return best;
+}
+
+export type PdfResult = {
+  text: string;
+  pages: number;
+  unreadable: number;
+  /** Pictures of pages that have no text (scans), up to MAX_SCAN_PAGES pages and MAX_SCAN_BYTES in all. */
+  images: PdfImage[];
+  /** Pages with no text whose picture couldn't be used (an image kind we can't convert, or over the limits). */
+  scansLeftOut: number;
+};
 
 /** Extract the text of every page. Throws PdfError for encrypted or non-PDF input. */
 export function extractPdf(bytes: Uint8Array): PdfResult {
@@ -593,6 +710,9 @@ export function extractPdf(bytes: Uint8Array): PdfResult {
 
   const ctx: Ctx = { doc, fonts: new Map(), lost: 0, depth: 0, seen: new Set() };
   const out: string[] = [];
+  const images: PdfImage[] = [];
+  let imageBytes = 0;
+  let scansLeftOut = 0;
   pages.forEach((pg, i) => {
     const parts = Array.isArray(doc.resolve(pg.dict.Contents)) ? doc.arr(pg.dict.Contents) : [pg.dict.Contents];
     const chunks: Uint8Array[] = [];
@@ -607,7 +727,15 @@ export function extractPdf(bytes: Uint8Array): PdfResult {
     ctx.seen = new Set();
     const text = pageText(ctx, joined, pg.resources).trim();
     out.push(text ? `[Page ${i + 1}]\n${text}` : `[Page ${i + 1}]`);
+    if (!text) {
+      const st = pageImage(doc, pg.resources);
+      const file = st && images.length < MAX_SCAN_PAGES ? imageFile(doc, st) : null;
+      if (file && imageBytes + file.bytes.length <= MAX_SCAN_BYTES) {
+        images.push({ page: i + 1, ...file });
+        imageBytes += file.bytes.length;
+      } else if (st) scansLeftOut++;
+    }
   });
   const text = out.join('\n\n');
-  return { text, pages: pages.length, unreadable: ctx.lost };
+  return { text, pages: pages.length, unreadable: ctx.lost, images, scansLeftOut };
 }

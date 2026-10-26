@@ -32,8 +32,8 @@ export async function pickFiles(): Promise<Attachment[]> {
 
 /**
  * Read files into attachments: plain text and code directly, PDF / Word / PowerPoint / Excel through the document
- * readers, pictures as images the model can see. Files that can't be read are listed in one message instead of
- * being silently dropped.
+ * readers, pictures (and the pages of a scanned PDF) as images the model can see. Files that can't be read are
+ * listed in one message instead of being silently dropped.
  */
 export async function readFiles(list: Picked[]): Promise<Attachment[]> {
   const maxMb = useSettings.getState().maxFileMb;
@@ -57,6 +57,12 @@ export async function readFiles(list: Picked[]): Promise<Attachment[]> {
         toast(`Reading ${a.name}…`);
         await new Promise((r) => setTimeout(r, 30)); // let the toast paint before the (synchronous) parse
         const r = readDocument(await readBytes(a.uri), a.name);
+        // Scanned pages come back as pictures: they go along as images, for a model that can see them to read.
+        for (const img of r.images ?? []) {
+          out.push({ id: uid(), kind: 'image', name: `${a.name}, page ${img.page}`, uri: dataUri(img.bytes, img.mime), mime: img.mime });
+        }
+        if (r.images?.length) toast(`${a.name}: scanned pages added as pictures. Pick a model marked Vision to read them.`);
+        if (!r.text) continue;
         text = r.text;
         meta = r.meta;
       } else if (TEXT_EXT.test(a.name) || a.mimeType?.startsWith('text/') || a.mimeType === 'application/json') {

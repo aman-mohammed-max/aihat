@@ -1,8 +1,9 @@
 import { unzipSync } from 'fflate';
 
-import { extractPdf, PdfError } from './pdf';
+import { extractPdf, PdfError, type PdfImage } from './pdf';
 
-export type ReadResult = { text: string; meta: string };
+/** `images`: pictures of scanned PDF pages, for a model that can see images to read. */
+export type ReadResult = { text: string; meta: string; images?: PdfImage[] };
 
 const dec = new TextDecoder('utf-8');
 const entities: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'" };
@@ -78,8 +79,8 @@ const kb = (n: number) => (n >= 10000 ? `${Math.round(n / 1000)}k` : String(n));
 export const DOC_EXT = /\.(pdf|docx|pptx|xlsx)$/i;
 
 /**
- * Turn a PDF, Word, PowerPoint or Excel file into plain text. Throws an Error with a message fit to show the user
- * (for example for a password-protected or scanned PDF).
+ * Turn a PDF, Word, PowerPoint or Excel file into plain text, plus the pictures of a PDF's scanned pages. Throws an
+ * Error with a message fit to show the user (for example for a password-protected PDF).
  */
 export function readDocument(bytes: Uint8Array, name: string): ReadResult {
   const ext = name.toLowerCase().match(/\.(\w+)$/)?.[1];
@@ -87,9 +88,17 @@ export function readDocument(bytes: Uint8Array, name: string): ReadResult {
   if (ext === 'pdf') {
     const r = extractPdf(bytes);
     const body = r.text.replace(/\[Page \d+\]/g, '').trim();
-    if (!body) throw new Error(`No selectable text in ${r.pages} page${r.pages === 1 ? '' : 's'}. This looks like a scan, and reading scans needs OCR, which isn’t built yet. Try a PDF with real text.`);
-    const note = r.unreadable > 0 ? ` · ${r.unreadable} characters couldn’t be decoded` : '';
-    return { text: r.text, meta: `${r.pages} page${r.pages === 1 ? '' : 's'} · ${kb(r.text.length)} chars${note}` };
+    const pl = (n: number) => `${n} page${n === 1 ? '' : 's'}`;
+    if (!body && !r.images.length) {
+      throw new Error(`No selectable text in ${pl(r.pages)}, and the page pictures use a kind of compression the app can’t convert (such as black-and-white fax). Try a PDF with real text, or photos of the pages.`);
+    }
+    const notes = [
+      r.unreadable > 0 && `${r.unreadable} characters couldn’t be decoded`,
+      r.images.length > 0 && `${pl(r.images.length)} sent as pictures`,
+      r.scansLeftOut > 0 && `${pl(r.scansLeftOut)} of scans left out`,
+    ].filter(Boolean);
+    const size = body ? ` · ${kb(r.text.length)} chars` : '';
+    return { text: body ? r.text : '', meta: `${pl(r.pages)}${size}${notes.map((n) => ` · ${n}`).join('')}`, images: r.images };
   }
 
   let zip: Record<string, Uint8Array>;
