@@ -60,6 +60,15 @@ export function normPath(p: string) {
   return parts.some((x) => x === '..') ? '' : parts.join('/');
 }
 
+/** File names that are programs. A skill's scripts are kept as text for the assistant to read; the app never runs them. */
+export const SCRIPT_FILE = /\.(py|sh|bash|zsh|js|mjs|cjs|ts|rb|php|pl|lua|go|rs|java|kt|swift|c|cpp|cs|sql|r)$/i;
+
+/** A file size as the design writes it: 268 B, 11.9 kB. */
+export const fileSize = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)} kB` : `${n} B`);
+
+/** Where a skill came from, for the line under its name: from GitHub, from vercel.com, written here. */
+export const sourceLabel = (source: string) => (source === 'local' || !source ? 'written here' : source.startsWith('github.com/') ? 'from GitHub' : `from ${source.split('/')[0]}`);
+
 /** The list of a skill's extra files, written for the model. */
 export function fileNote(files: { path: string; size: number }[]) {
   if (!files.length) return '';

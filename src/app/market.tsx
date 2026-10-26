@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 
-import { Button, Card, Chip, Icon, PulseDots, Screen, SearchBar, SectionTitle, Segmented, Text } from '@/components';
+import { Button, Chip, Icon, PulseDots, Screen, SearchBar, SectionTitle, Segmented, Text } from '@/components';
 import {
   compact, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
@@ -88,7 +88,8 @@ function useCardWidth() {
 /** Search results: a list on a phone, a grid of cards on a bigger screen. */
 function Results({ children }: { children: React.ReactNode }) {
   const card = useCardWidth();
-  return card ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View> : <Card>{children}</Card>;
+  const { colors } = useTheme();
+  return card ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View> : <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>{children}</View>;
 }
 
 function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: string; meta?: string; badge?: string; onPress: () => void; last?: boolean }) {
@@ -123,8 +124,8 @@ function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: 
       style={({ pressed }) => ({ minHeight: 72, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairline })}>
       <Tile name={title} />
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
-        <Text weight="medium" numberOfLines={1}>{title}</Text>
-        {sub ? <Text size={12.5} color="muted" numberOfLines={2}>{sub}</Text> : null}
+        <Text size={15} weight="medium" numberOfLines={1}>{title}</Text>
+        {sub ? <Text size={12.5} color="muted" numberOfLines={2} style={{ lineHeight: 17 }}>{sub}</Text> : null}
         {meta ? <Text size={11.5} color="faint" numberOfLines={1}>{meta}</Text> : null}
       </View>
       {badge ? (
@@ -132,7 +133,7 @@ function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: 
           <Text size={11.5} color="accent" weight="medium">{badge}</Text>
         </View>
       ) : (
-        <Icon name="chevronRight" size={16} color={colors.faint} />
+        <Icon name="chevronRight" size={16} color={colors.faint} strokeWidth={2} />
       )}
     </Pressable>
   );
@@ -200,18 +201,18 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   return (
     <>
       <SearchBar value={q} onChangeText={setQ} placeholder={placeholder} keyboardType={src === 'github' ? 'url' : 'default'} onSubmit={() => setApplied(q.trim())} />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0, marginTop: -8 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0 }}>
         {sources.map((s) => (
           <Chip key={s.id} label={s.label} selected={src === s.id} onPress={() => { setSrc(s.id); setQ(''); setApplied(''); }} />
         ))}
       </ScrollView>
-      <Text size={12.5} color="muted" style={{ marginTop: -8 }}>
+      <Text size={12.5} color="muted" style={{ paddingHorizontal: 4, lineHeight: 19 }}>
         {src === 'popular' ? 'The most-installed skills from public GitHub repositories, listed by claude-plugins.dev.' : src === 'skillssh' ? 'Search skills.sh, the open skills directory from Vercel.' : 'A public GitHub repository or folder with SKILL.md files, or a website that publishes skills itself.'} You see the full text before adding anything.
       </Text>
 
       {!ready && src === 'skillssh' && (
         <View style={{ gap: 10 }}>
-          <SectionTitle>Try searching for</SectionTitle>
+          <SectionTitle space={0}>Try searching for</SectionTitle>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {IDEAS.map((i) => <Chip key={i} label={i} onPress={() => { setQ(i); setApplied(i); }} />)}
           </View>
@@ -221,21 +222,21 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       {!ready && src === 'github' && (
         <View style={{ gap: 20 }}>
           <View>
-            <SectionTitle>Skills published by the companies themselves</SectionTitle>
-            <Card>
+            <SectionTitle space={8}>Skills published by the companies themselves</SectionTitle>
+            <Results>
               {SKILL_SITES.map((s, i) => (
                 <Row key={s.site} title={s.label} sub={s.sub} meta={s.site} last={i === SKILL_SITES.length - 1} onPress={() => { setQ(s.site); setApplied(s.site); }} />
               ))}
-            </Card>
-            <Text size={12} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 17 }}>Any website can publish skills at /.well-known/agent-skills (the open Agent Skills standard). Downloads are checked against the checksum the site gives.</Text>
+            </Results>
+            <Text size={12.5} color="muted" style={{ marginTop: 8, paddingHorizontal: 4, lineHeight: 19 }}>Any website can publish skills at /.well-known/agent-skills (the open Agent Skills standard). Downloads are checked against the checksum the site gives.</Text>
           </View>
           <View>
-          <SectionTitle>Repositories that publish skills</SectionTitle>
-          <Card>
-            {SKILL_SOURCES.map((s, i) => (
-              <Row key={s.source} title={s.label} sub={s.sub} meta={`github.com/${s.source}`} last={i === SKILL_SOURCES.length - 1} onPress={() => { setQ(s.source); setApplied(s.source); }} />
-            ))}
-          </Card>
+            <SectionTitle space={8}>Repositories that publish skills</SectionTitle>
+            <Results>
+              {SKILL_SOURCES.map((s, i) => (
+                <Row key={s.source} title={s.label} sub={s.sub} meta={`github.com/${s.source}`} last={i === SKILL_SOURCES.length - 1} onPress={() => { setQ(s.source); setApplied(s.source); }} />
+              ))}
+            </Results>
           </View>
         </View>
       )}
@@ -244,7 +245,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
       {ready && (
         <View>
-          <SectionTitle>{src === 'popular' ? (applied ? `Results${list.total ? ` · ${list.total.toLocaleString()}` : ''}` : 'Popular skills') : src === 'github' ? (parseGithubRef(applied) ? 'Skills in this repository' : `Skills from ${applied.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`) : 'Results'}</SectionTitle>
+          <SectionTitle space={8}>{src === 'popular' ? (applied ? `Results${list.total ? ` · ${list.total.toLocaleString()}` : ''}` : 'Popular skills') : src === 'github' ? (parseGithubRef(applied) ? 'Skills in this repository' : `Skills from ${applied.replace(/^https?:\/\//, '').replace(/\/.*$/, '')}`) : 'Results'}</SectionTitle>
           {list.items.length > 0 && (
             <Results>
               {list.items.map((l, i) => (
@@ -306,13 +307,13 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
   return (
     <>
       <SearchBar value={q} onChangeText={setQ} placeholder="Search MCP servers" onSubmit={() => setApplied(q.trim())} />
-      <Text size={12.5} color="muted" style={{ marginTop: -8 }}>
+      <Text size={12.5} color="muted" style={{ paddingHorizontal: 4, lineHeight: 19 }}>
         Servers that run online, from the official MCP registry. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.
       </Text>
 
       {featured.length > 0 && (
         <View>
-          <SectionTitle>Good to start with</SectionTitle>
+          <SectionTitle space={8}>Good to start with</SectionTitle>
           <Results>
             {featured.map((l, i) => (
               <Row key={l.id} title={l.title} sub={l.description} meta={(l as (typeof FEATURED_MCP)[number]).category} badge={isAdded(l) ? 'Added' : undefined} last={i === featured.length - 1} onPress={() => open(l)} />
@@ -322,7 +323,7 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       )}
 
       <View>
-        <SectionTitle>{applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
+        <SectionTitle space={8}>{applied ? 'From the MCP registry' : 'Browse the MCP registry'}</SectionTitle>
         {list.items.length > 0 && (
           <Results>
             {list.items.map((l, i) => (
@@ -359,7 +360,7 @@ export default function Market() {
   // Each tab keeps its own search text.
   const [qs, setQs] = useState<Record<Tab, string>>({ skills: '', mcp: '' });
   return (
-    <Screen header={{ title: 'Marketplace' }} maxWidth={GRID}>
+    <Screen header={{ title: 'Marketplace' }} maxWidth={GRID} gap={16}>
       <Segmented<Tab> options={[{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP servers' }]} value={tab} onChange={setTab} />
       {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} />}
     </Screen>

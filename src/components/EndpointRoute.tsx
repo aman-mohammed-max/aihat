@@ -8,15 +8,26 @@ import { KIND_LABEL, type ModelKind } from '@/lib/models';
 import { pick } from '@/lib/pick';
 import { useProviders } from '@/store/providers';
 import { useSettings, type Capability } from '@/store/settings';
+import { useTheme } from '@/theme';
 
-import { Card, ListRow } from './Controls';
+import { Group, ListRow, Note } from './Controls';
 import { Field } from './Field';
+import { Icon } from './Icon';
 import { Text } from './Text';
 
 const ADD = '__add__';
 const DEFAULT = '__default__';
 const NONE = '__none__';
 const CUSTOM = '__custom__';
+
+/** The call each feature makes, shown under the endpoint row. */
+const CALL: Record<Capability, string> = {
+  images: 'POST /v1/images/generations',
+  speech: 'POST /v1/audio/speech',
+  transcription: 'POST /v1/audio/transcriptions',
+  embeddings: 'POST /v1/embeddings',
+  search: 'POST /v1/search',
+};
 
 /** Which model kind each feature needs, so the picker can show the relevant ones first. */
 const KIND_FOR: Partial<Record<Capability, ModelKind>> = { images: 'image', speech: 'speech', transcription: 'transcription', embeddings: 'embedding' };
@@ -25,7 +36,17 @@ const KIND_FOR: Partial<Record<Capability, ModelKind>> = { images: 'image', spee
  * Choose which added endpoint serves a feature (or add another one just for it), then pick its model
  * from that endpoint's own model list, fetched live. "Default endpoint" follows whichever provider is marked default.
  */
-export function EndpointRoute({ cap, modelLabel = 'Model', modelPlaceholder, hint }: { cap: Capability; modelLabel?: string; modelPlaceholder?: string; hint?: string }) {
+type Props = {
+  cap: Capability;
+  modelLabel?: string;
+  modelPlaceholder?: string;
+  hint?: string;
+  /** The line under the endpoint row (defaults to the call it makes). */
+  sub?: string;
+};
+
+export function EndpointRoute({ cap, modelLabel = 'Model', modelPlaceholder, hint, sub }: Props) {
+  const { colors } = useTheme();
   const providers = useProviders((s) => s.providers);
   const route = useSettings((s) => s.routes[cap]);
   const routes = useSettings((s) => s.routes);
@@ -82,11 +103,21 @@ export function EndpointRoute({ cap, modelLabel = 'Model', modelPlaceholder, hin
     open(matching.length ? matching : all);
   };
 
+  const refreshModels = async () => {
+    const { provider } = resolveRoute(cap);
+    if (!provider) return;
+    setBusy(true);
+    await useProviders.getState().refreshModels(provider.id);
+    setBusy(false);
+  };
+
   return (
-    <View style={{ gap: 12 }}>
-      <Card>
+    <View style={{ gap: 0 }}>
+      <Group>
         <ListRow
           label={`${CAPABILITY_LABEL[cap]} endpoint`}
+          sub={sub ?? CALL[cap]}
+          height={50}
           value={chosen ? chosen.name : effective ? `Default · ${effective.name}` : 'None added'}
           onPress={() =>
             pick(
@@ -104,16 +135,24 @@ export function EndpointRoute({ cap, modelLabel = 'Model', modelPlaceholder, hin
             )
           }
         />
-        <ListRow label={modelLabel} mono={!!route.model} value={busy ? 'Fetching…' : route.model || 'Provider default'} onPress={chooseModel} last />
-      </Card>
+        <ListRow label={modelLabel} sub={effective ? `Fetched from ${effective.name} when you open the list` : undefined} monoValue={!!route.model} height={50} value={busy ? 'Fetching…' : route.model || 'Provider default'} onPress={chooseModel} />
+      </Group>
       {manual ? (
-        <Field label={`${modelLabel} name`} value={route.model} onChangeText={(model) => update({ model })} placeholder={modelPlaceholder} />
+        <View style={{ paddingTop: 10 }}>
+          <Field label={`${modelLabel} name`} value={route.model} onChangeText={(model) => update({ model })} placeholder={modelPlaceholder} />
+        </View>
       ) : (
-        <Pressable accessibilityRole="button" onPress={() => setManual(true)} style={{ minHeight: 44, justifyContent: 'center' }}>
-          <Text size={13} color="accent">Type a model name instead</Text>
-        </Pressable>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Pressable accessibilityRole="button" onPress={() => setManual(true)} style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 4 }}>
+            <Text size={13} color="accent">Type a model name instead</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" disabled={busy} onPress={refreshModels} style={{ minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 4, opacity: busy ? 0.5 : 1 }}>
+            <Icon name="refresh" size={14} color={colors.text2} />
+            <Text size={13} color="text2">Refresh models</Text>
+          </Pressable>
+        </View>
       )}
-      {hint ? <Text size={12} color="muted">{hint}</Text> : null}
+      {hint ? <Note>{hint}</Note> : null}
     </View>
   );
 }

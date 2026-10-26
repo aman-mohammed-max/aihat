@@ -1,6 +1,14 @@
 name: Build & Release
 
-# Builds the Android APK, the iOS IPA and the desktop apps (macOS, Windows, Linux) and puts them on the Releases page.
+# Builds the Android APKs, the iOS IPA and the desktop apps (macOS, Windows, Linux) and puts them on the Releases page.
+#
+# Architectures:
+#   Android   universal APK, plus one each for arm64-v8a, armeabi-v7a (32-bit ARM), x86_64 and x86 (32-bit Intel)
+#   iOS       arm64 (every iPhone and iPad; Apple has no other kind)
+#   macOS     arm64 (Apple Silicon) and x64 (Intel)
+#   Windows   x64 (Windows on ARM runs it through its x64 emulation)
+#   Linux     x64 and arm64
+# There are no 32-bit desktop builds: the desktop app runs on Bun, which is 64-bit only.
 #
 #   Push to main        → the "latest beta build" pre-release (tag beta-latest) is replaced with fresh files.
 #   Push a version tag  → a permanent release for that version:
@@ -104,6 +112,9 @@ jobs:
           merge-multiple: true
           path: dist
 
+      - name: Check something was built
+        run: '[ -n "$(ls -A dist 2>/dev/null)" ] || { echo "::error::No app was built, so there is nothing to publish."; exit 1; }'
+
       - name: Write the release notes
         run: |
           {
@@ -117,18 +128,18 @@ jobs:
             fi
             echo '## Install'
             echo
-            for f in dist/*.apk; do [ -e "$f" ] || continue; cat <<NOTE
-          **Android:** download \`$(basename "$f")\`, open it on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
+            if compgen -G 'dist/*.apk' >/dev/null; then cat <<NOTE
+          **Android:** \`AI-Hat-$TAG.apk\` is the universal one: it installs on any Android phone, tablet or Chromebook. The smaller \`-Android-\` files each suit one kind of processor: **arm64** for nearly every phone from the last several years, **arm32** for older 32-bit phones, **x86_64** and **x86** for Chromebooks, tablets and emulators with Intel or AMD chips. Not sure? Take the universal one. Open the file on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
 
           NOTE
-            done
+            fi
             for f in dist/*.ipa; do [ -e "$f" ] || continue; cat <<NOTE
           **iPhone / iPad:** \`$(basename "$f")\` is **unsigned**, so it will not install by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
 
           NOTE
             done
             for f in dist/*-macOS-*.dmg; do [ -e "$f" ] || continue; cat <<NOTE
-          **Mac** ($(basename "$f" .dmg | sed 's/.*-macOS-//; s/arm64/Apple Silicon/; s/x64/Intel/')): open \`$(basename "$f")\`, drag AI Hat to Applications. The app isn't signed by Apple yet, so the first time, right-click it and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**).
+          **Mac** ($(basename "$f" .dmg | sed 's/.*-macOS-//; s/arm64/Apple Silicon/; s/x64/Intel/')): open \`$(basename "$f")\`, drag AI Hat to Applications. The app isn't signed by Apple yet, so the first time, right-click it and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**). If macOS says it is damaged, run \`xattr -cr "/Applications/AI Hat.app"\` in Terminal once.
 
           NOTE
             done

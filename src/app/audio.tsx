@@ -1,7 +1,7 @@
-import { View } from 'react-native';
+import { Alert, View } from 'react-native';
 
 import { listVoices } from '@/api/openai';
-import { Card, EndpointRoute, ListRow, Screen, SectionTitle, Text } from '@/components';
+import { EndpointRoute, Group, ListRow, Note, Screen, SectionTitle } from '@/components';
 import { resolveRoute } from '@/lib/endpoints';
 import { phoneRecognitionAvailable } from '@/lib/speechrec';
 import { pick } from '@/lib/pick';
@@ -33,52 +33,47 @@ export default function Audio() {
     pick('Voice', [{ value: '', label: 'Server default' }, ...(fetched ?? OPENAI_VOICES).map((v) => ({ value: v, label: v, note: fetched ? undefined : 'OpenAI voice' }))], s.ttsVoice, (ttsVoice) => s.set({ ttsVoice }));
   };
   return (
-    <Screen header={{ title: 'Voice & speech' }}>
-      <View style={{ gap: 12 }}>
-        <SectionTitle>Dictation (mic button)</SectionTitle>
-        <Card>
+    <Screen header={{ title: 'Voice & speech' }} gap={16}>
+      <View style={{ gap: 8 }}>
+        <SectionTitle space={0}>Dictation (mic button)</SectionTitle>
+        <Group>
           <ListRow
             label="Dictate with"
+            height={50}
             value={s.dictationEngine === 'phone' ? thisDevice : 'My endpoint'}
             onPress={() => pick('Dictate with', [{ value: 'phone', label: thisDevice, note: phoneRecognitionAvailable() ? 'Live text while you speak' : 'Not available in this build' }, { value: 'endpoint', label: 'My endpoint', note: 'Records, then transcribes (Whisper)' }], s.dictationEngine, (v) => s.set({ dictationEngine: v as Settings['dictationEngine'] }))}
-            last={s.dictationEngine === 'endpoint'}
           />
           {s.dictationEngine === 'phone' && (
-            <>
-              <ListRow label="Language" value={DICTATION_LANGS.find((l) => l.value === s.dictationLang)?.label ?? 'Phone language'} onPress={() => pick('Dictation language', [{ value: '', label: 'Phone language' }, ...DICTATION_LANGS], s.dictationLang, (dictationLang) => s.set({ dictationLang }))} />
-              <ListRow label={`Only on this ${device}`} sub="Never sends your voice to Apple or Google. May be less accurate and isn’t available for every language." toggle={{ on: s.dictationOnDevice, onChange: (dictationOnDevice) => s.set({ dictationOnDevice }) }} last />
-            </>
+            <ListRow label="Language" height={50} value={DICTATION_LANGS.find((l) => l.value === s.dictationLang)?.label ?? `${device === 'computer' ? 'System' : 'Phone'} language`} onPress={() => pick('Dictation language', [{ value: '', label: `${device === 'computer' ? 'System' : 'Phone'} language` }, ...DICTATION_LANGS], s.dictationLang, (dictationLang) => s.set({ dictationLang }))} />
           )}
-        </Card>
-        <Text size={12} color="muted">
+          {s.dictationEngine === 'phone' && (
+            <ListRow label={`Only on this ${device}`} sub="Never sends your voice to Apple or Google. May be less accurate and isn’t available for every language." height={52} toggle={{ on: s.dictationOnDevice, onChange: (dictationOnDevice) => s.set({ dictationOnDevice }) }} />
+          )}
+        </Group>
+        <Note>
           {s.dictationEngine === 'phone'
-            ? 'Words appear as you speak. The phone’s own speech service does the listening: Apple on iPhone, Google on Android. Unless “Only on this phone” is on, your voice goes to that company.'
+            ? `Words appear as you speak. The ${device}’s own speech service does the listening (Apple on iPhone, Google on Android). Unless “Only on this ${device}” is on, your voice goes to that company. Choose “My endpoint” to record and upload to your own server instead; that has no live text.`
             : 'No live text: your recording is uploaded to the endpoint below when you tap the check mark.'}
-        </Text>
-        <EndpointRoute cap="transcription" modelPlaceholder="whisper-1" hint="Used when you dictate with My endpoint. Calls POST /v1/audio/transcriptions on the endpoint you pick." />
+        </Note>
+      </View>
+      <View style={{ gap: 8 }}>
+        <SectionTitle space={0}>Speech to text (when dictating with My endpoint)</SectionTitle>
+        <EndpointRoute cap="transcription" modelPlaceholder="whisper-1" />
       </View>
       <View>
         <SectionTitle>Translation</SectionTitle>
-        <Card>
-          <ListRow label="Translate into" value={s.translateTo} onPress={() => pick('Translate into', LANGS, s.translateTo, (v) => s.set({ translateTo: v }))} last />
-        </Card>
+        <ListRow label="Translate into" height={50} value={s.translateTo} onPress={() => pick('Translate into', LANGS, s.translateTo, (v) => s.set({ translateTo: v }))} />
       </View>
-      <View style={{ gap: 12 }}>
-        <SectionTitle>Text to speech</SectionTitle>
-        <Card>
-          <ListRow label="Voice engine" value={s.ttsEngine === 'device' ? thisDevice : 'My endpoint'} onPress={() => pick('Voice engine', [{ value: 'device', label: thisDevice, note: 'Works offline' }, { value: 'endpoint', label: 'My endpoint', note: 'POST /v1/audio/speech' }], s.ttsEngine, (v) => s.set({ ttsEngine: v as Settings['ttsEngine'] }))} />
-          <ListRow label="Play a sample" icon="speaker" onPress={() => speak('This is how replies will sound.').catch((e) => alert(e.message))} />
-          <ListRow label="Read replies aloud" toggle={{ on: s.autoReadAloud, onChange: (autoReadAloud) => s.set({ autoReadAloud }) }} last />
-        </Card>
-        {s.ttsEngine === 'endpoint' && (
-          <>
-            <EndpointRoute cap="speech" modelPlaceholder="tts-1" />
-            <Card>
-              <ListRow label="Voice" value={s.ttsVoice || 'Server default'} onPress={chooseVoice} last />
-            </Card>
-            <Text size={12} color="muted">The list comes from the endpoint (GET /audio/voices) when it has one; otherwise OpenAI’s standard voices are shown.</Text>
-          </>
-        )}
+      <View style={{ gap: 8 }}>
+        <SectionTitle space={0}>Text to speech</SectionTitle>
+        <Group>
+          <ListRow label="Voice engine" height={50} value={s.ttsEngine === 'device' ? thisDevice : 'My endpoint'} onPress={() => pick('Voice engine', [{ value: 'device', label: thisDevice, note: 'Works offline' }, { value: 'endpoint', label: 'My endpoint', note: 'POST /v1/audio/speech' }], s.ttsEngine, (v) => s.set({ ttsEngine: v as Settings['ttsEngine'] }))} />
+          {s.ttsEngine === 'endpoint' && <ListRow label="Voice" height={50} value={s.ttsVoice || 'Server default'} onPress={chooseVoice} />}
+          <ListRow label="Play a sample" height={50} chevron={false} onPress={() => speak('This is how replies will sound.').catch((e) => Alert.alert('Could not play the sample', e.message))} />
+        </Group>
+        {s.ttsEngine === 'endpoint' && <EndpointRoute cap="speech" modelPlaceholder="tts-1" hint="The voice list comes from the endpoint (GET /audio/voices) when it has one; otherwise OpenAI’s standard voices are shown." />}
+        <ListRow label="Read replies aloud" height={46} toggle={{ on: s.autoReadAloud, onChange: (autoReadAloud) => s.set({ autoReadAloud }) }} />
+        <Note>{`While a reply is read, a bar above the chat box has Pause and Stop. The ${device}’s own voice can pause on iPhone; on Android it can only stop.`}</Note>
       </View>
     </Screen>
   );

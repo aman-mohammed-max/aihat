@@ -26,7 +26,7 @@ Every change to `main` is built automatically and published on the **[Releases p
 
 | | Android | iPhone / iPad |
 |---|---|---|
-| **Latest beta build** (updated on every change) | [**AI-Hat-beta-latest.apk**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest.apk) | [**AI-Hat-beta-latest-unsigned.ipa**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-unsigned.ipa) |
+| **Latest beta build** (updated on every change) | [**AI-Hat-beta-latest.apk**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest.apk) (universal) · smaller, one processor type: [arm64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Android-arm64.apk) · [arm32](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Android-arm32.apk) · [x86_64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Android-x86_64.apk) · [x86](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Android-x86.apk) | [**AI-Hat-beta-latest-unsigned.ipa**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-unsigned.ipa) |
 | **Numbered releases** (fixed versions) | `AI-Hat-v0.1.0-beta.1.apk` and so on, [on the releases page](https://github.com/aman-mohammed-max/aihat/releases) | `AI-Hat-v0.1.0-beta.1-unsigned.ipa` and so on |
 
 **Computers** (the same app in a small desktop window; see [On tablets and computers](#on-tablets-and-computers)):
@@ -35,13 +35,15 @@ Every change to `main` is built automatically and published on the **[Releases p
 |---|---|---|---|
 | **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [**AI-Hat-beta-latest-Windows-x64-Setup.exe**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.exe) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.deb) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.deb) (`.deb`) |
 
+**Which file?** On Android, the universal APK works everywhere; the others are smaller because each holds the app for one kind of processor: **arm64** (nearly every phone from the last several years), **arm32** (older 32-bit phones), **x86_64** and **x86** (Chromebooks, tablets and emulators with Intel or AMD chips). iPhones and iPads are all 64-bit ARM, so there is one IPA. Macs come as Apple Silicon or Intel. Windows is 64-bit; Windows on ARM runs it through its built-in x64 emulation. Linux comes for x64 and ARM64. There are no 32-bit computer versions: the desktop app runs on Bun, which only exists for 64-bit systems.
+
 If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
 **Install on Android:** download the APK on your phone, open it, allow "Install unknown apps" for your browser or Files app, then tap Install. Android may warn that the app isn't from the Play Store. That's expected for a beta distributed here.
 
 **Install on iPhone / iPad:** the IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
 
-**Install on a Mac:** open the `.dmg` and drag AI Hat to Applications. It isn't signed by Apple yet, so the first time, right-click the app and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**).
+**Install on a Mac:** open the `.dmg` and drag AI Hat to Applications. It isn't signed by Apple yet, so the first time, right-click the app and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**). If macOS says the app is damaged, run `xattr -cr "/Applications/AI Hat.app"` in Terminal once.
 
 **Install on Windows:** run the Setup `.exe`; AI Hat appears in the Start menu and on the desktop. SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
 
@@ -173,7 +175,7 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 
 ## Build the apps yourself
 
-You don't need a Mac, a Windows PC or Android Studio: GitHub builds every app (free on a public repository), using the **Build & Release** workflow: the APK, the IPA, and the desktop apps for macOS (Apple Silicon and Intel), Windows and Linux (x64 and ARM).
+You don't need a Mac, a Windows PC or Android Studio: GitHub builds every app (free on a public repository), using the **Build & Release** workflow: the APKs (universal, plus arm64, 32-bit ARM, x86_64 and 32-bit x86), the IPA, and the desktop apps for macOS (Apple Silicon and Intel), Windows (x64) and Linux (x64 and ARM64).
 
 | You do this | What happens |
 |---|---|

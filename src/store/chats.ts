@@ -26,10 +26,12 @@ import { useSettings } from './settings';
 export type Attachment = { id: string; kind: 'image' | 'file'; name: string; uri: string; mime?: string; text?: string; indexed?: boolean; inline?: boolean;
   /** Short description shown on the chip, e.g. "12 pages · 34k chars". */
   meta?: string };
+/** A web page a reply used: the search that found it and the part of it the answer drew on. */
+export type Citation = { title: string; url: string; snippet?: string; query?: string };
 export type ToolRun = { id: string; name: string; server?: string; skill?: string; args: string; result?: string; error?: string; status: 'pending' | 'running' | 'done' | 'error' | 'rejected' };
 export type Message = {
   id: string; chatId: string; role: 'user' | 'assistant' | 'system'; content: string;
-  attachments: Attachment[]; toolCalls: ToolRun[]; citations: { title: string; url: string }[];
+  attachments: Attachment[]; toolCalls: ToolRun[]; citations: Citation[];
   uiSpec?: object | null; tokens?: number | null; ms?: number | null; createdAt: number; error?: string;
   /** Transient progress line shown while a reply is being prepared (not saved), e.g. "Improving your prompt…". */
   status?: string;
@@ -57,7 +59,7 @@ type State = {
   create: (init?: Partial<Chat>) => Promise<string>;
   patch: (id: string, patch: Partial<Chat>) => Promise<void>;
   remove: (id: string) => Promise<void>;
-  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: { title: string; url: string }[]; ui?: boolean; search?: boolean; skills?: string[] }) => Promise<void>;
+  send: (chatId: string, text: string, attachments?: Attachment[], opts?: { citations?: Citation[]; ui?: boolean; search?: boolean; skills?: string[] }) => Promise<void>;
   /** Delete temporary chats and archive chats older than the "archive after" setting. Run once at startup. */
   housekeeping: () => Promise<void>;
   sendImage: (chatId: string, prompt: string, opts?: ImageSendOptions) => Promise<void>;
@@ -184,9 +186,13 @@ export const useChats = create<State>((set, get) => ({
     const def = p.providers.find((x) => x.isDefault) ?? p.providers[0];
     const model = p.models.find((m) => m.providerId === def?.id && m.enabled && isChatModel(m));
     const servers = useLibrary.getState().servers.filter((s) => s.enabledByDefault).map((s) => s.id);
+    // A new chat starts from the app-wide model settings, then the chosen model's own defaults.
+    const providerId = init.providerId !== undefined ? init.providerId : def?.id ?? null;
+    const modelId = init.modelId !== undefined ? init.modelId : model?.id ?? null;
+    const chosen = p.models.find((m) => m.providerId === providerId && m.id === modelId);
     const chat: Chat = {
-      id: uid(), title: 'New chat', pinned: false, providerId: def?.id ?? null, modelId: model?.id ?? null, promptId: null,
-      params: {}, toolIds: servers, searchMode: false, createdAt: now(), updatedAt: now(),
+      id: uid(), title: 'New chat', pinned: false, providerId, modelId, promptId: null,
+      params: { ...useSettings.getState().defaultParams, ...(chosen?.defaults ?? {}) }, toolIds: servers, searchMode: false, createdAt: now(), updatedAt: now(),
       archived: false, temporary: useSettings.getState().tempByDefault, titleLocked: false, ...init,
     };
     await db.runAsync(
@@ -387,7 +393,7 @@ export const useChats = create<State>((set, get) => ({
           const hits = await webSearch(text);
           userMsg.attachments = [...userMsg.attachments, { id: uid(), kind: 'file', name: 'Web results', uri: '', inline: true, text: `Use these web results to answer; cite them as [n].\n\n${formatHits(hits)}` }];
           setMsgs((l) => l.map((m) => (m.id === userMsg.id ? { ...userMsg } : m)));
-          update({ citations: hits.map((h) => ({ title: h.title, url: h.url })) });
+          update({ citations: hits.map((h) => ({ title: h.title, url: h.url, snippet: h.snippet, query: text.slice(0, 200) })) });
         } catch (e: any) {
           Alert.alert('Web search failed', `${e?.message ?? 'Unknown error'}\n\nThe model will answer without it.`);
         }
@@ -534,7 +540,7 @@ export const useChats = create<State>((set, get) => ({
               act('Searching the web…', `“${q.slice(0, 100)}”`);
               const hits = await webSearch(q);
               const offset = assistant.citations.length;
-              update({ citations: [...assistant.citations, ...hits.map((h) => ({ title: h.title, url: h.url }))] });
+              update({ citations: [...assistant.citations, ...hits.map((h) => ({ title: h.title, url: h.url, snippet: h.snippet, query: q.slice(0, 200) }))] });
               const out = formatHits(hits, offset);
               done({ status: 'done', result: out });
               wire.push({ role: 'tool', tool_call_id: call.id, content: out });

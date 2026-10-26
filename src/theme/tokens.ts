@@ -6,6 +6,8 @@ export type Colors = {
   selected: string;
   hairline: string;
   border: string;
+  /** Outline of a text field. */
+  field: string;
   text: string;
   text2: string;
   muted: string;
@@ -15,7 +17,15 @@ export type Colors = {
   accentSoft: string;
   warn: string;
   danger: string;
+  /** Background and text of a warning box ("Includes a script…"). */
+  warnSoft: string;
+  onWarnSoft: string;
+  /** Background and text of an error box ("The server rejected this key"). */
+  dangerSoft: string;
+  onDangerSoft: string;
   scrim: string;
+  /** The handle at the top of a bottom sheet. */
+  grabber: string;
 };
 
 export const darkColors: Omit<Colors, 'accent' | 'onAccent' | 'accentSoft'> = {
@@ -26,13 +36,19 @@ export const darkColors: Omit<Colors, 'accent' | 'onAccent' | 'accentSoft'> = {
   selected: '#2E3238',
   hairline: '#1E2125',
   border: '#2C3036',
+  field: '#26292E',
   text: '#ECEDEF',
   text2: '#C9CCD1',
   muted: '#9BA0A8',
   faint: '#6F747C',
   warn: '#FDBA74',
   danger: '#F2A2A2',
+  warnSoft: '#2A2219',
+  onWarnSoft: '#F4D9BC',
+  dangerSoft: '#2E1E1E',
+  onDangerSoft: '#F7D4D4',
   scrim: 'rgba(0,0,0,0.6)',
+  grabber: '#3A3F46',
 };
 
 export const lightColors: typeof darkColors = {
@@ -43,13 +59,19 @@ export const lightColors: typeof darkColors = {
   selected: '#E4E4E7',
   hairline: '#ECECEE',
   border: '#E4E4E7',
+  field: '#E4E4E7',
   text: '#17181A',
   text2: '#3F4348',
   muted: '#5E636B',
   faint: '#9A9FA7',
   warn: '#B45309',
   danger: '#B91C1C',
+  warnSoft: '#FFF4E6',
+  onWarnSoft: '#7C3A0B',
+  dangerSoft: '#FDECEC',
+  onDangerSoft: '#7F1D1D',
   scrim: 'rgba(0,0,0,0.4)',
+  grabber: '#D4D4D8',
 };
 
 export const accents = [

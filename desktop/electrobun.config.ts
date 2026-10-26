@@ -1,16 +1,6 @@
-import type { BunPlugin } from 'bun';
 import type { ElectrobunConfig } from 'electrobun';
 
 import app from '../app.json';
-
-/** Electrobun's main-process API also re-exports two 3D engines the app never uses; leave them out (about 5 MB). */
-const no3d: BunPlugin = {
-  name: 'aihat-no-3d',
-  setup(build) {
-    build.onResolve({ filter: /^(three|@babylonjs\/core)$/ }, (args) => ({ path: args.path, namespace: 'aihat-empty' }));
-    build.onLoad({ filter: /.*/, namespace: 'aihat-empty' }, () => ({ contents: 'export {};', loader: 'js' }));
-  },
-};
 
 export default {
   app: {
@@ -20,7 +10,8 @@ export default {
     description: 'A chat app for any OpenAI-compatible endpoint.',
   },
   build: {
-    bun: { entrypoint: 'src/bun/index.ts', minify: true, plugins: [no3d] },
+    mainProcess: 'bun',
+    bun: { entrypoint: 'src/bun/index.ts', minify: true },
     // The web build of the app (`npx expo export --platform web`, run from the repo root).
     copy: { '../dist': 'web' },
     mac: {
@@ -30,5 +21,6 @@ export default {
     linux: { icon: 'icons/icon.png' },
     win: { icon: 'icons/icon-256.png' },
   },
+  scripts: { postWrap: 'scripts/adhoc-sign.ts' },
   runtime: { exitOnLastWindowClosed: true },
 } satisfies ElectrobunConfig;

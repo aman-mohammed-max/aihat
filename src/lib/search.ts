@@ -9,6 +9,21 @@ export type { SearchHit };
 const stripHtml = (html: string) =>
   html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/g, ' ').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 
+const ENTITIES: Record<string, string> = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+const decode = (s: string) => s.replace(/&(#x?[0-9a-f]+|\w+);/gi, (m, e: string) => (e[0] === '#' ? String.fromCodePoint(parseInt(e.slice(e[1] === 'x' || e[1] === 'X' ? 2 : 1), e[1] === 'x' || e[1] === 'X' ? 16 : 10)) : ENTITIES[e.toLowerCase()] ?? m));
+
+/** The readable text of a web page (up to 20,000 characters) and its title, for adding a page to a message. */
+export async function readWebPage(input: string): Promise<{ url: string; title: string; text: string }> {
+  const url = /^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`The page answered ${res.status}.`);
+  const html = await res.text();
+  const title = decode(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() ?? '') || new URL(url).hostname;
+  const text = decode(stripHtml(html)).slice(0, 20000);
+  if (!text) throw new Error('That page has no readable text.');
+  return { url, title, text };
+}
+
 async function run(query: string): Promise<SearchHit[]> {
   const s = useSettings.getState();
   const n = s.searchResults;

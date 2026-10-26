@@ -3,6 +3,7 @@
  * the desktop build, or on a machine where the window can't open (a Linux box without WebKitGTK).
  *
  *   bun src/bun/serve.ts [path to the web build, default ../dist]
+ *   AIHAT_WEB_DEV=http://localhost:8081 bun src/bun/serve.ts    (the page from `npx expo start`, for working on it)
  *
  * Its data folder is separate from the installed app's, so trying things here never touches your real chats.
  */
@@ -40,6 +41,7 @@ const server = await startServer({
     notify: (title, body) => console.log(`[notification] ${title}: ${body}`),
   },
   keysInFile: process.env.AIHAT_KEYS_IN_FILE === '1',
+  webDev: process.env.AIHAT_WEB_DEV,
 });
 
 console.log(`AI Hat is running at ${server.url} (keys: ${server.keyStore}). Press Ctrl+C to stop.`);

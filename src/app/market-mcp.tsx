@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
 import { OAuthError, probeAuth } from '@/api/oauth';
-import { Button, Card, Chip, Field, Icon, ListRow, Screen, SectionTitle, Text } from '@/components';
+import { Banner, Button, Chip, Field, Icon, InfoBox, Note, Panel, PanelRow, Screen, SectionTitle, Text } from '@/components';
 import * as haptic from '@/lib/haptics';
 import { addAndConnect, removeServer } from '@/lib/mcp-connect';
 import { buildMcpConnection, planMcp, recallMcp, type McpListing } from '@/lib/market';
@@ -15,8 +15,6 @@ import { keyPlace } from '@/lib/device';
 type Outcome = { ok: true; id: string; tools: number } | { ok: false; text: string };
 type Kind = 'none' | 'oauth' | 'token' | 'unknown';
 
-const hint = (text: string) => <Text size={12.5} color="muted" style={{ lineHeight: 18 }}>{text}</Text>;
-
 function Header({ l }: { l: McpListing }) {
   return (
     <>
@@ -24,7 +22,7 @@ function Header({ l }: { l: McpListing }) {
         <Text size={22} weight="semi">{l.title}</Text>
         <Text size={12.5} color="muted">{[l.publisher, l.version ? `v${l.version}` : ''].filter(Boolean).join(' · ')}</Text>
       </View>
-      {l.description ? <Text color="text2" style={{ lineHeight: 22 }}>{l.description}</Text> : null}
+      {l.description ? <Text size={15} color="text2" style={{ lineHeight: 22.5 }}>{l.description}</Text> : null}
     </>
   );
 }
@@ -32,10 +30,10 @@ function Header({ l }: { l: McpListing }) {
 function Links({ l }: { l: McpListing }) {
   if (!l.websiteUrl && !l.repoUrl) return null;
   return (
-    <Card>
-      {l.websiteUrl ? <ListRow icon="globe" label="Website" onPress={() => Linking.openURL(l.websiteUrl!)} last={!l.repoUrl} /> : null}
-      {l.repoUrl ? <ListRow icon="link" label="Source code" onPress={() => Linking.openURL(l.repoUrl!)} last /> : null}
-    </Card>
+    <Panel>
+      {l.websiteUrl ? <PanelRow label="Website" value={l.websiteUrl.replace(/^https?:\/\//, '').replace(/\/$/, '')} onPress={() => Linking.openURL(l.websiteUrl!)} /> : null}
+      {l.repoUrl ? <PanelRow label="Source code" value={l.repoUrl.replace(/^https?:\/\/(www\.)?/, '').replace(/\/$/, '')} onPress={() => Linking.openURL(l.repoUrl!)} /> : null}
+    </Panel>
   );
 }
 
@@ -44,7 +42,7 @@ function Notice({ icon, children }: { icon: 'info' | 'warn' | 'lock'; children: 
   return (
     <View style={{ flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 14 }}>
       <Icon name={icon} size={18} color={colors.warn} />
-      <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19 }}>{children}</Text>
+      <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19.5 }}>{children}</Text>
     </View>
   );
 }
@@ -133,39 +131,31 @@ function Hosted({ listing }: { listing: McpListing }) {
       header={{ title: listing.title }}
       footer={
         existing ? (
-          <Button label="Open server" flex onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: existing.id } })} />
+          <Button label="Open server" height={48} flex onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: existing.id } })} />
         ) : outcome?.ok ? (
-          <Button label="Open server" flex onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: outcome.id } })} />
+          <Button label="Open server" height={48} flex onPress={() => router.replace({ pathname: '/mcp-detail', params: { id: outcome.id } })} />
         ) : plan.supported ? (
-          <Button label={label} flex disabled={busy || probing || missing.length > 0 || needsExtra} onPress={add} />
+          <Button label={label} height={48} flex disabled={busy || probing || missing.length > 0 || needsExtra} onPress={add} />
         ) : undefined
       }>
       <Header l={listing} />
       {!plan.supported && <Notice icon="info">{plan.reason ?? ''}</Notice>}
-      {existing && (
-        <Card>
-          <ListRow icon="check" label="Already added" sub={existing.connected ? `${existing.tools.length} tools` : 'Not connected right now'} last />
-        </Card>
-      )}
+      {existing && <InfoBox icon="check" tone="accent" title="Already added" sub={existing.connected ? `${existing.tools.length} tools. Turn it on in a chat with the Tools button.` : 'Not connected right now. Open it to connect again.'} />}
 
       {plan.supported && !existing && !outcome?.ok && (
         <>
-          {kind === 'oauth' && (
-            <Card>
-              <ListRow icon="lock" label="Sign-in: your browser" sub={`Your browser opens so you can sign in to ${listing.title}. AI Hat registers itself with the service automatically; nothing to set up.`} last />
-            </Card>
-          )}
+          {kind === 'oauth' && <InfoBox icon="lock" title="Sign-in: your browser" sub={`Your browser opens so you can sign in to ${listing.title}. AI Hat registers itself with the service automatically; nothing to set up.`} />}
           {(plan.fields.length > 0 || extraToken) && (
             <View style={{ gap: 14 }}>
-              <SectionTitle>What it needs</SectionTitle>
+              <SectionTitle space={0}>What it needs</SectionTitle>
               {plan.fields.map((f) =>
                 f.choices ? (
                   <View key={f.key} style={{ gap: 8 }}>
-                    <Text size={12.5} weight="medium" color="muted">{f.label}{f.required ? '' : ' (optional)'}</Text>
+                    <Text size={12} weight="medium" color="muted" style={{ paddingLeft: 4 }}>{`${f.label}${f.required ? '' : ' (optional)'}`}</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                       {f.choices.map((c) => <Chip key={c} label={c} selected={get(f.key, f.default) === c} onPress={() => setValues((v) => ({ ...v, [f.key]: c }))} />)}
                     </View>
-                    {f.hint ? <Text size={12} color="muted">{f.hint}</Text> : null}
+                    {f.hint ? <Note>{f.hint}</Note> : null}
                   </View>
                 ) : (
                   <Field
@@ -183,19 +173,16 @@ function Hosted({ listing }: { listing: McpListing }) {
               )}
             </View>
           )}
-          <Card>
-            <ListRow label="Address" value={url.replace(/^https?:\/\//, '')} />
-            <ListRow label="Connection" value="Streamable HTTP" last />
-          </Card>
-          {hint('Anyone can publish to the registry. Add only servers you trust: what the assistant sends to a tool goes to that server. Tools that write or delete ask you first.')}
+          <Panel>
+            <PanelRow label="Address" value={url.replace(/^https?:\/\//, '')} />
+            <PanelRow label="Connection" value="Streamable HTTP" />
+          </Panel>
+          <Text size={12.5} color="muted" style={{ paddingHorizontal: 4, lineHeight: 19 }}>Anyone can publish to the registry. Add only servers you trust: what the assistant sends to a tool goes to that server. Tools that write or delete ask you first.</Text>
         </>
       )}
 
-      {outcome && (
-        <Card>
-          <ListRow icon={outcome.ok ? 'check' : 'warn'} danger={!outcome.ok} label={outcome.ok ? `Connected · ${outcome.tools} tool${outcome.tools === 1 ? '' : 's'} found` : outcome.text} sub={outcome.ok ? `Turn it on in a chat with the Tools button, or type /${slug}. Tools that change things ask first.` : undefined} last />
-        </Card>
-      )}
+      {outcome?.ok && <InfoBox icon="check" tone="accent" title={`Connected · ${outcome.tools} tool${outcome.tools === 1 ? '' : 's'} found`} sub={`${kind === 'oauth' ? 'Signed in with your browser. ' : ''}Turn it on in a chat with the Tools button, or type /${slug}. Tools that change things ask first.`} />}
+      {outcome && !outcome.ok && <Banner tone="danger">{outcome.text}</Banner>}
       <Links l={listing} />
     </Screen>
   );

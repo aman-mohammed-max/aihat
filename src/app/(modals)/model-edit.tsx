@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Button, Chip, Field, SectionTitle, Text } from '@/components';
+import { Banner, Button, Chip, Field, Note, SectionTitle, Text } from '@/components';
 import { RouteSheet } from '@/components/RouteOverlays';
 import * as haptic from '@/lib/haptics';
 import { KIND_LABEL, SUGGESTED_MODELS, type ModelKind } from '@/lib/models';
@@ -51,33 +51,37 @@ export default function ModelEdit() {
 
   return (
     <RouteSheet title={editing ? 'Edit model' : 'Add a model'}>
-      <Text size={13} color="muted">{editing ? provider.name : `For ${provider.name}. Use this when the endpoint doesn’t list the model you need.`}</Text>
-      <Field label="Model id" value={modelId} onChangeText={(t) => { setModelId(t); setError(''); }} editable={!editing} placeholder="e.g. flux-schnell, tts-1, whisper-1" hint={editing && !custom ? 'This model comes from the provider, so its id can’t be changed.' : 'Exactly as the provider names it.'} />
+      <Text size={13} color="muted" style={{ lineHeight: 19, paddingHorizontal: 4 }}>
+        {editing ? `${provider.name}${custom ? ' · added by you' : ' · listed by the provider'}` : `For ${provider.name}. Use this when the endpoint doesn’t list the model you need, for example a gateway that only lists its chat models.`}
+      </Text>
+      <Field label="Model id" value={modelId} onChangeText={(t) => { setModelId(t); setError(''); }} editable={!editing} mono autoCapitalize="none" autoCorrect={false} placeholder="e.g. flux-schnell, tts-1, whisper-1" error={!!error} hint={editing && !custom ? 'This model comes from the provider, so its id can’t be changed.' : 'Exactly as the provider names it.'} />
       <Field label="Display name (optional)" value={name} onChangeText={setName} autoCapitalize="sentences" />
       <View style={{ gap: 8 }}>
-        <SectionTitle>Type</SectionTitle>
+        <SectionTitle space={0}>Type</SectionTitle>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
           {KINDS.map((k) => <Chip key={k} label={KIND_LABEL[k]} selected={kind === k} onPress={() => setKind(k)} />)}
         </View>
-        {kind !== 'chat' && CAP_OF[kind] ? <Text size={12} color="muted">It will appear in the model list for {KIND_LABEL[kind].toLowerCase()} features.</Text> : null}
+        {kind !== 'chat' && CAP_OF[kind] ? <Note>{`It will appear in the model list for ${KIND_LABEL[kind].toLowerCase()} features.`}</Note> : null}
       </View>
       {!editing && SUGGESTED_MODELS[kind] ? (
         <View style={{ gap: 8 }}>
-          <SectionTitle>{`Common ${KIND_LABEL[kind].toLowerCase()} models`}</SectionTitle>
+          <SectionTitle space={0}>{`Common ${KIND_LABEL[kind].toLowerCase()} models`}</SectionTitle>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
             {SUGGESTED_MODELS[kind]!.map((m) => <Chip key={m.id} label={m.name} selected={modelId === m.id} onPress={() => { setModelId(m.id); setName(m.name); setError(''); }} />)}
           </View>
-          <Text size={12} color="muted">Tap one to fill the id. Use the id your provider shows, which can differ.</Text>
+          <Note>Tap one to fill the id. Use the id your provider shows, which can differ.</Note>
         </View>
       ) : null}
-      {error ? <Text color="danger" size={13}>{error}</Text> : null}
-      <View style={{ flexDirection: 'row', gap: 10 }}>
+      {error ? <Banner tone="danger">{error}</Banner> : null}
+      <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
         <Button label={editing ? 'Save' : 'Add model'} flex onPress={save} disabled={!editing && !modelId.trim()} />
         {custom ? (
-          <Button label="Delete" variant="danger" onPress={async () => { await useProviders.getState().deleteModel(providerId, existing!.id); router.back(); }} />
-        ) : null}
+          <Button label="Delete" variant="danger" flex onPress={async () => { await useProviders.getState().deleteModel(providerId, existing!.id); router.back(); }} />
+        ) : (
+          <Button label="Cancel" variant="outline" flex onPress={() => router.back()} />
+        )}
       </View>
-      {editing && !custom ? <Text size={12} color="muted">To hide a model from the lists, switch it off in the provider’s model list. A type you set here is kept when models are refreshed.</Text> : null}
+      {editing && !custom ? <Note>To hide a model from the lists, switch it off in the provider’s model list. A type you set here is kept when models are refreshed.</Note> : null}
     </RouteSheet>
   );
 }

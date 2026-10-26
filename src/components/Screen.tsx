@@ -27,8 +27,22 @@ export function useColumn(maxWidth = COLUMN): ViewStyle | null {
   return wide ? { width: '100%', maxWidth, alignSelf: 'center' } : null;
 }
 
-/** Stack page: Header + scrolling body (+ optional pinned footer). */
-export function Screen({ header, children, footer, scroll = true, maxWidth }: { header: HeaderProps; children: React.ReactNode; footer?: React.ReactNode; scroll?: boolean; /** Wider than the reading column (a grid of cards). */ maxWidth?: number }) {
+type ScreenProps = {
+  header: HeaderProps;
+  children: React.ReactNode;
+  /** Buttons pinned under the page. */
+  footer?: React.ReactNode;
+  scroll?: boolean;
+  /** Wider than the reading column (a grid of cards). */
+  maxWidth?: number;
+  /** Space between the page's sections (the design uses 18; the Settings index 12). */
+  gap?: number;
+  /** Stays put between the header and the scrolling part (a search field, filter chips); it brings its own padding. */
+  top?: React.ReactNode;
+};
+
+/** Stack page: Header + scrolling body (+ optional pinned footer), spaced like the design's pages. */
+export function Screen({ header, children, footer, scroll = true, maxWidth, gap = 18, top }: ScreenProps) {
   const { colors } = useTheme();
   const keyboard = useKeyboardVisible();
   const { wide } = useLayout();
@@ -39,16 +53,13 @@ export function Screen({ header, children, footer, scroll = true, maxWidth }: { 
     <PageShell>
       <KeyboardAvoidingView behavior={'padding'} style={{ flex: 1, backgroundColor: colors.bg }}>
         <Header left={wide && MENU_PAGES.has(pathname) ? 'none' : 'back'} {...header} />
+        {top ? <View style={column}>{top}</View> : null}
         {scroll ? (
-          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[{ padding: pad, gap: 22, paddingBottom: 32 }, column]}>{children}</ScrollView>
+          <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={[{ paddingHorizontal: pad, paddingTop: 4, paddingBottom: 28, gap }, column]}>{children}</ScrollView>
         ) : (
-          <View style={[{ flex: 1, padding: pad, gap: 22 }, column]}>{children}</View>
+          <View style={[{ flex: 1, paddingHorizontal: pad, paddingTop: 4, gap }, column]}>{children}</View>
         )}
-        {footer ? (
-          <View style={{ borderTopWidth: 1, borderTopColor: colors.hairline }}>
-            <View style={[{ padding: 16, paddingBottom: keyboard ? 12 : 28, flexDirection: 'row', gap: 10 }, column]}>{footer}</View>
-          </View>
-        ) : null}
+        {footer ? <View style={[{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: keyboard ? 12 : 30, flexDirection: 'row', gap: 8 }, column]}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </PageShell>
   );

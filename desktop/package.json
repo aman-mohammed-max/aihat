@@ -15,7 +15,7 @@
   },
   "devDependencies": {
     "@types/pngjs": "^6.0.5",
-    "electrobun": "1.18.1",
+    "electrobun": "2.0.5",
     "pngjs": "7.0.0",
     "typescript": "5.9.3"
   }

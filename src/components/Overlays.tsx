@@ -17,7 +17,7 @@ import { useKeyboardVisible } from '@/lib/keyboard';
 import { useLayout, useNavWidth } from '@/lib/layout';
 import { radii, useTheme } from '@/theme';
 
-import { Button } from './Controls';
+import { Button, OnSheet } from './Controls';
 import { Text } from './Text';
 
 type SheetProps = {
@@ -25,11 +25,19 @@ type SheetProps = {
   title: string;
   children: React.ReactNode;
   /** Two outline buttons at the foot of the sheet. */
-  footer?: { label: string; onPress: () => void }[];
+  footer?: { label: string; onPress: () => void; primary?: boolean }[];
   /** Kept for call-site compatibility; the sheet sizes to its content up to 88% of the screen. */
   snapPoints?: (string | number)[];
   /** On a tablet or computer, open as a popover under the chat's model button instead of a centred dialog. */
   popover?: boolean;
+  /** No title row: the grabber and the content only (the title is still read out by screen readers). */
+  bare?: boolean;
+  /** On a phone, shown on its own above the sheet (the message a message menu is for). */
+  above?: React.ReactNode;
+  /** A line under the title, in the code font (the model the settings are for). */
+  sub?: string;
+  /** A hairline above the footer buttons. */
+  footerLine?: boolean;
 };
 
 /** Desktop: Esc closes the sheet or dialog in front. Capture phase, because text fields stop keys from bubbling. */
@@ -53,7 +61,7 @@ export function BottomSheet(props: SheetProps) {
 }
 
 /** Tablet and desktop: the same sheet as a 520 px dialog (380 px popover), fading in. Esc, Done or a click outside closes it. */
-function DialogSheet({ onClose, title, children, footer, popover }: SheetProps) {
+function DialogSheet({ onClose, title, children, footer, popover, bare, sub, footerLine }: SheetProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const navWidth = useNavWidth();
@@ -78,6 +86,7 @@ function DialogSheet({ onClose, title, children, footer, popover }: SheetProps) 
       <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={close} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: popover ? 'transparent' : colors.scrim }} />
       <Animated.View
         accessibilityViewIsModal
+        accessibilityLabel={title}
         style={[
           {
             width: popover ? 380 : 520,
@@ -94,22 +103,27 @@ function DialogSheet({ onClose, title, children, footer, popover }: SheetProps) 
           popover ? { position: 'absolute', top: insets.top + 52, left: navWidth + 12 } : null,
           Platform.OS === 'web' ? ({ boxShadow: '0 24px 60px rgba(0,0,0,0.55)' } as object) : { shadowColor: '#000', shadowOpacity: 0.45, shadowRadius: 30, shadowOffset: { width: 0, height: 16 }, elevation: 20 },
         ]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 12, paddingTop: 10, paddingBottom: 4 }}>
-          <Text size={popover ? 15 : 17} weight="semi" style={{ flex: 1 }}>{title}</Text>
-          <Pressable accessibilityRole="button" onPress={close} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 8 }}>
-            <Text color="accent" weight="semi">Done</Text>
-          </Pressable>
-        </View>
-        <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 16, gap: 12 }}>
-          {children}
-          {footer ? (
-            <View style={{ flexDirection: 'row', gap: 10, paddingTop: 8 }}>
-              {footer.map((b) => (
-                <Button key={b.label} label={b.label} variant="outline" onPress={b.onPress} flex />
-              ))}
+        {bare ? null : (
+          <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 12, paddingTop: 10, paddingBottom: 4 }}>
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text size={popover ? 15 : 17} weight="semi">{title}</Text>
+              {sub ? <Text mono size={12} color="muted" numberOfLines={1}>{sub}</Text> : null}
             </View>
-          ) : null}
+            <Pressable accessibilityRole="button" onPress={close} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 8 }}>
+              <Text color="accent" weight="semi">Done</Text>
+            </Pressable>
+          </View>
+        )}
+        <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: bare ? 12 : 0, paddingBottom: 16, gap: 14 }}>
+          <OnSheet.Provider value>{children}</OnSheet.Provider>
         </ScrollView>
+        {footer ? (
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 12, borderTopWidth: footerLine ? 1 : 0, borderTopColor: colors.surface2 }}>
+            {footer.map((b) => (
+              <Button key={b.label} label={b.label} variant={b.primary ? 'primary' : 'outline'} height={b.primary ? 48 : 44} textSize={b.primary ? 15 : 14} onPress={b.onPress} flex />
+            ))}
+          </View>
+        ) : null}
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -119,7 +133,7 @@ function DialogSheet({ onClose, title, children, footer, popover }: SheetProps) 
  * Scrim + surface sheet, r28 top, grabber, title row with accent Done, content scrolls.
  * Close: Done, tap the scrim, or drag down. Lifts above the keyboard so inputs stay visible.
  */
-function PhoneSheet({ onClose, title, children, footer }: SheetProps) {
+function PhoneSheet({ onClose, title, children, footer, bare, above, sub, footerLine }: SheetProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardVisible();
@@ -159,7 +173,14 @@ function PhoneSheet({ onClose, title, children, footer }: SheetProps) {
   return (
     <KeyboardAvoidingView behavior={'padding'} style={{ flex: 1, justifyContent: 'flex-end' }}>
       <Pressable accessibilityLabel="Close" accessibilityRole="button" onPress={close} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: colors.scrim }} />
+      {above ? (
+        <Animated.View pointerEvents="box-none" style={{ flex: 1, overflow: 'hidden', paddingTop: insets.top + 68, paddingHorizontal: 16, paddingBottom: 12, opacity: y.interpolate({ inputRange: [0, height / 3], outputRange: [1, 0], extrapolate: 'clamp' }) }}>
+          {above}
+        </Animated.View>
+      ) : null}
       <Animated.View
+        accessibilityViewIsModal
+        accessibilityLabel={title}
         style={{
           transform: [{ translateY: y }],
           maxHeight: '88%',
@@ -168,25 +189,30 @@ function PhoneSheet({ onClose, title, children, footer }: SheetProps) {
           borderTopRightRadius: radii.sheet,
           paddingBottom: keyboard ? 8 : Math.max(insets.bottom, 12),
         }}>
-        <View {...pan.panHandlers} style={{ paddingTop: 8 }}>
-          <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: colors.border }} />
-          <View style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 6 }}>
-            <Text size={17} weight="semi" style={{ flex: 1 }}>{title}</Text>
-            <Pressable accessibilityRole="button" onPress={close} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center' }}>
-              <Text color="accent" weight="semi">Done</Text>
-            </Pressable>
-          </View>
-        </View>
-        <ScrollView style={{ flexGrow: 0 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 12, gap: 12 }}>
-          {children}
-          {footer ? (
-            <View style={{ flexDirection: 'row', gap: 10, paddingTop: 8 }}>
-              {footer.map((b) => (
-                <Button key={b.label} label={b.label} variant="outline" onPress={b.onPress} flex />
-              ))}
+        <View {...pan.panHandlers} style={{ paddingTop: 8, paddingBottom: bare ? 6 : 0 }}>
+          <View style={{ alignSelf: 'center', width: 36, height: 5, borderRadius: 3, backgroundColor: colors.grabber }} />
+          {bare ? null : (
+            <View style={{ flexDirection: 'row', alignItems: 'center', paddingLeft: 20, paddingRight: 8, paddingTop: 6 }}>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text size={17} weight="semi">{title}</Text>
+                {sub ? <Text mono size={12} color="muted" numberOfLines={1}>{sub}</Text> : null}
+              </View>
+              <Pressable accessibilityRole="button" onPress={close} style={{ minHeight: 44, minWidth: 44, alignItems: 'flex-end', justifyContent: 'center', paddingHorizontal: 12 }}>
+                <Text color="accent" weight="semi">Done</Text>
+              </Pressable>
             </View>
-          ) : null}
+          )}
+        </View>
+        <ScrollView style={{ flexGrow: 0, flexShrink: 1 }} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12, gap: 14 }}>
+          <OnSheet.Provider value>{children}</OnSheet.Provider>
         </ScrollView>
+        {footer ? (
+          <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingTop: 10, paddingBottom: 4, borderTopWidth: footerLine ? 1 : 0, borderTopColor: colors.surface2 }}>
+            {footer.map((b) => (
+              <Button key={b.label} label={b.label} variant={b.primary ? 'primary' : 'outline'} height={b.primary ? 48 : 44} textSize={b.primary ? 15 : 14} onPress={b.onPress} flex />
+            ))}
+          </View>
+        ) : null}
       </Animated.View>
     </KeyboardAvoidingView>
   );
@@ -212,13 +238,13 @@ export function Dialog({ visible, onClose, title, message, children, cancelLabel
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <KeyboardAvoidingView behavior={'padding'} style={{ flex: 1 }}>
         <Pressable accessibilityLabel="Dismiss" onPress={onClose} style={{ flex: 1, backgroundColor: colors.scrim, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-          <Pressable accessible={false} style={{ width: '100%', maxWidth: 360, backgroundColor: colors.surface, borderRadius: radii.dialog, padding: 20, gap: 14 }}>
+          <Pressable accessible={false} accessibilityRole={destructive ? 'alert' : undefined} style={{ width: '100%', maxWidth: 360, backgroundColor: colors.surface, borderRadius: radii.dialog, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 18, gap: message && !children ? 10 : 14 }}>
             <Text size={18} weight="semi">{title}</Text>
-            {message ? <Text color="text2">{message}</Text> : null}
+            {message ? <Text size={14.5} color="muted" style={{ lineHeight: 21.75 }}>{message}</Text> : null}
             {children}
-            <View style={{ flexDirection: 'row', gap: 10, paddingTop: 4 }}>
+            <View style={{ flexDirection: 'row', gap: 8, paddingTop: message && !children ? 10 : 4 }}>
               <Button label={cancelLabel} variant="outline" onPress={onClose} flex />
-              <Button label={confirmLabel} variant={destructive ? 'danger' : 'primary'} onPress={onConfirm} flex />
+              <Button label={confirmLabel} variant={destructive ? 'dangerFill' : 'primary'} onPress={onConfirm} flex />
             </View>
           </Pressable>
         </Pressable>

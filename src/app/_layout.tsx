@@ -14,6 +14,7 @@ import '@/lib/webstyle';
 import { AlertHost } from '@/components/AlertHost';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
+import { updateSkillsIfDue } from '@/lib/skill-updates';
 import { isDesktop } from '@/lib/device';
 import { useLayout } from '@/lib/layout';
 import { initNotifications } from '@/lib/notify';
@@ -47,7 +48,10 @@ export default function RootLayout() {
       .then(() => useChats.getState().housekeeping())
       .then(() => autoBackupIfDue())
       .catch(() => {})
-      .finally(() => setDataReady(true));
+      .finally(() => {
+        setDataReady(true);
+        updateSkillsIfDue().catch(() => {});
+      });
   }, []);
 
   const ready = (fontsLoaded || fontError) && dataReady;

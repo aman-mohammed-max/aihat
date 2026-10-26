@@ -59,15 +59,24 @@ const SIGNED_IN = `<!doctype html><meta charset="utf-8"><meta name="viewport" co
 <main style="max-width:420px;padding:24px;text-align:center"><h1 style="font-size:22px;font-weight:600;margin:0 0 8px">MESSAGE</h1>
 <p style="color:#9BA0A8;margin:0">You can close this tab and go back to AI Hat.</p></main>`;
 
-export async function startServer({ webRoot, host, keysInFile = false }: { webRoot: string; host: Host; keysInFile?: boolean }) {
+type Options = {
+  webRoot: string;
+  host: Host;
+  /** Keep keys in a private file instead of the keychain (tests, browser mode). */
+  keysInFile?: boolean;
+  /** Development: take the page from Expo's dev server (`npx expo start`) instead of a web build, e.g. http://localhost:8081. */
+  webDev?: string;
+};
+
+export async function startServer({ webRoot, host, keysInFile = false, webDev }: Options) {
   mkdirSync(host.dataDir, { recursive: true });
   const db = openDb(join(host.dataDir, 'aihat.db'));
   const secrets = await openSecrets(host.dataDir, keysInFile);
   const token = randomBytes(32).toString('base64url');
   const tokenBytes = Buffer.from(token);
   const root = normalize(webRoot);
-  const indexHtml = await Bun.file(join(root, 'index.html')).text();
-  const page = indexHtml.replace(/<head>/i, `<head>${bootstrap({ token, platform: process.platform, version: host.version })}`);
+  const boot = bootstrap({ token, platform: process.platform, version: host.version });
+  const page = webDev ? '' : (await Bun.file(join(root, 'index.html')).text()).replace(/<head>/i, `<head>${boot}`);
   let port = 0;
 
   const tokenOk = (given: string | null) => {
@@ -236,6 +245,15 @@ export async function startServer({ webRoot, host, keysInFile = false }: { webRo
     return extname(rel) ? new Response('Not found', { status: 404 }) : pageResponse();
   }
 
+  /** Development: the page and its scripts from Expo's dev server, with the same bootstrap put in the page. */
+  async function fromDevServer(url: URL) {
+    const res = await fetch(new URL(url.pathname + url.search, webDev));
+    const type = res.headers.get('content-type') ?? '';
+    if (!type.includes('text/html')) return new Response(res.body, { status: res.status, headers: { 'content-type': type || 'application/octet-stream', 'cache-control': 'no-store' } });
+    const html = (await res.text()).replace(/<head>/i, `<head>${boot}`);
+    return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
+  }
+
   const handle = async (req: Request) => {
     const url = new URL(req.url);
     const hostHeader = req.headers.get('host');
@@ -247,6 +265,7 @@ export async function startServer({ webRoot, host, keysInFile = false }: { webRo
     }
     if (url.pathname.startsWith('/oauth/')) return signInReturned(url);
     if (req.method !== 'GET' && req.method !== 'HEAD') return new Response('Not allowed', { status: 405 });
+    if (webDev) return fromDevServer(url);
     return staticFile(url.pathname);
   };
 

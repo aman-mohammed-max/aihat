@@ -49,10 +49,10 @@ export async function removeServer(id: string) {
 }
 
 export const CONNECTORS = [
-  { key: 'github', name: 'GitHub', sub: 'Code search, issues, pull requests', url: 'https://api.githubcopilot.com/mcp/', auth: 'token' as const },
-  { key: 'notion', name: 'Notion', sub: 'Pages and databases', url: 'https://mcp.notion.com/mcp', auth: 'oauth' as const },
-  { key: 'gdrive', name: 'Google Drive', sub: 'Search, read, save files · backups', url: '', auth: 'token' as const },
-  { key: 'gcal', name: 'Google Calendar', sub: 'Read and create events', url: '', auth: 'token' as const },
-  { key: 'slack', name: 'Slack', sub: 'Search and post messages', url: '', auth: 'token' as const },
-  { key: 'icloud', name: 'iCloud Drive', sub: 'Files and backups on Apple devices', url: '', auth: 'token' as const },
+  { key: 'github', name: 'GitHub', letter: 'G', sub: 'Code search, issues, pull requests', url: 'https://api.githubcopilot.com/mcp/', auth: 'token' as const },
+  { key: 'notion', name: 'Notion', letter: 'N', sub: 'Pages and databases', url: 'https://mcp.notion.com/mcp', auth: 'oauth' as const },
+  { key: 'gdrive', name: 'Google Drive', letter: 'D', sub: 'Search, read, save files · backups', url: '', auth: 'token' as const },
+  { key: 'gcal', name: 'Google Calendar', letter: 'C', sub: 'Read and create events', url: '', auth: 'token' as const },
+  { key: 'slack', name: 'Slack', letter: 'S', sub: 'Search and post messages', url: '', auth: 'token' as const },
+  { key: 'icloud', name: 'iCloud Drive', letter: 'i', sub: 'Files and backups on Apple devices', url: '', auth: 'token' as const },
 ];

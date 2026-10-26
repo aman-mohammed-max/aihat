@@ -3,12 +3,12 @@ import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
 import { OAuthError } from '@/api/oauth';
-import { Button, Card, ListRow, Screen, SectionTitle, Segmented, Field, Text } from '@/components';
+import { Banner, Button, Field, Note, Screen, SectionTitle, Segmented } from '@/components';
 import { getApiKey } from '@/lib/keys';
 import { addAndConnect, removeServer } from '@/lib/mcp-connect';
 import { useLibrary, type McpServer } from '@/store/library';
 import { fonts, radii, useTheme } from '@/theme';
-import { keyPlace } from '@/lib/device';
+import { device, isDesktop, keyPlace } from '@/lib/device';
 
 type Mode = 'url' | 'json';
 type Auth = McpServer['auth'];
@@ -35,7 +35,7 @@ function readConfig(text: string): { name?: string; url: string } {
 
 export default function AddMcp() {
   const { id } = useLocalSearchParams<{ id?: string }>();
-  const { colors, body } = useTheme();
+  const { colors } = useTheme();
   const existing = useLibrary((s) => s.servers.find((x) => x.id === id));
   const [mode, setMode] = useState<Mode>('url');
   const [name, setName] = useState(existing?.name ?? '');
@@ -45,6 +45,7 @@ export default function AddMcp() {
   const [json, setJson] = useState('{\n  "mcpServers": {\n    "name": { "url": "https://…/mcp" }\n  }\n}');
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     if (id) getApiKey(`mcp.${id}`).then((k) => k && (setToken(k), setAuth('token')));
@@ -85,16 +86,33 @@ export default function AddMcp() {
     }
   };
 
-  const label = busy ? (auth === 'oauth' ? 'Waiting for sign-in…' : 'Connecting…') : id ? 'Save & test' : auth === 'oauth' ? 'Sign in and add' : 'Add server';
+  /** Paste config: read the address out of it and carry on in the Server URL tab. */
+  const readPasted = () => {
+    try {
+      const cfg = readConfig(json);
+      if (cfg.name) setName(cfg.name);
+      setUrl(cfg.url);
+      setMode('url');
+      setStatus(null);
+    } catch (e: any) {
+      setStatus({ ok: false, text: e.message });
+    }
+  };
+
+  const label = busy ? (auth === 'oauth' ? 'Waiting for sign-in…' : 'Connecting…') : mode === 'json' ? 'Read config' : id ? 'Save & test' : auth === 'oauth' ? 'Sign in and add' : 'Add server';
+  const go = mode === 'json' ? readPasted : submit;
 
   return (
-    <Screen header={{ title: id ? 'Edit MCP server' : 'Add MCP server' }} footer={<Button label={label} flex onPress={submit} disabled={busy} />}>
+    <Screen
+      header={{ left: 'cancel', title: id ? 'Edit MCP server' : 'Add MCP server', right: 'text', rightText: id ? 'Save' : 'Add', onRightText: go }}
+      gap={16}
+      footer={<Button label={label} height={48} flex onPress={go} disabled={busy} />}>
       {!id && <Segmented<Mode> options={[{ value: 'url', label: 'Server URL' }, { value: 'json', label: 'Paste config' }]} value={mode} onChange={(m) => { setMode(m); setStatus(null); }} />}
 
       {mode === 'url' ? (
         <>
-          <Field label="Name" value={name} onChangeText={setName} />
-          <Field label="Server URL" value={url} onChangeText={setUrl} keyboardType="url" placeholder="https://mcp.example.com/mcp" />
+          <Field label="Name" value={name} onChangeText={setName} autoCapitalize="none" autoCorrect={false} placeholder="notion" />
+          <Field label="Server URL" value={url} onChangeText={setUrl} mono keyboardType="url" autoCapitalize="none" autoCorrect={false} placeholder="https://mcp.example.com/mcp" />
         </>
       ) : (
         <View style={{ gap: 8 }}>
@@ -105,19 +123,22 @@ export default function AddMcp() {
             multiline
             autoCapitalize="none"
             autoCorrect={false}
-            style={{ minHeight: 180, borderRadius: radii.input, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, padding: 12, color: colors.text, fontFamily: fonts.mono, fontSize: body - 1.5 }}
+            textAlignVertical="top"
+            onFocus={() => setFocused(true)}
+            onBlur={() => setFocused(false)}
+            style={{ minHeight: 150, borderRadius: radii.input, backgroundColor: colors.surface, borderWidth: 1, borderColor: focused ? colors.accent : colors.field, padding: 12, color: colors.text, fontFamily: fonts.mono, fontSize: 12.5, lineHeight: 18.75 }}
           />
-          <Text size={12.5} color="muted">Paste what a server’s README shows. Servers with a web address (“url”) work; ones that are a program to start (“command”) can’t be started from AI Hat.</Text>
+          <Note>{`Paste what a server’s README shows. Servers with a web address (“url”) work; ones that are a program to start (“command”) ${isDesktop ? 'can’t be started from AI Hat' : `need a computer and can’t run on a ${device}`}.`}</Note>
         </View>
       )}
 
       <View style={{ gap: 8 }}>
-        <SectionTitle>Sign-in</SectionTitle>
+        <SectionTitle space={0}>Sign-in</SectionTitle>
         <Segmented<Auth> options={[{ value: 'none', label: 'None' }, { value: 'token', label: 'Access token' }, { value: 'oauth', label: 'Browser sign-in' }]} value={auth} onChange={setAuth} />
         {auth === 'token' && <Field label="Access token" value={token} onChangeText={setToken} secureTextEntry hint={`Sent as “Authorization: Bearer …”. Stored only in ${keyPlace}.`} />}
-        {auth === 'oauth' && <Text size={12.5} color="muted" style={{ lineHeight: 18 }}>Your browser opens so you can sign in to the service. AI Hat registers itself with the service automatically. Works with servers that allow it (Notion, Linear, Sentry, Vercel, Stripe and many more); others need an access token.</Text>}
+        {auth === 'oauth' && <Note>Your browser opens so you can sign in to the service. AI Hat registers itself with the service automatically. Works with servers that allow it (Notion, Linear, Sentry, Vercel, Stripe and many more); others need an access token.</Note>}
       </View>
-      {status && <Card><ListRow icon={status.ok ? 'check' : 'warn'} danger={!status.ok} label={status.text} last /></Card>}
+      {status ? status.ok ? <Note color="accent">{status.text}</Note> : <Banner tone="danger">{status.text}</Banner> : null}
     </Screen>
   );
 }

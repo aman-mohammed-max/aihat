@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-import { listModels } from '@/api/openai';
+import { listModels, type Params } from '@/api/openai';
 import { getDb, json } from '@/db';
 import { classifyModel, type ModelKind } from '@/lib/models';
 import { uid } from '@/lib/id';
@@ -14,7 +14,11 @@ export type Provider = {
 /** Chat-capable: everything except image / speech / transcription / embedding / video models. */
 export const isChatModel = (m: { caps: Caps }) => !m.caps.kind || m.caps.kind === 'chat';
 
-export type Model = { id: string; providerId: string; name: string; enabled: boolean; caps: Caps };
+export type Model = {
+  id: string; providerId: string; name: string; enabled: boolean; caps: Caps;
+  /** Settings new chats with this model start with (over the app-wide defaults). */
+  defaults: Partial<Params>;
+};
 
 export const PRESETS = [
   { name: 'vLLM', baseUrl: 'http://localhost:8000/v1' },
@@ -42,6 +46,7 @@ type State = {
   updateModel: (providerId: string, id: string, patch: { name?: string; kind?: ModelKind; enabled?: boolean }) => Promise<void>;
   deleteModel: (providerId: string, id: string) => Promise<void>;
   toggleModel: (providerId: string, modelId: string, enabled: boolean) => Promise<void>;
+  setModelDefaults: (providerId: string, modelId: string, defaults: Partial<Params>) => Promise<void>;
 };
 
 const row = (r: any): Provider => ({
@@ -58,7 +63,7 @@ export const useProviders = create<State>((set, get) => ({
     const db = await getDb();
     const providers = (await db.getAllAsync('SELECT * FROM providers ORDER BY name')).map(row);
     const models = (await db.getAllAsync<any>('SELECT * FROM models ORDER BY name')).map((m): Model => ({
-      id: m.id, providerId: m.provider_id, name: m.name, enabled: !!m.enabled, caps: json(m.caps, {}),
+      id: m.id, providerId: m.provider_id, name: m.name, enabled: !!m.enabled, caps: json(m.caps, {}), defaults: json(m.defaults, {}),
     }));
     set({ providers, models, loaded: true });
   },
@@ -188,5 +193,10 @@ export const useProviders = create<State>((set, get) => ({
     const db = await getDb();
     await db.runAsync('UPDATE models SET enabled=? WHERE id=? AND provider_id=?', enabled ? 1 : 0, modelId, providerId);
     await get().load();
+  },
+
+  async setModelDefaults(providerId, modelId, defaults) {
+    await (await getDb()).runAsync('UPDATE models SET defaults=? WHERE id=? AND provider_id=?', JSON.stringify(defaults), modelId, providerId);
+    set({ models: get().models.map((m) => (m.providerId === providerId && m.id === modelId ? { ...m, defaults } : m)) });
   },
 }));

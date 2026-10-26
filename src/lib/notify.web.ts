@@ -15,6 +15,9 @@ export function initNotifications() {
   return () => {};
 }
 
+/** The desktop app always can (through its backend). */
+export const notificationsAvailable = () => true;
+
 /** Desktop notifications need no permission prompt. */
 export async function ensureNotifyPermission() {
   return useSettings.getState().notifyReplies;

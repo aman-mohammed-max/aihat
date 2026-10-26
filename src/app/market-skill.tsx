@@ -2,18 +2,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Linking, View } from 'react-native';
 
-import { Button, Card, Icon, ListRow, PulseDots, Screen, SectionTitle, Segmented, Text } from '@/components';
+import { Banner, Button, Icon, InfoBox, Note, Panel, PanelRow, PulseDots, Screen, SectionTitle, Segmented, Text } from '@/components';
+import { device } from '@/lib/device';
 import * as haptic from '@/lib/haptics';
 import { compact, loadSiteSkill, loadSkill, loadSkillFiles, recallSkill, siteSourceLabel, skillSourceLabel, type SkillFileData } from '@/lib/market';
-import { parseSkillMd, slugify } from '@/lib/skills';
+import { fileSize, parseSkillMd, SCRIPT_FILE, slugify } from '@/lib/skills';
 import { useLibrary, type Skill } from '@/store/library';
 import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
 type Loaded = { key: string; md?: string; dir?: string; error?: string };
 type Files = { key: string; list: SkillFileData[]; omitted: number };
-const SCRIPT = /\.(py|sh|bash|zsh|js|mjs|cjs|ts|rb|php|pl|lua|go|rs|java|kt|swift|c|cpp|cs|sql|r)$/i;
-const kb = (n: number) => (n >= 1000 ? `${(n / 1000).toFixed(1)} kB` : `${n} B`);
 
 const MODES: { value: Skill['mode']; label: string; sub: string }[] = [
   { value: 'auto', label: 'Automatic', sub: 'The assistant sees its name and description and opens it when a task matches. Costs almost nothing until used.' },
@@ -74,7 +73,7 @@ export default function MarketSkill() {
   }, [listing, key, nonce, dirFound, bodyFound]);
   const fileData = files?.key === `${key}|${nonce}` ? files : null;
   const fileBytes = (fileData?.list ?? []).reduce((n, f) => n + f.size, 0);
-  const hasScripts = (fileData?.list ?? []).some((f) => SCRIPT.test(f.path));
+  const hasScripts = (fileData?.list ?? []).some((f) => SCRIPT_FILE.test(f.path));
 
   if (!listing) {
     return (
@@ -105,12 +104,16 @@ export default function MarketSkill() {
       body: parsed.body,
       mode: existing?.mode ?? mode,
       enabled: existing?.enabled ?? true,
+      autoUpdate: existing?.autoUpdate,
     });
     if (fileData && (withFiles || existing)) await useLibrary.getState().saveSkillFiles(id, withFiles ? fileData.list.map((f) => ({ path: f.path, content: f.content })) : []);
     haptic.success();
     toast(existing ? `Updated ${name}` : `Added ${name}. Use it with /${slugify(name)}`);
     if (!existing) router.replace({ pathname: '/skill-detail', params: { id } });
   };
+
+  const shown = fileData?.list.slice(0, 3) ?? [];
+  const rest = fileData?.list.slice(3) ?? [];
 
   return (
     <Screen
@@ -119,11 +122,11 @@ export default function MarketSkill() {
         data?.md ? (
           existing ? (
             <>
-              {changed || newFiles ? <Button label={changed ? 'Update' : 'Add its files'} flex onPress={add} /> : null}
-              <Button label="Open skill" variant={changed || newFiles ? 'outline' : 'primary'} flex onPress={() => router.replace({ pathname: '/skill-detail', params: { id: existing.id } })} />
+              {changed || newFiles ? <Button label={changed ? 'Update' : 'Add its files'} height={48} flex onPress={add} /> : null}
+              <Button label="Open skill" height={48} variant={changed || newFiles ? 'outline' : 'primary'} flex onPress={() => router.replace({ pathname: '/skill-detail', params: { id: existing.id } })} />
             </>
           ) : (
-            <Button label="Add skill" flex onPress={add} />
+            <Button label="Add skill" height={48} flex onPress={add} />
           )
         ) : undefined
       }>
@@ -131,7 +134,7 @@ export default function MarketSkill() {
         <Text size={22} weight="semi">{name}</Text>
         <Text size={12.5} color="muted">{[listing.source, listing.installs ? `${compact(listing.installs)} installs` : '', listing.stars ? `★ ${compact(listing.stars)}` : ''].filter(Boolean).join(' · ')}</Text>
       </View>
-      {description ? <Text color="text2" style={{ lineHeight: 22 }}>{description}</Text> : null}
+      {description ? <Text size={15} color="text2" style={{ lineHeight: 22.5 }}>{description}</Text> : null}
 
       {!data && (
         <View accessibilityRole="progressbar" accessibilityLabel="Loading the skill" style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
@@ -141,7 +144,7 @@ export default function MarketSkill() {
       )}
       {data?.error && (
         <View style={{ gap: 10 }}>
-          <Text color="warn">{data.error}</Text>
+          <Banner tone="danger">{data.error}</Banner>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             <Button label="Try again" variant="outline" height={40} onPress={() => setNonce((n) => n + 1)} />
             <Button label={listing.from === 'site' ? 'Open the website' : 'Open on GitHub'} variant="outline" height={40} onPress={() => Linking.openURL(listing.from === 'site' ? `https://${listing.source}` : `https://github.com/${listing.source}`)} />
@@ -153,55 +156,58 @@ export default function MarketSkill() {
         <>
           <View style={{ flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 14 }}>
             <Icon name="warn" size={18} color={colors.warn} />
-            <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19 }}>
-              Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. Scripts that come with a skill are only stored as text; they never run on your phone.
+            <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19.5 }}>
+              {`Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. Scripts that come with a skill are only stored as text; they never run on your ${device}.`}
             </Text>
           </View>
 
           {!existing && (
             <View style={{ gap: 8 }}>
-              <SectionTitle>How the assistant uses it</SectionTitle>
+              <SectionTitle space={0}>How the assistant uses it</SectionTitle>
               <Segmented<Skill['mode']> options={MODES.map((m) => ({ value: m.value, label: m.label }))} value={mode} onChange={setMode} />
-              <Text size={12.5} color="muted">{MODES.find((m) => m.value === mode)!.sub}</Text>
-              {mode === 'always' && body.length > 8000 && <Text size={12.5} color="warn">This one is long ({compact(body.length)} characters). “Always” would add all of it to every message; “Automatic” is a better fit.</Text>}
+              <Note>{MODES.find((m) => m.value === mode)!.sub}</Note>
+              {mode === 'always' && body.length > 8000 && <Note color="warn">{`This one is long (${compact(body.length)} characters). “Always” would add all of it to every message; “Automatic” is a better fit.`}</Note>}
             </View>
           )}
           {existing && (
-            <Card>
-              <ListRow icon="check" label="Already added" sub={changed ? 'The source has changed since you added it.' : newFiles ? 'Its files can be added or refreshed.' : 'Up to date with the source.'} last />
-            </Card>
+            <InfoBox
+              icon="check"
+              tone="accent"
+              title="Added"
+              sub={changed ? 'The source has changed since you added it. Update to get the new version.' : newFiles ? 'Its files can be added or refreshed.' : `Use it with /${slugify(name)}, or let the assistant open it when a task matches.`}
+            />
           )}
 
-          <View>
-            <SectionTitle>Instructions (SKILL.md)</SectionTitle>
-            <Card style={{ padding: 14, gap: 10 }}>
-              <Text mono size={12.5} color="text2" selectable>{full || body.length <= PREVIEW_CHARS ? body : `${body.slice(0, PREVIEW_CHARS).trimEnd()}…`}</Text>
-              {body.length > PREVIEW_CHARS && (
-                <Button label={full ? 'Show less' : `Show all ${body.length.toLocaleString()} characters`} variant="outline" height={38} onPress={() => setFull((f) => !f)} />
-              )}
-            </Card>
-          </View>
-
-          {!fileData && <Text size={12.5} color="muted">Looking for its other files…</Text>}
+          {!fileData && <Note>Looking for its other files…</Note>}
           {fileData && fileData.list.length > 0 && (
             <View>
-              <SectionTitle>{`Files that come with it · ${fileData.list.length}`}</SectionTitle>
-              <Card>
-                {fileData.list.slice(0, 8).map((f) => <ListRow key={f.path} mono label={f.path} sub={SCRIPT.test(f.path) ? 'Script: read only, never run' : undefined} value={kb(f.size)} />)}
-                {fileData.list.length > 8 && <ListRow label={`and ${fileData.list.length - 8} more`} value={kb(fileBytes)} />}
-                {!existing && <ListRow label="Add these files too" sub={`${kb(fileBytes)} of text${fileData.omitted ? `; ${fileData.omitted} more were left out` : ''}`} toggle={{ on: withFiles, onChange: setWithFiles }} last />}
-              </Card>
-              <Text size={12.5} color="muted" style={{ marginTop: 8, paddingLeft: 4, lineHeight: 18 }}>
-                The assistant opens these when the instructions point to them.{hasScripts ? ' Scripts are kept as text and AI Hat never runs them; with a code-running tool connected (an MCP server), the assistant can pass them to it.' : ''}
+              <SectionTitle space={8}>{`Files that come with it · ${fileData.list.length}`}</SectionTitle>
+              <Panel>
+                {shown.map((f) => <PanelRow key={f.path} mono label={f.path} sub={SCRIPT_FILE.test(f.path) ? 'Script: read only, never run' : undefined} value={fileSize(f.size)} />)}
+                {rest.length > 0 && <PanelRow label={`and ${rest.length} more`} value={fileSize(rest.reduce((n, f) => n + f.size, 0))} />}
+                {!existing && <PanelRow label="Add these files too" sub={`${fileSize(fileBytes)} of text${fileData.omitted ? `; ${fileData.omitted} more were left out` : ''}`} height={56} toggle={{ on: withFiles, onChange: setWithFiles }} />}
+              </Panel>
+              <Text size={12.5} color="muted" style={{ marginTop: 8, paddingHorizontal: 4, lineHeight: 19 }}>
+                {`The assistant opens these when the instructions point to them.${hasScripts ? ` Scripts are kept as text and are never run on the ${device}; with a code-running tool connected (an MCP server), the assistant can pass them to it.` : ''}`}
               </Text>
             </View>
           )}
 
-          <Card>
-            <ListRow label="Source" value={label.replace('github.com/', '')} onPress={() => Linking.openURL(listing.from === 'site' ? `https://${listing.source}` : `https://github.com/${listing.source}/tree/HEAD/${data.dir ?? ''}`)} />
-            <ListRow label="Size" value={`${body.length.toLocaleString()} characters`} last={!parsed?.meta.license} />
-            {parsed?.meta.license ? <ListRow label="License" value={parsed.meta.license} last /> : null}
-          </Card>
+          <View>
+            <SectionTitle space={8}>Instructions (SKILL.md)</SectionTitle>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 14, gap: 10 }}>
+              <Text mono size={12.5} color="text2" selectable style={{ lineHeight: 19.4 }}>{full || body.length <= PREVIEW_CHARS ? body : `${body.slice(0, PREVIEW_CHARS).trimEnd()}…`}</Text>
+              {body.length > PREVIEW_CHARS && (
+                <Button label={full ? 'Show less' : `Show all ${body.length.toLocaleString('en-US')} characters`} variant="outline" height={40} onPress={() => setFull((f) => !f)} />
+              )}
+            </View>
+          </View>
+
+          <Panel>
+            <PanelRow label="Source" value={label.replace('github.com/', '')} onPress={() => Linking.openURL(listing.from === 'site' ? `https://${listing.source}` : `https://github.com/${listing.source}/tree/HEAD/${data.dir ?? ''}`)} />
+            <PanelRow label="Size" value={`${body.length.toLocaleString('en-US')} characters`} />
+            {parsed?.meta.license ? <PanelRow label="License" value={parsed.meta.license} /> : null}
+          </Panel>
         </>
       )}
     </Screen>

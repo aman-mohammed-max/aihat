@@ -1,8 +1,13 @@
 name: Android APK
 
-# Builds an installable release APK.
-#   By hand: GitHub → Actions → "Android APK" → Run workflow. The APK is under the run's Artifacts.
-#   For a public release, push a tag instead (see release.yml), which builds this and the iOS app together.
+# Builds installable release APKs: one for every kind of processor plus a universal one.
+#   AI-Hat-<label>.apk                  universal: installs on any Android phone, tablet or Chromebook (largest file)
+#   AI-Hat-<label>-Android-arm64.apk    64-bit ARM (arm64-v8a): nearly every phone from the last several years
+#   AI-Hat-<label>-Android-arm32.apk    32-bit ARM (armeabi-v7a): older and low-cost phones
+#   AI-Hat-<label>-Android-x86_64.apk   64-bit Intel/AMD (x86_64): Chromebooks, tablets and emulators with Intel or AMD chips
+#   AI-Hat-<label>-Android-x86.apk      32-bit Intel (x86): old Intel tablets and emulators
+#   By hand: GitHub → Actions → "Android APK" → Run workflow. The APKs are under the run's Artifacts.
+#   For a public release, push a tag instead (see release.yml), which builds this and the other apps together.
 #
 # With no secrets it is signed with the debug key Expo generates: fine for installing on your own phone.
 # For a key of your own, add these repository secrets (Settings → Secrets and variables → Actions):
@@ -13,13 +18,13 @@ on:
   workflow_dispatch:
     inputs:
       abis:
-        description: CPU architectures to include (fewer builds faster and gives a smaller file)
-        default: arm64-v8a,armeabi-v7a
+        description: CPU architectures to build (comma separated; fewer is faster). Each gets its own APK, plus a universal one.
+        default: arm64-v8a,armeabi-v7a,x86_64,x86
   workflow_call:
     inputs:
       abis:
         type: string
-        default: arm64-v8a,armeabi-v7a
+        default: arm64-v8a,armeabi-v7a,x86_64,x86
       label:
         description: Used in the file name, for example the release tag
         type: string
@@ -28,7 +33,7 @@ on:
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     env:
       ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
       ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
@@ -86,18 +91,65 @@ jobs:
           open(p, 'w').write(s)
           PY
 
-      - name: Build the release APK
+      - name: One APK per architecture, plus a universal one
+        env:
+          ABIS: ${{ inputs.abis || 'arm64-v8a,armeabi-v7a,x86_64,x86' }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          abis = [a.strip() for a in os.environ['ABIS'].split(',') if a.strip()]
+          known = {'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'}
+          assert abis and set(abis) <= known, f'unknown architecture in {abis}; use {sorted(known)}'
+          if len(abis) == 1:
+              print('One architecture: a single APK, no splits.')
+              raise SystemExit(0)
+          p = 'android/app/build.gradle'
+          s = open(p).read()
+          # An older template's own splits block is replaced (matched by its braces).
+          at = s.find('splits {')
+          if at != -1:
+              depth, end = 0, at
+              for i in range(s.index('{', at), len(s)):
+                  depth += {'{': 1, '}': -1}.get(s[i], 0)
+                  if depth == 0:
+                      end = i + 1
+                      break
+              s = s[:s.rfind('\n', 0, at) + 1] + s[end:].lstrip(' ').lstrip('\n')
+          include = ', '.join('"%s"' % a for a in abis)
+          block = ('    splits {\n        abi {\n            enable true\n            reset()\n'
+                   '            include ' + include + '\n'
+                   '            universalApk true\n        }\n    }\n')
+          s, n = re.subn(r'^android \{\n', lambda m: m.group(0) + block, s, count=1, flags=re.M)
+          assert n == 1, 'the android { block was not found in build.gradle'
+          open(p, 'w').write(s)
+          print(block)
+          PY
+
+      - name: Build the release APKs
         working-directory: android
         run: >
           ./gradlew assembleRelease --no-daemon --stacktrace
-          -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a,armeabi-v7a' }}
+          -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a,armeabi-v7a,x86_64,x86' }}
           -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
 
-      - name: Name the file
+      - name: Name the files
+        env:
+          LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
         run: |
           mkdir -p out
-          cp android/app/build/outputs/apk/release/*.apk "out/AI-Hat-${{ inputs.label || format('build-{0}', github.run_number) }}.apk"
-          ls -lh out
+          cd android/app/build/outputs/apk/release
+          ls -l
+          if [ -f app-universal-release.apk ]; then
+            cp app-universal-release.apk "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL.apk"
+            for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+              [ -f "app-$abi-release.apk" ] || continue
+              case "$abi" in arm64-v8a) name=arm64 ;; armeabi-v7a) name=arm32 ;; *) name=$abi ;; esac
+              cp "app-$abi-release.apk" "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL-Android-$name.apk"
+            done
+          else
+            cp app-release.apk "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL.apk"
+          fi
+          ls -lh "$GITHUB_WORKSPACE/out"
 
       - uses: actions/upload-artifact@v4
         with:

@@ -67,6 +67,8 @@ export async function migrate(db: Migratable) {
   const mcpCols = (await db.getAllAsync<{ name: string }>('PRAGMA table_info(mcp_servers)')).map((c) => c.name);
   if (!mcpCols.includes('auth_header')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_header TEXT');
   if (!mcpCols.includes('auth_template')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_template TEXT');
+  const skillCols = (await db.getAllAsync<{ name: string }>('PRAGMA table_info(skills)')).map((c) => c.name);
+  if (!skillCols.includes('auto_update')) await db.execAsync('ALTER TABLE skills ADD COLUMN auto_update INTEGER NOT NULL DEFAULT 0');
 }
 
 export const json = <T,>(s: string | null | undefined, fallback: T): T => {
