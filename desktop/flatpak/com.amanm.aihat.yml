@@ -24,7 +24,7 @@ modules:
     buildsystem: simple
     build-commands:
       - mkdir -p /app/ai-hat
-      - tar -xf app.tar -C /app/ai-hat --strip-components=1
+      - tar --no-same-owner -xf app.tar -C /app/ai-hat --strip-components=1
       - install -Dm755 ai-hat.sh /app/bin/ai-hat
       - install -Dm644 com.amanm.aihat.desktop /app/share/applications/com.amanm.aihat.desktop
       - install -Dm644 icon-512.png /app/share/icons/hicolor/512x512/apps/com.amanm.aihat.png
