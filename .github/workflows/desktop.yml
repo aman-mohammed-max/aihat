@@ -82,25 +82,63 @@ jobs:
           ls -la out
           [ -n "$(ls out)" ] || { echo "::error::The desktop build made no installer."; exit 1; }
 
-      # Linux: a Flatpak as well. It has its own step so a Flatpak problem never holds back the other files.
-      - name: Build the Flatpak
+      # Linux: the files the Flatpak is built from (the flatpak job below builds it in Flathub's container).
+      - name: Prepare the Flatpak
         if: startsWith(matrix.name, 'Linux-')
-        continue-on-error: true
         working-directory: desktop
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq flatpak flatpak-builder >/dev/null
-          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
-          GNOME=$(flatpak remote-ls --user --runtime --columns=ref flathub | grep -E '^org\.gnome\.Platform/[^/]+/[0-9]+$' | awk -F/ '{print $3}' | sort -n | tail -1)
-          echo "GNOME runtime $GNOME"
-          bun scripts/package.ts flatpak artifacts/stable-linux-*.tar.zst fp
-          sed -i "s/^runtime-version: .*/runtime-version: '$GNOME'/" fp/com.amanm.aihat.yml
-          git clone -q --depth 1 https://github.com/flathub/shared-modules fp/shared-modules
-          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --repo=fp-repo fp-build fp/com.amanm.aihat.yml
-          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo fp-repo "out/AI-Hat-$LABEL-$NAME.flatpak" com.amanm.aihat
-          ls -la out
+        run: bun scripts/package.ts flatpak artifacts/stable-linux-*.tar.zst fp
+
+      - if: startsWith(matrix.name, 'Linux-')
+        uses: actions/upload-artifact@v4
+        with:
+          name: flatpak-source-${{ matrix.name }}
+          path: desktop/fp
+          retention-days: 1
 
       - uses: actions/upload-artifact@v4
         with:
           name: AI-Hat-desktop-${{ matrix.name }}
           path: desktop/out/*
+          if-no-files-found: error
+
+  # Flatpak for Linux x64 and ARM64, built with Flathub's own action in its GNOME container (which has the GNOME
+  # runtime and SDK the manifest uses). Runs even if another desktop build failed.
+  flatpak:
+    name: Flatpak-${{ matrix.name }}
+    needs: desktop
+    if: ${{ !cancelled() }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-51
+      options: --privileged
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: Linux-x64, arch: x86_64, runner: ubuntu-24.04 }
+          - { name: Linux-arm64, arch: aarch64, runner: ubuntu-24.04-arm }
+    env:
+      BUNDLE: AI-Hat-${{ inputs.label || format('build-{0}', github.run_number) }}-${{ matrix.name }}.flatpak
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: flatpak-source-${{ matrix.name }}
+          path: fp
+
+      - name: Flathub's shared modules (the tray-icon library)
+        run: git clone -q --depth 1 https://github.com/flathub/shared-modules fp/shared-modules
+
+      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+        with:
+          manifest-path: fp/com.amanm.aihat.yml
+          bundle: ${{ env.BUNDLE }}
+          arch: ${{ matrix.arch }}
+          cache-key: flatpak-${{ matrix.arch }}
+          upload-artifact: false
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AI-Hat-desktop-flatpak-${{ matrix.name }}
+          path: ${{ env.BUNDLE }}
           if-no-files-found: error

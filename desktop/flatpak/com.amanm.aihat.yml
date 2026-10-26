@@ -1,10 +1,10 @@
 # Flatpak of the desktop app, built by the "Desktop apps" workflow on Linux x64 and ARM64. The GNOME runtime brings
-# WebKitGTK 4.1 (the window's web view); the tray library comes from Flathub's shared modules. The workflow sets
-# runtime-version to the newest GNOME runtime on Flathub, and `bun scripts/package.ts flatpak` puts the app and the
-# files below next to a copy of this manifest.
+# WebKitGTK 4.1 (the window's web view); the tray library comes from Flathub's shared modules (the workflow clones
+# them beside it). `bun scripts/package.ts flatpak` puts the app and the files below next to a copy of this manifest.
+# Keep runtime-version in step with the gnome-NN container in .github/workflows/desktop.yml.
 id: com.amanm.aihat
 runtime: org.gnome.Platform
-runtime-version: '49'
+runtime-version: '51'
 sdk: org.gnome.Sdk
 command: ai-hat
 finish-args:
