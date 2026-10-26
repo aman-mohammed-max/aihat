@@ -35,11 +35,10 @@ export default function About() {
         <Box style={{ borderRadius: 18, paddingHorizontal: 16, paddingVertical: 16, gap: 14, marginTop: 4 }}>
             <View style={{ gap: 2 }}>
               <Text size={18} weight="semi">Aman Mohammed</Text>
-              <Text size={13.5} color="text2">Builder · Developer · Exploring business</Text>
+              <Text size={13.5} color="text2">Developer · Builder</Text>
               <Text size={12.5} color="muted">India · Remote</Text>
             </View>
             <Side title="Developer" text="JavaScript and TypeScript across Node, Hono, MERN, Astro and Next, and React Native with Expo. Now exploring Go, Rust, AI agents and IoT." />
-            <Side title="Business" text="Founder and CEO of Towlips, an early-stage independent fashion brand: clothing, accessories and gadgets, with its own online store." />
         </Box>
       </View>
       <View>

@@ -12,10 +12,11 @@ import { useTheme } from '@/theme';
 const SCHEDULE: Record<string, string> = { off: 'Off', daily: 'Daily', weekly: 'Weekly' };
 
 /** A place to save backups: a lettered tile, its name and state, and a dot when it's the one in use. */
-function Target({ letter, label, sub, on, action, onPress, last }: { letter: string; label: string; sub: string; on?: boolean; action?: string; onPress: () => void; last?: boolean }) {
+/** A place to back up to. `soon`: shown greyed out with a "Coming soon" label, and can't be picked yet. */
+function Target({ letter, label, sub, on, action, soon, onPress, last }: { letter: string; label: string; sub: string; on?: boolean; action?: string; soon?: boolean; onPress?: () => void; last?: boolean }) {
   const { colors } = useTheme();
   return (
-    <Pressable accessibilityRole="button" accessibilityState={{ selected: !!on }} onPress={onPress} style={{ minHeight: 60, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairline }}>
+    <Pressable accessibilityRole="button" accessibilityState={{ selected: !!on, disabled: soon }} disabled={soon} onPress={onPress} style={{ minHeight: 60, paddingHorizontal: 4, flexDirection: 'row', alignItems: 'center', gap: 12, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairline, opacity: soon ? 0.55 : 1 }}>
       <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: colors.surface2, alignItems: 'center', justifyContent: 'center' }}>
         <Text size={14} weight="semi">{letter}</Text>
       </View>
@@ -23,7 +24,11 @@ function Target({ letter, label, sub, on, action, onPress, last }: { letter: str
         <Text size={15}>{label}</Text>
         <Text size={12.5} color="muted">{sub}</Text>
       </View>
-      {action ? (
+      {soon ? (
+        <View style={{ height: 26, borderRadius: 13, backgroundColor: colors.surface2, paddingHorizontal: 10, justifyContent: 'center' }}>
+          <Text size={12} color="muted">Coming soon</Text>
+        </View>
+      ) : action ? (
         <View style={{ height: 34, borderRadius: 17, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 12, justifyContent: 'center' }}>
           <Text size={13}>{action}</Text>
         </View>
@@ -66,8 +71,8 @@ export default function Backup() {
       <View>
         <SectionTitle>Save to</SectionTitle>
         <Target letter="F" label="A .json file" sub={isDesktop ? 'Saved to your Downloads folder' : `Share it to Drive, iCloud or any app${last ? ` · last ${last}` : ''}`} on={s.backupTarget === 'file'} onPress={() => s.set({ backupTarget: 'file' })} />
-        <Target letter="D" label="Google Drive" sub="Connect it in Connectors" action="Connect" onPress={() => router.push('/connectors')} />
-        <Target letter="i" label="iCloud Drive" sub="Apple devices only" action="Connect" onPress={() => router.push('/connectors')} last />
+        <Target letter="D" label="Google Drive" sub="Back up straight to your Drive" soon />
+        <Target letter="i" label="iCloud Drive" sub="Apple devices only" soon last />
       </View>
       <View>
         <SectionTitle>Include</SectionTitle>

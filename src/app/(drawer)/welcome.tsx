@@ -9,7 +9,7 @@ import { useTheme } from '@/theme';
 
 const OPTIONS: { icon: IconName; title: string; sub: string; path: string }[] = [
   { icon: 'server', title: 'Add an endpoint', sub: 'vLLM, LM Studio, Ollama, OpenRouter, Groq…', path: '/add-provider' },
-  { icon: 'refresh', title: 'Restore a backup', sub: 'From Google Drive, iCloud or a .json file', path: '/backup' },
+  { icon: 'refresh', title: 'Restore a backup', sub: 'From a .json backup file', path: '/backup' },
 ];
 
 export default function Welcome() {
