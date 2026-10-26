@@ -39,6 +39,10 @@ Every change to `main` is built automatically and published on the **[Releases p
 
 If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
+[<img src="https://raw.githubusercontent.com/ImranR98/Obtainium/main/assets/graphics/badge_obtainium.png" alt="Get it on Obtainium" height="54">](https://apps.obtainium.imranr.dev/redirect?r=obtainium://app/%7B%22id%22%3A%22com.amanm.aihat%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2Faman-mohammed-max%2Faihat%22%2C%22author%22%3A%22aman-mohammed-max%22%2C%22name%22%3A%22AI%20Hat%22%2C%22additionalSettings%22%3A%22%7B%5C%22includePrereleases%5C%22%3A%20true%2C%20%5C%22apkFilterRegEx%5C%22%3A%20%5C%22AI-Hat-beta-latest%5C%5C%5C%5C.apk%24%5C%22%2C%20%5C%22releaseDateAsVersion%5C%22%3A%20true%7D%22%7D)
+
+**Updates with Obtainium:** tap the badge on your phone (with [Obtainium](https://obtainium.imranr.dev) installed), or add `https://github.com/aman-mohammed-max/aihat` by hand and turn on **Include prereleases**, set **Filter APKs by regular expression** to `AI-Hat-beta-latest\.apk$`, and turn on **Use release date as version string** (the beta keeps the same name, so the date is what changes). A **401** error means the GitHub token in Obtainium's settings is wrong or expired: remove it (Settings › GitHub › Personal access token) or paste a new one.
+
 **Install on Android:** download the APK on your phone, open it, allow "Install unknown apps" for your browser or Files app, then tap Install. Android may warn that the app isn't from the Play Store. That's expected for a beta distributed here.
 
 **Install on iPhone / iPad:** the IPA is **unsigned**, so it can't be installed by tapping it. Open it with [AltStore](https://altstore.io), [SideStore](https://sidestore.io) or [Sideloadly](https://sideloadly.io), which sign it with your own Apple ID. Apps signed with a free Apple ID expire after 7 days and need re-signing.
