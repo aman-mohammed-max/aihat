@@ -68,8 +68,15 @@ jobs:
           mkdir -p out
           shopt -s nullglob
           for f in artifacts/*.dmg; do cp "$f" "out/AI-Hat-$LABEL-$NAME.dmg"; done
-          for f in artifacts/*Setup*.zip; do cp "$f" "out/AI-Hat-$LABEL-$NAME-Setup.zip"; done
-          for f in artifacts/*Setup*.tar.gz; do cp "$f" "out/AI-Hat-$LABEL-$NAME.tar.gz"; done
+          # Windows: one Setup .exe with the app inside, instead of Electrobun's zip.
+          for f in artifacts/*Setup*.zip; do
+            7z x -y -owin-setup "$f" >/dev/null
+            bun scripts/package.ts exe win-setup "out/AI-Hat-$LABEL-$NAME-Setup.exe"
+          done
+          # Linux: a .deb for Debian and Ubuntu.
+          if [[ "$NAME" == Linux-* ]]; then
+            for f in artifacts/*.tar.zst; do bun scripts/package.ts deb "$f" "${NAME#Linux-}" "out/AI-Hat-$LABEL-$NAME.deb"; done
+          fi
           ls -la out
           [ -n "$(ls out)" ] || { echo "::error::The desktop build made no installer."; exit 1; }
 

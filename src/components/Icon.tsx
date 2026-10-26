@@ -34,8 +34,8 @@ const paths: Record<string, string[]> = {
   info: ['M12 11v6M12 7.5h.01'],
   warn: ['M12 3l10 18H2z', 'M12 10v5M12 18h.01'],
   layout: ['M3 5h18v14H3z', 'M3 10h18M10 10v9'],
-  // The app mark: a chat bubble with an AI spark inside.
-  logo: ['M8 3.5h8A3.5 3.5 0 0119.5 7v6A3.5 3.5 0 0116 16.5h-4.5L8 20v-3.5A3.5 3.5 0 014.5 13V7A3.5 3.5 0 018 3.5z', 'M12 6.6q.45 2.9 3.4 3.4-2.95.5-3.4 3.4-.45-2.9-3.4-3.4 2.95-.5 3.4-3.4z'],
+  // The app mark: the soft irregular polygon from the app icon, drawn solid (in `fills`).
+  logo: [],
   store: ['M4 9l1.5-5h13L20 9', 'M4 9a2.5 2.5 0 005 0 2.5 2.5 0 005 0 2.5 2.5 0 005 0', 'M5 12v8h14v-8', 'M10 20v-5h4v5'],
   pause: ['M8 5v14M16 5v14'],
   play: ['M7 4l13 8-13 8z'],
@@ -58,6 +58,11 @@ const circles: Record<string, { cx: number; cy: number; r: number }[]> = {
   info: [{ cx: 12, cy: 12, r: 9 }],
   image: [{ cx: 8.5, cy: 8.5, r: 1.5 }],
   camera: [{ cx: 12, cy: 13, r: 4 }],
+};
+
+/** Solid shapes (drawn in the icon's colour). */
+const fills: Record<string, string[]> = {
+  logo: ['M5.6 3.9A2.2 2.2 0 017.6 2.4L14.3 2.1A2.2 2.2 0 0116.1 2.8L21.2 8.9A2.2 2.2 0 0121.6 10.9L18.8 20A2.2 2.2 0 0116.3 21.5L9.3 20.2A2.2 2.2 0 018.2 19.8L3.1 15.4A2.2 2.2 0 012.5 13z'],
 };
 
 export type IconName = keyof typeof paths;
@@ -91,6 +96,9 @@ export function Icon({ name, size = 20, color, strokeWidth = 1.8 }: Props) {
         <Circle key={i} {...c} />
       ))}
       {name === 'mic' && <Rect x={9} y={3} width={6} height={11} rx={3} />}
+      {(fills[name] ?? []).map((d, i) => (
+        <Path key={`f${i}`} d={d} fill={color} stroke="none" />
+      ))}
     </Svg>
   );
 }

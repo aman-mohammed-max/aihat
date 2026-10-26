@@ -1,20 +1,19 @@
 /**
- * Makes the desktop icons from the app icon: the same picture on a rounded square with a margin, the way macOS,
- * Windows and Linux desktops show app icons. Writes icons/icon.iconset (macOS), icons/icon.png (Linux) and
- * icons/icon-256.png (Windows; the build turns it into an .ico). Run with `bun scripts/icons.ts` after the app
- * icon changes, and commit the output.
+ * Makes the desktop icons from the app's mark (the soft hexagon in assets/images/splash-icon.png, on a clear
+ * background) with Apple's margin around it, so the desktop icon has the hexagon's own shape. Writes
+ * icons/icon.iconset (macOS), icons/icon.png (Linux) and icons/icon-256.png (Windows; the build turns it into an
+ * .ico). Run with `bun scripts/icons.ts` after the app icon changes, and commit the output.
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { PNG } from 'pngjs';
 
 const root = join(import.meta.dir, '..');
-const src = PNG.sync.read(readFileSync(join(root, '../assets/images/icon.png')));
+const src = PNG.sync.read(readFileSync(join(root, '../assets/images/splash-icon.png')));
 
 const SIZE = 1024;
 const INSET = 100; // Apple's template: an 824 px tile inside a 1024 px canvas
 const TILE = SIZE - INSET * 2;
-const RADIUS = 185;
 
 /** Area-average downscale (or nearest upscale) of an RGBA image. */
 function scale(img: { width: number; height: number; data: Uint8Array }, w: number, h: number) {
@@ -47,35 +46,10 @@ function scale(img: { width: number; height: number; data: Uint8Array }, w: numb
   return { width: w, height: h, data: out };
 }
 
-/** How much of the pixel at (x, y) is inside the rounded tile, 0..1 (4×4 samples for smooth corners). */
-function coverage(x: number, y: number) {
-  let hit = 0;
-  for (let i = 0; i < 4; i++) {
-    for (let j = 0; j < 4; j++) {
-      const px = x + (i + 0.5) / 4 - INSET;
-      const py = y + (j + 0.5) / 4 - INSET;
-      if (px < 0 || py < 0 || px > TILE || py > TILE) continue;
-      const cx = Math.min(Math.max(px, RADIUS), TILE - RADIUS);
-      const cy = Math.min(Math.max(py, RADIUS), TILE - RADIUS);
-      if ((px - cx) ** 2 + (py - cy) ** 2 <= RADIUS ** 2) hit++;
-    }
-  }
-  return hit / 16;
-}
-
 const tile = scale({ width: src.width, height: src.height, data: src.data }, TILE, TILE);
 const master = { width: SIZE, height: SIZE, data: new Uint8Array(SIZE * SIZE * 4) };
-for (let y = 0; y < SIZE; y++) {
-  for (let x = 0; x < SIZE; x++) {
-    const c = coverage(x, y);
-    if (!c) continue;
-    const tx = Math.min(TILE - 1, Math.max(0, x - INSET));
-    const ty = Math.min(TILE - 1, Math.max(0, y - INSET));
-    const i = (ty * TILE + tx) * 4;
-    const o = (y * SIZE + x) * 4;
-    master.data.set(tile.data.subarray(i, i + 3), o);
-    master.data[o + 3] = Math.round(tile.data[i + 3] * c);
-  }
+for (let y = 0; y < TILE; y++) {
+  master.data.set(tile.data.subarray(y * TILE * 4, (y + 1) * TILE * 4), ((y + INSET) * SIZE + INSET) * 4);
 }
 
 function write(path: string, size: number) {

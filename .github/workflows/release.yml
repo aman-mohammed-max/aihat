@@ -132,13 +132,13 @@ jobs:
 
           NOTE
             done
-            for f in dist/*-Windows-*-Setup.zip; do [ -e "$f" ] || continue; cat <<NOTE
-          **Windows:** unzip \`$(basename "$f")\` and run the Setup file. Windows SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. Uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
+            for f in dist/*-Windows-*-Setup.exe; do [ -e "$f" ] || continue; cat <<NOTE
+          **Windows** (64-bit; Windows on ARM runs it through its built-in x64 emulation): download \`$(basename "$f")\` and run it; AI Hat installs and appears in the Start menu and on the desktop. Windows SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. Uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
 
           NOTE
             done
-            for f in dist/*-Linux-*.tar.gz; do [ -e "$f" ] || continue; cat <<NOTE
-          **Linux** ($(basename "$f" .tar.gz | sed 's/.*-Linux-//')): extract \`$(basename "$f")\` and run \`./installer\`; AI Hat appears in your app menu. Needs WebKitGTK 4.1 (Debian/Ubuntu: \`sudo apt install libwebkit2gtk-4.1-0\`). Your keys go in your desktop's keyring (GNOME Keyring or KWallet); without one, in a private file.
+            for f in dist/*-Linux-*.deb; do [ -e "$f" ] || continue; cat <<NOTE
+          **Debian / Ubuntu** ($(basename "$f" .deb | sed 's/.*-Linux-//')): \`sudo apt install ./$(basename "$f")\`, or open it with your software installer; AI Hat appears in your app menu, and \`ai-hat\` starts it from a terminal. Needs Debian 12, Ubuntu 22.04 or newer (apt fetches WebKitGTK 4.1 for you). Your keys go in your desktop's keyring (GNOME Keyring or KWallet); without one, in a private file.
 
           NOTE
             done

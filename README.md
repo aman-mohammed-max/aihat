@@ -33,7 +33,7 @@ Every change to `main` is built automatically and published on the **[Releases p
 
 | | Mac | Windows | Linux |
 |---|---|---|---|
-| **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [**AI-Hat-beta-latest-Windows-x64-Setup.zip**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.zip) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.tar.gz) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.tar.gz) (`.tar.gz`) |
+| **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [**AI-Hat-beta-latest-Windows-x64-Setup.exe**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.exe) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.deb) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.deb) (`.deb`) |
 
 If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
@@ -43,9 +43,9 @@ If a link says "not found", the first build hasn't finished yet. Builds take rou
 
 **Install on a Mac:** open the `.dmg` and drag AI Hat to Applications. It isn't signed by Apple yet, so the first time, right-click the app and choose **Open** (or System Settings › Privacy & Security › **Open Anyway**).
 
-**Install on Windows:** unzip the file and run the Setup program. SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
+**Install on Windows:** run the Setup `.exe`; AI Hat appears in the Start menu and on the desktop. SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. It uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
 
-**Install on Linux:** extract the `.tar.gz` and run `./installer`; AI Hat appears in your app menu. It needs WebKitGTK 4.1 (on Debian or Ubuntu: `sudo apt install libwebkit2gtk-4.1-0`).
+**Install on Linux (Debian, Ubuntu and their relatives):** `sudo apt install ./AI-Hat-…-Linux-x64.deb` (or `-arm64.deb`), or open the file with your software installer; apt fetches WebKitGTK 4.1 for you. AI Hat appears in your app menu, and `ai-hat` starts it from a terminal. Needs Debian 12, Ubuntu 22.04 or newer.
 
 Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself).
 
