@@ -101,7 +101,7 @@ jobs:
           path: desktop/out/*
           if-no-files-found: error
 
-  # Flatpak for Linux x64 and ARM64, built with Flathub's own action in its GNOME container (which has the GNOME
+  # Flatpak for Linux x64 and ARM64, built in Flathub's GNOME container (which has flatpak-builder and the GNOME
   # runtime and SDK the manifest uses). Runs even if another desktop build failed.
   flatpak:
     name: Flatpak-${{ matrix.name }}
@@ -129,13 +129,21 @@ jobs:
       - name: Flathub's shared modules (the tray-icon library)
         run: git clone -q --depth 1 https://github.com/flathub/shared-modules fp/shared-modules
 
-      - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
-        with:
-          manifest-path: fp/com.amanm.aihat.yml
-          bundle: ${{ env.BUNDLE }}
-          arch: ${{ matrix.arch }}
-          cache-key: flatpak-${{ matrix.arch }}
-          upload-artifact: false
+      # flatpak-builder run directly (not through Flathub's action) so that, when it fails, the end of its log
+      # shows up as an error annotation on the run, which can be read without signing in.
+      - name: Build the Flatpak
+        shell: bash
+        run: |
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          if ! flatpak-builder --user --disable-rofiles-fuse --install-deps-from=flathub --force-clean \
+              --arch=${{ matrix.arch }} --repo=fp-repo fp-build fp/com.amanm.aihat.yml > fp.log 2>&1; then
+            tail -n 80 fp.log
+            echo "::error title=flatpak-builder failed::$(tail -n 40 fp.log | sed 's/%/%25/g; s/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          tail -n 5 fp.log
+          flatpak build-bundle --arch=${{ matrix.arch }} --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo fp-repo "$BUNDLE" com.amanm.aihat
+          ls -la "$BUNDLE"
 
       - uses: actions/upload-artifact@v4
         with:
