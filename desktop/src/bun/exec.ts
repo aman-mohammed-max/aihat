@@ -24,7 +24,8 @@ const MAX_OUT = 64 * 1024;
 const MAX_FILE = 20 * 1024 * 1024;
 const WIN = process.platform === 'win32';
 
-type Tool = { path: string; version: string } | null;
+/** `run` is the program as it goes into a command line, quoted, with any fixed arguments (Windows: `"…\py.exe" -3`). */
+type Tool = { path: string; run: string; version: string } | null;
 let tools: Promise<{ python: Tool; node: Tool }> | null = null;
 
 async function probe(cmd: string[]): Promise<string | null> {
@@ -48,16 +49,17 @@ export function findTools() {
     for (const c of WIN ? ['py', 'python', 'python3'] : ['python3', 'python']) {
       const p = Bun.which(c);
       if (!p) continue;
-      const v = await probe(WIN && c === 'py' ? [p, '-3', '--version'] : [p, '--version']);
+      const launcher = WIN && c === 'py';
+      const v = await probe(launcher ? [p, '-3', '--version'] : [p, '--version']);
       if (v) {
-        python = { path: WIN && c === 'py' ? `${p}" -3 "` : p, version: v.replace(/^Python\s*/i, '') };
+        python = { path: p, run: launcher ? `"${p}" -3` : `"${p}"`, version: v.replace(/^Python\s*/i, '') };
         break;
       }
     }
     let node: Tool = null;
     const n = Bun.which('node');
     const nv = n ? await probe([n, '--version']) : null;
-    if (n && nv) node = { path: n, version: nv.replace(/^v/, '') };
+    if (n && nv) node = { path: n, run: `"${n}"`, version: nv.replace(/^v/, '') };
     return { python, node };
   })();
   return tools;
@@ -126,9 +128,9 @@ export async function runExec(id: string, job: ExecJob): Promise<ExecResult> {
     // The model writes commands for the phone's layout (/work, /skills/<name>) and Linux names (python3).
     let cmd = job.command.replaceAll('/skills/' + (job.skill ?? ''), skillDir || '/skills/').replace(/(^|[\s"'=])\/work(?=\/|\s|$|["'])/g, `$1${work}`);
     const at = (re: RegExp, to: string) => (cmd = cmd.replace(re, `$1${to}`));
-    if (python) at(/(^|&&|\|\||;|\|)\s*python3?(?=\s)/g, ` "${python.path}"`);
+    if (python) at(/(^|&&|\|\||;|\|)\s*python3?(?=\s)/g, ` ${python.run}`);
     // No Node? The Bun this app runs on runs Node scripts too.
-    at(/(^|&&|\|\||;|\|)\s*node(?=\s)/g, ` "${node?.path ?? process.execPath}"`);
+    at(/(^|&&|\|\||;|\|)\s*node(?=\s)/g, ` ${node?.run ?? `"${process.execPath}"`}`);
     const env = { ...minimalEnv(work), SKILL_DIR: skillDir, ...(node ? {} : { BUN_BE_BUN: '1' }) };
     const argv = WIN ? ['cmd.exe', '/d', '/s', '/c', `"${cmd}"`] : ['/bin/sh', '-c', cmd];
     const proc = Bun.spawn(argv, { cwd: work, env, stdout: 'pipe', stderr: 'pipe', stdin: 'ignore', windowsVerbatimArguments: true } as never);
