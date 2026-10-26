@@ -69,9 +69,16 @@ jobs:
         working-directory: desktop
         run: bun test
 
+      # On failure, the end of the build's output goes on the run page (readable without signing in).
       - name: Build the desktop app
         working-directory: desktop
-        run: bunx electrobun build --env=stable
+        run: |
+          if ! bunx electrobun build --env=stable > build.log 2>&1; then
+            tail -n 80 build.log
+            echo "::error title=The desktop build failed::$(tail -n 30 build.log | sed 's/%/%25/g; s/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')"
+            exit 1
+          fi
+          tail -n 15 build.log
 
       - name: Name the files
         working-directory: desktop
