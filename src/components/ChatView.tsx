@@ -64,9 +64,17 @@ function splitThink(content: string) {
   return { think: closed.filter(Boolean).join('\n\n'), rest: rest.trim(), open: open >= 0 };
 }
 
+/** While thinking, only the latest few lines show, so the reply doesn't jump around. */
+const tail = (s: string, n = 700) => {
+  if (s.length <= n) return s;
+  const cut = s.slice(-n);
+  const at = cut.search(/\s/);
+  return `…${cut.slice(at >= 0 ? at : 0)}`;
+};
+
 /**
- * The model's reasoning. While it is still thinking the block is open, with a pulsing icon and a running timer;
- * when the answer starts it folds away and reads "Thought for 7s". Tap to open or close it any time.
+ * The model's reasoning, the way Claude shows it: while it thinks, its latest thoughts appear in faint text beside a
+ * thin line; once the answer starts they fold away to "Thought for 7s". Tap the line to read them again.
  */
 function Reasoning({ text, live }: { text: string; live: boolean }) {
   const { colors } = useTheme();
@@ -91,26 +99,26 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
   }, [live, pulse]);
 
   const open = manual ?? live;
-  const label = live ? `Thinking… ${secs}s` : took ? `Thought for ${took}s` : 'Reasoning';
+  const label = live ? `Thinking${secs ? ` · ${secs}s` : '…'}` : took ? `Thought for ${took}s` : 'Thoughts';
   return (
-    <Animated2.View layout={LinearTransition.duration(200)} style={{ backgroundColor: colors.surface, borderRadius: 12, overflow: 'hidden' }}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => { tap(); setManual(!open); }} style={{ minHeight: 44, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+    <Animated2.View layout={LinearTransition.duration(200)} style={{ gap: 4 }}>
+      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={open ? `${label}. Hide the thoughts` : `${label}. Show the thoughts`} onPress={() => { tap(); setManual(!open); }} hitSlop={6} style={{ alignSelf: 'flex-start', minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
         <Animated.View style={{ opacity: pulse }}>
           <Icon name="sparkle" size={14} color={live ? colors.accent : colors.muted} />
         </Animated.View>
-        <Text size={13} color={live ? 'text2' : 'muted'} style={{ flex: 1 }}>{label}</Text>
-        <Icon name={open ? 'chevronDown' : 'chevronRight'} size={14} color={colors.faint} />
+        <Text size={13.5} color="muted">{label}</Text>
+        <Icon name={open ? 'chevronDown' : 'chevronRight'} size={13} color={colors.faint} />
       </Pressable>
       {open ? (
-        <Animated2.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)}>
-          <Text size={13} color="muted" style={{ paddingHorizontal: 12, paddingBottom: 12, lineHeight: 19 }}>{text}</Text>
+        <Animated2.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={{ marginLeft: 6, paddingLeft: 13, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+          <Text size={13.5} color="muted" selectable style={{ lineHeight: 20.5, opacity: live ? 0.7 : 0.85 }}>{live ? tail(text) : text}</Text>
         </Animated2.View>
       ) : null}
     </Animated2.View>
   );
 }
 
-function AssistantBody({ chatId, content, streaming }: { chatId: string; content: string; streaming: boolean }) {
+function AssistantBody({ chatId, content, streaming, citations }: { chatId: string; content: string; streaming: boolean; citations: Message['citations'] }) {
   const showReasoning = useSettings((s) => s.showReasoning);
   const { think, rest, open: thinkOpen } = splitThink(content);
   const parsed = parseReply(rest);
@@ -118,7 +126,7 @@ function AssistantBody({ chatId, content, streaming }: { chatId: string; content
   return (
     <View style={{ gap: 12 }}>
       {think && showReasoning ? <Reasoning text={think} live={streaming && thinkOpen} /> : null}
-      {text ? <Markdown>{text}</Markdown> : null}
+      {text ? <Markdown citations={citations}>{text}</Markdown> : null}
       {parsed.spec || parsed.open ? <GenUIBlock chatId={chatId} parsed={parsed} streaming={streaming} /> : null}
     </View>
   );
@@ -208,7 +216,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 ))}
               </View>
             )}
-            {m.content ? <AssistantBody chatId={chatId} content={m.content} streaming={streaming && last} /> : m.status ? <ActivityBox status={m.status} detail={m.statusDetail} since={m.statusSince ?? m.createdAt} /> : last && streaming && !m.error && m.attachments.length === 0 ? <ActivityBox status="Thinking…" since={m.createdAt} /> : null}
+            {m.content ? <AssistantBody chatId={chatId} content={m.content} streaming={streaming && last} citations={m.citations} /> : m.status ? <ActivityBox status={m.status} detail={m.statusDetail} since={m.statusSince ?? m.createdAt} /> : last && streaming && !m.error && m.attachments.length === 0 ? <ActivityBox status="Thinking…" since={m.createdAt} /> : null}
             {m.error ? (
               <View style={{ backgroundColor: colors.surface, borderRadius: radii.card, padding: 14, gap: 12 }}>
                 <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>

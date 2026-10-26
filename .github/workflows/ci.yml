@@ -55,3 +55,28 @@ jobs:
       - run: node scripts/skill-runtime-manifest.mjs .skill-runtime-cache
       - run: git diff --exit-code src/skill-exec/runtime.json
       - run: node scripts/skill-runtime-test.mjs .skill-runtime-cache
+
+  skill-engine-browsers:
+    # The same checks inside real browser engines, the way phones run them: Chromium (Android's WebView) on Linux,
+    # WebKit (the iPhone's engine) on a Mac.
+    name: skill-engine-${{ matrix.engine }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { engine: chromium, runner: ubuntu-24.04 }
+          - { engine: webkit, runner: macos-15 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/cache@v4
+        with:
+          path: .skill-runtime-cache
+          key: skill-runtime-${{ hashFiles('scripts/skill-runtime-manifest.mjs') }}
+      - run: node scripts/skill-runtime-manifest.mjs .skill-runtime-cache
+      - run: npm i --no-save --no-package-lock playwright-core@1.64.1 && npx playwright-core install ${{ matrix.engine }}
+      - run: node scripts/skill-runtime-browser-test.mjs .skill-runtime-cache ${{ matrix.engine }}

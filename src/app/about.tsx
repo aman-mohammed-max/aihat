@@ -35,18 +35,15 @@ export default function About() {
         <Box style={{ borderRadius: 18, paddingHorizontal: 16, paddingVertical: 16, gap: 14, marginTop: 4 }}>
             <View style={{ gap: 2 }}>
               <Text size={18} weight="semi">Aman Mohammed</Text>
-              <Text size={13.5} color="text2">Developer · Builder</Text>
-              <Text size={12.5} color="muted">India · Remote</Text>
+              <Text size={13.5} color="text2">Developer</Text>
             </View>
             <Side title="Developer" text="JavaScript and TypeScript across Node, Hono, MERN, Astro and Next, and React Native with Expo. Now exploring Go, Rust, AI agents and IoT." />
         </Box>
       </View>
       <View>
         <ListRow label="Portfolio" value="amanm.space" monoValue onPress={() => open('https://amanm.space')} />
-        <ListRow label="Connect" sub="Work together, hire, or just say hi" value="connect.amanm.space" monoValue onPress={() => open('https://connect.amanm.space')} />
         <ListRow label="GitHub" value="aman-mohammed-max" monoValue onPress={() => open('https://github.com/aman-mohammed-max')} />
-        <ListRow label="LinkedIn" onPress={() => open('https://www.linkedin.com/in/aman-mohammed-b4001822b/')} />
-        <ListRow label="Email" value="connect@amanm.space" monoValue onPress={() => open('mailto:connect@amanm.space')} />
+        <ListRow label="Say hi" value="connect.amanm.space" monoValue onPress={() => open('https://connect.amanm.space')} />
       </View>
       <View>
         <SectionTitle>About the app</SectionTitle>

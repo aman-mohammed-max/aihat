@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, View } from 'react-native';
 
-import { Banner, Button, Dialog, Icon, ListRow, Note, Screen, SectionTitle, Text } from '@/components';
+import { router } from 'expo-router';
+
+import { Banner, Button, Dialog, Icon, ListRow, Note, Screen, SectionTitle, Text, type IconName } from '@/components';
 import { device, isDesktop } from '@/lib/device';
 import { fileSize, SCRIPT_FILE } from '@/lib/skills';
 import { assessSkill, type Assessment } from '@/skill-exec/assess';
@@ -20,6 +22,14 @@ const MB = (n: number) => `${Math.round(n / 1048576)} MB`;
 const TESTS = selftests as SelfTest[];
 
 type TestState = { status: 'running' | 'pass' | 'fail' | 'skip'; ms?: number; problems?: string[]; files?: { name: string; uri: string }[]; note?: string };
+
+/** The add-on's parts, in plain words (sizes come from runtime.json). */
+const INCLUDED: { title: string; sub: string; icon: IconName; match: (f: (typeof manifest.files)[number]) => boolean }[] = [
+  { title: `Python ${manifest.python}`, sub: 'The language most skill scripts are written in', icon: 'tool', match: (f) => f.kind === 'core' },
+  { title: 'Word, Excel, PowerPoint and PDF tools', sub: 'python-docx, openpyxl, XlsxWriter, python-pptx, pypdf, pdfplumber, pdfminer.six', icon: 'file', match: (f) => f.kind === 'wheel' },
+  { title: 'Data and picture tools', sub: 'pandas, numpy, Pillow, lxml and what they need', icon: 'grid', match: (f) => f.kind === 'pyodide' },
+  { title: 'Tools for Node scripts', sub: 'pptxgenjs, docx, pdf-lib', icon: 'slashes', match: (f) => f.kind === 'js' },
+];
 
 const WORKS = [
   ['Word, Excel and PowerPoint files', 'python-docx, openpyxl, python-pptx, XlsxWriter, and pptxgenjs or docx for Node scripts'],
@@ -144,9 +154,39 @@ export default function SkillScripts() {
               : 'Some skills come with small programs, for example to make Word, Excel, PowerPoint or PDF files for you. Turn this on to let them run here, in a closed sandbox.'}
           </Text>
         </View>
-        <View style={{ marginHorizontal: -4 }}>
-          <ListRow label="Run skill scripts" sub={rt.status === 'downloading' ? 'Downloading the add-on…' : on ? 'On' : rt.status === 'ready' && !isDesktop ? `Add-on downloaded (${MB(RUNTIME_BYTES)})` : undefined} toggle={{ on: settings.skillScripts || rt.status === 'downloading', onChange: toggle }} />
-        </View>
+        {!isDesktop && (rt.status === 'none' || rt.status === 'unknown') ? (
+          <View style={{ gap: 12 }}>
+            <Text size={12} weight="medium" color="muted" style={{ letterSpacing: 0.4 }}>{`WHAT GETS DOWNLOADED · ${MB(RUNTIME_BYTES)}, ONE TIME`}</Text>
+            {INCLUDED.map((g) => (
+              <View key={g.title} style={{ flexDirection: 'row', gap: 10 }}>
+                <Icon name={g.icon} size={17} color={colors.text2} />
+                <View style={{ flex: 1, gap: 1 }}>
+                  <View style={{ flexDirection: 'row', gap: 8 }}>
+                    <Text size={14} style={{ flex: 1 }}>{g.title}</Text>
+                    <Text mono size={12} color="muted">{MB(manifest.files.filter(g.match).reduce((n, f) => n + f.size, 0))}</Text>
+                  </View>
+                  <Text size={12} color="muted" style={{ lineHeight: 17 }}>{g.sub}</Text>
+                </View>
+              </View>
+            ))}
+            <View style={{ gap: 6, paddingTop: 2 }}>
+              {[`Runs in a closed sandbox on your ${device}: no internet, no access to your photos, contacts or other apps.`, 'Only sees the files you share in the chat, and AI Hat asks before each run.', 'Works offline afterwards. Remove it any time from this page.'].map((line) => (
+                <View key={line} style={{ flexDirection: 'row', gap: 8 }}>
+                  <Icon name="check" size={14} color={colors.accent} strokeWidth={2} />
+                  <Text size={12.5} color="text2" style={{ flex: 1, lineHeight: 18 }}>{line}</Text>
+                </View>
+              ))}
+            </View>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <Button label="Not now" variant="outline" height={44} textSize={14} flex onPress={() => router.back()} />
+              <Button label={`Download (${MB(RUNTIME_BYTES)})`} height={44} textSize={14} flex onPress={() => { wantOn.current = true; void downloadRuntime(); }} />
+            </View>
+          </View>
+        ) : rt.status === 'downloading' ? null : (
+          <View style={{ marginHorizontal: -4 }}>
+            <ListRow label="Run skill scripts" sub={on ? 'On' : rt.status === 'ready' && !isDesktop ? `Add-on downloaded (${MB(RUNTIME_BYTES)})` : undefined} toggle={{ on: settings.skillScripts, onChange: toggle }} />
+          </View>
+        )}
         {rt.status === 'downloading' && (
           <View style={{ gap: 8 }}>
             <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.border, overflow: 'hidden' }}>

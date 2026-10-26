@@ -110,6 +110,9 @@ const genUiOn = (modelId: string, text: string, forced?: boolean) => {
   return !!forced || st.genUiMode === 'always' || (st.genUiMode === 'auto' && wantsUI(text));
 };
 
+/** A reply without its <think>…</think> reasoning (also an unfinished one). */
+const stripThink = (s: string) => s.replace(/<think>[\s\S]*?(<\/think>|$)/g, '').trim();
+
 const WEB_SEARCH = 'web_search';
 const USE_SKILL = 'use_skill';
 const READ_SKILL_FILE = 'read_skill_file';
@@ -472,7 +475,9 @@ export const useChats = create<State>((set, get) => ({
         if (m.role === 'user' && imgs.length) {
           return { role: 'user', content: [{ type: 'text', text: m.content + files }, ...imgs.map((i) => ({ type: 'image_url' as const, image_url: { url: i.uri } }))] };
         }
-        return { role: m.role, content: m.content + files };
+        // The model's earlier reasoning isn't sent back: only its answers.
+        const said = m.role === 'assistant' ? stripThink(m.content) : m.content;
+        return { role: m.role, content: said + files };
       };
 
       const wire: ChatMessage[] = [
@@ -495,7 +500,7 @@ export const useChats = create<State>((set, get) => ({
         }
         if (!pending.length) break;
 
-        wire.push({ role: 'assistant', content: roundText || null, tool_calls: pending });
+        wire.push({ role: 'assistant', content: stripThink(roundText) || null, tool_calls: pending });
         for (const call of pending) {
           if (call.function.name === READ_SKILL_FILE) {
             let a: { skill?: unknown; path?: unknown } = {};

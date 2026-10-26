@@ -129,6 +129,8 @@ export async function* streamChat(
     if (!body.stream) {
       const data = await (res as unknown as Response).json();
       const msg = data.choices?.[0]?.message ?? {};
+      const why = msg.reasoning_content ?? msg.reasoning;
+      if (typeof why === 'string' && why.trim()) yield { type: 'delta', text: `<think>${why}</think>` };
       if (msg.content) yield { type: 'delta', text: msg.content };
       if (msg.tool_calls?.length) yield { type: 'tool_calls', calls: msg.tool_calls };
       yield { type: 'done', tokens: data.usage?.completion_tokens, ms: Date.now() - started };
@@ -140,6 +142,9 @@ export async function* streamChat(
     let buf = '';
     let tokens: number | undefined;
     const calls: Record<number, ToolCall> = {};
+    // Reasoning that comes in its own field (DeepSeek's reasoning_content, OpenRouter's reasoning) is passed on
+    // wrapped in <think>…</think>, like models that write it inline, so the chat shows it the same way.
+    let thinking = false;
 
     while (true) {
       const { value, done } = await reader.read();
@@ -161,6 +166,15 @@ export async function* streamChat(
         if (chunk.usage?.completion_tokens) tokens = chunk.usage.completion_tokens;
         const delta = chunk.choices?.[0]?.delta;
         if (!delta) continue;
+        const why = delta.reasoning_content ?? delta.reasoning;
+        if (typeof why === 'string' && why) {
+          yield { type: 'delta', text: thinking ? why : `<think>${why}` };
+          thinking = true;
+        }
+        if ((delta.content || delta.tool_calls) && thinking) {
+          yield { type: 'delta', text: '</think>' };
+          thinking = false;
+        }
         if (delta.content) yield { type: 'delta', text: delta.content };
         for (const tc of delta.tool_calls ?? []) {
           const c = (calls[tc.index ?? 0] ??= { id: '', type: 'function', function: { name: '', arguments: '' } });
@@ -170,6 +184,7 @@ export async function* streamChat(
         }
       }
     }
+    if (thinking) yield { type: 'delta', text: '</think>' };
     const assembled = Object.values(calls);
     if (assembled.length) yield { type: 'tool_calls', calls: assembled };
     yield { type: 'done', tokens, ms: Date.now() - started };
