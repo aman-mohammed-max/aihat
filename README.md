@@ -70,14 +70,19 @@ Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yours
 
 ## Screenshots
 
-These are the **design mockups** the app is built from. Real screenshots will replace them.
+Real screenshots of the current app (the web build at phone and desktop size, talking to a local test server).
 
 <table>
 <tr>
-<td align="center"><img src="handoff/screens/NewChat.png" width="200" alt="New chat"><br><sub>New chat</sub></td>
-<td align="center"><img src="handoff/screens/Main.png" width="200" alt="Chat"><br><sub>Chat</sub></td>
-<td align="center"><img src="handoff/screens/ModelSheet.png" width="200" alt="Model picker"><br><sub>Model picker</sub></td>
-<td align="center"><img src="handoff/screens/GenCard.png" width="200" alt="Generated UI"><br><sub>Generated UI</sub></td>
+<td align="center"><img src="docs/screenshots/new-chat.png" width="200" alt="New chat"><br><sub>New chat</sub></td>
+<td align="center"><img src="docs/screenshots/chat.png" width="200" alt="Chat"><br><sub>Chat</sub></td>
+<td align="center"><img src="docs/screenshots/model-picker.png" width="200" alt="Model picker"><br><sub>Model picker</sub></td>
+<td align="center"><img src="docs/screenshots/generated-ui.png" width="200" alt="Generated UI"><br><sub>Generated UI</sub></td>
+</tr>
+<tr>
+<td align="center"><img src="docs/screenshots/side-menu.png" width="200" alt="Side menu"><br><sub>Side menu</sub></td>
+<td align="center"><img src="docs/screenshots/settings.png" width="200" alt="Settings"><br><sub>Settings</sub></td>
+<td align="center" colspan="2"><img src="docs/screenshots/desktop.png" width="420" alt="Desktop app"><br><sub>On a computer</sub></td>
 </tr>
 </table>
 
