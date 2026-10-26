@@ -3,8 +3,9 @@
 Skills can come with Python and Node scripts (for example to make a Word, Excel, PowerPoint or PDF file). This is
 the proof of concept for running them: what was built, what was measured, what works, and what doesn't.
 
-**Status:** works on Chromium (the engine of Android's WebView) and on a computer. **Not yet tried on a real phone.**
-The first real test is the checklist at the end of this file.
+**Status:** all checks pass in Chromium (the engine of Android's WebView), in WebKit (the engine of the iPhone's
+web view) and on a computer. CI runs them on every push. **Not yet tried on a real phone.** The first real test is
+the checklist at the end of this file.
 
 ## How it works
 
@@ -30,9 +31,13 @@ the app asks before each run ("Run this command?"). Stopping the reply also stop
 
 ## What was tested, and where
 
-Fourteen self-tests (`src/skill-exec/selftests.json`) run in three places: in Node with the real Pyodide
-(`scripts/skill-runtime-test.mjs`, also in CI), in headless Chromium 128 with the real hidden page, and with the
-desktop runner (`desktop/test/exec.test.ts`).
+Fourteen self-tests (`src/skill-exec/selftests.json`) run in four places, all in CI on every push:
+- in Node with the real Pyodide (`scripts/skill-runtime-test.mjs`);
+- in Chromium (Linux) and WebKit (macOS) with the real hidden page and worker (`scripts/skill-runtime-browser-test.mjs`);
+- with the desktop runner (`desktop/test/exec.test.ts`).
+
+The timings below come from Chromium on a small ARM laptop. WebKit passes every check too; GitHub doesn't show its
+timings without signing in.
 
 | Test | Node + Pyodide | Chromium (Android's engine) | Computer |
 |---|---|---|---|
@@ -90,10 +95,11 @@ with scripts…"), with the reason for each one that can only partly run.
 
 ## Known problems and risks
 
-1. **Not run on a real phone yet.** Chromium is what Android's WebView uses, so Android should behave the same.
-   **iPhone uses WebKit**, which hasn't been tried. Its riskiest step is loading Pyodide's core with `import()` from
-   a blob inside the worker. If that fails, the page reports "This phone's web engine could not load Python" instead
-   of failing silently.
+1. **Not run on a real phone yet.** Both phone engines pass every check in CI: Chromium (Android's WebView) and
+   WebKit (iOS). The WebKit check found one real problem, now fixed: WebKit checks the page's `child-src` rule before
+   starting a worker, and it was closed. A web engine that can't `import()` a module inside a worker now loads
+   Python's core as a classic script instead; that path passes all checks too. The app inside WKWebView on a real
+   iPhone may still differ from desktop WebKit in memory limits and background behaviour.
 2. iOS may close the WebView in the background. The app restarts it when it comes back, and the next script waits for
    Python to start again.
 3. **App Store review.** The scripts run inside Apple's WebKit, which guideline 2.5.2 allows. Running downloaded
