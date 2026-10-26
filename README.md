@@ -14,7 +14,7 @@ Chat, draw images, talk, search the web, read PDFs and build small UIs, all from
 ![Expo SDK 58](https://img.shields.io/badge/Expo-SDK%2058-000020)
 [![MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
-[**Download**](#download) · [Quick start](#quick-start) · [Commands](#slash-commands) · [Build it yourself](#build-the-apps-yourself) · [Report a bug](https://github.com/aman-mohammed-max/aihat/issues/new?template=bug_report.md)
+[**Download**](#download) · [Quick start](#quick-start) · [Commands](#slash-commands) · [Report a bug](https://github.com/aman-mohammed-max/aihat/issues/new?template=bug_report.md)
 
 </div>
 
@@ -33,9 +33,9 @@ Every change to `main` is built automatically and published on the **[Releases p
 
 | | Mac | Windows | Linux |
 |---|---|---|---|
-| **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [**AI-Hat-beta-latest-Windows-x64-Setup.exe**](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.exe) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.deb) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.deb) (`.deb`) |
+| **Latest beta build** | [Apple Silicon](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-arm64.dmg) · [Intel](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-macOS-x64.dmg) (`.dmg`) | [Intel / AMD](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-x64-Setup.exe) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Windows-arm64-Setup.exe) (`Setup.exe`) | [x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.deb) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.deb) (`.deb`)<br>[x64](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-x64.flatpak) · [ARM](https://github.com/aman-mohammed-max/aihat/releases/download/beta-latest/AI-Hat-beta-latest-Linux-arm64.flatpak) (Flatpak) |
 
-**Which file?** On Android, the universal APK works everywhere; the others are smaller because each holds the app for one kind of processor: **arm64** (nearly every phone from the last several years), **arm32** (older 32-bit phones), **x86_64** and **x86** (Chromebooks, tablets and emulators with Intel or AMD chips). iPhones and iPads are all 64-bit ARM, so there is one IPA. Macs come as Apple Silicon or Intel. Windows is 64-bit; Windows on ARM runs it through its built-in x64 emulation. Linux comes for x64 and ARM64. There are no 32-bit computer versions: the desktop app runs on Bun, which only exists for 64-bit systems.
+**Which file?** On Android, the universal APK works everywhere; the others are smaller because each holds the app for one kind of processor: **arm64** (nearly every phone from the last several years), **arm32** (older 32-bit phones), **x86_64** and **x86** (Chromebooks, tablets and emulators with Intel or AMD chips). iPhones and iPads are all 64-bit ARM, so there is one IPA. Macs come as Apple Silicon or Intel. Windows comes for Intel / AMD (x64) and ARM. Linux comes for x64 and ARM64, as a `.deb` (Debian, Ubuntu) and as a Flatpak (any distribution). There are no 32-bit computer versions: the desktop app runs on Bun, which only exists for 64-bit systems.
 
 If a link says "not found", the first build hasn't finished yet. Builds take roughly 15 to 40 minutes; follow progress under the repository's **Actions** tab. Every release lists its files with SHA-256 checksums.
 
@@ -49,7 +49,7 @@ If a link says "not found", the first build hasn't finished yet. Builds take rou
 
 **Install on Linux (Debian, Ubuntu and their relatives):** `sudo apt install ./AI-Hat-…-Linux-x64.deb` (or `-arm64.deb`), or open the file with your software installer; apt fetches WebKitGTK 4.1 for you. AI Hat appears in your app menu, and `ai-hat` starts it from a terminal. Needs Debian 12, Ubuntu 22.04 or newer.
 
-Prefer to build it yourself? See [Build the apps yourself](#build-the-apps-yourself).
+**Install on any Linux (Flatpak):** with [Flathub set up](https://flathub.org/setup), run `flatpak install --user ./AI-Hat-…-Linux-x64.flatpak` (or `-arm64.flatpak`); it fetches the GNOME runtime it needs. Start it from your app menu or with `flatpak run com.amanm.aihat`.
 
 ## What it does
 
@@ -168,29 +168,8 @@ There is no account, no analytics and no server of ours. Messages, images and fi
 - **MCP servers that only run as a program on a computer** (“stdio” servers, started with `npx`, `uvx` or `docker`) can't be used: a phone can't start them. Hosted servers work.
 - **MCP connectors use access tokens**, not browser sign-in (OAuth isn't built). Backups are a JSON file you share yourself; Google Drive and iCloud backup aren't built.
 - **Scanned PDFs need OCR**, which isn't built. PDFs whose fonts have no text map may come out with missing characters.
-- **`POST /v1/search`**: there is no published schema for it, so the app sends common field names and reads several reply shapes. If your server uses something different, please open an issue with a sample reply.
-- **Notifications only arrive while the app is still running.** iPhone pauses apps shortly after you leave them, so a very long reply may not notify. Android is more forgiving but battery savers can also stop it.
 - **The desktop apps are new and haven't been tried on a real Mac, Windows PC or Linux desktop yet.** The web build and its Bun backend were tested in Chromium on Linux; the windows themselves are built by GitHub Actions. They are unsigned (see Download), don't update themselves yet (download a new build from Releases), and on Linux the menu bar isn't shown (use the keyboard shortcuts). Dictation in the desktop app depends on the system web view's microphone support.
 - Not available as a website: the web build needs the desktop app's backend.
-
-## Build the apps yourself
-
-You don't need a Mac, a Windows PC or Android Studio: GitHub builds every app (free on a public repository), using the **Build & Release** workflow: the APKs (universal, plus arm64, 32-bit ARM, x86_64 and 32-bit x86), the IPA, and the desktop apps for macOS (Apple Silicon and Intel), Windows (x64) and Linux (x64 and ARM64).
-
-| You do this | What happens |
-|---|---|
-| **Push to `main`** | All the apps are built and the **latest beta build** pre-release is replaced with the new files. (Changes that only touch docs or the design files don't start a build.) |
-| **Push a version tag** | All the apps are built and a **permanent release** is created for that version. |
-| **Actions → Build & Release → Run workflow** | The same, started by hand. Type a version to make a numbered release, or leave it empty to refresh the latest beta build. |
-
-To make a numbered release:
-
-```bash
-git tag v0.1.0-beta.2
-git push origin v0.1.0-beta.2
-```
-
-A tag with a hyphen (`-beta.2`, `-rc.1`) is published as a **pre-release**; a plain tag like `v1.0.0` is a normal release. If one platform fails, the others are still published. You can also run **Android APK**, **iOS IPA** or **Desktop apps** alone from the Actions tab to get just those files as downloadable artifacts.
 
 ## Run it from source
 

@@ -1,8 +1,9 @@
 name: Desktop apps
 
-# Builds AI Hat for macOS (Apple Silicon and Intel), Windows and Linux (x64 and ARM): the web build of the app in an
-# Electrobun window (the system's own web view, with a Bun backend). Each system builds on its own runner because
-# the desktop builder can't cross-compile. Called by "Build & Release"; can also be run by hand.
+# Builds AI Hat for macOS (Apple Silicon and Intel), Windows (x64 and ARM64) and Linux (x64 and ARM64, as .deb and
+# Flatpak): the web build of the app in an Electrobun window (the system's own web view, with a Bun backend). Each
+# system builds on its own runner because the desktop builder can't cross-compile. Called by "Build & Release"; can
+# also be run by hand.
 
 on:
   workflow_dispatch:
@@ -17,7 +18,7 @@ jobs:
   desktop:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 75
     strategy:
       fail-fast: false
       matrix:
@@ -25,11 +26,15 @@ jobs:
           - { name: macOS-arm64, runner: macos-15 }
           - { name: macOS-x64, runner: macos-15-intel }
           - { name: Windows-x64, runner: windows-latest }
+          - { name: Windows-arm64, runner: windows-11-arm }
           - { name: Linux-x64, runner: ubuntu-24.04 }
           - { name: Linux-arm64, runner: ubuntu-24.04-arm }
     defaults:
       run:
         shell: bash
+    env:
+      LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
+      NAME: ${{ matrix.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -45,7 +50,7 @@ jobs:
       - name: Install dependencies
         run: |
           npm ci
-          cd desktop && bun install --frozen-lockfile
+          cd desktop && bun install --frozen-lockfile && bunx electrobun sync
 
       - name: Build the web app
         run: npx expo export --platform web
@@ -60,9 +65,6 @@ jobs:
 
       - name: Name the files
         working-directory: desktop
-        env:
-          LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
-          NAME: ${{ matrix.name }}
         run: |
           ls -la artifacts
           mkdir -p out
@@ -70,15 +72,32 @@ jobs:
           for f in artifacts/*.dmg; do cp "$f" "out/AI-Hat-$LABEL-$NAME.dmg"; done
           # Windows: one Setup .exe with the app inside, instead of Electrobun's zip.
           for f in artifacts/*Setup*.zip; do
-            7z x -y -owin-setup "$f" >/dev/null
+            7z x -y -owin-setup "$f" >/dev/null || powershell -command "Expand-Archive -Force '$f' win-setup"
             bun scripts/package.ts exe win-setup "out/AI-Hat-$LABEL-$NAME-Setup.exe"
           done
           # Linux: a .deb for Debian and Ubuntu.
           if [[ "$NAME" == Linux-* ]]; then
-            for f in artifacts/*.tar.zst; do bun scripts/package.ts deb "$f" "${NAME#Linux-}" "out/AI-Hat-$LABEL-$NAME.deb"; done
+            for f in artifacts/stable-linux-*.tar.zst; do bun scripts/package.ts deb "$f" "${NAME#Linux-}" "out/AI-Hat-$LABEL-$NAME.deb"; done
           fi
           ls -la out
           [ -n "$(ls out)" ] || { echo "::error::The desktop build made no installer."; exit 1; }
+
+      # Linux: a Flatpak as well. It has its own step so a Flatpak problem never holds back the other files.
+      - name: Build the Flatpak
+        if: startsWith(matrix.name, 'Linux-')
+        continue-on-error: true
+        working-directory: desktop
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq flatpak flatpak-builder >/dev/null
+          flatpak remote-add --user --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo
+          GNOME=$(flatpak remote-ls --user --runtime --columns=ref flathub | grep -E '^org\.gnome\.Platform/[^/]+/[0-9]+$' | awk -F/ '{print $3}' | sort -n | tail -1)
+          echo "GNOME runtime $GNOME"
+          bun scripts/package.ts flatpak artifacts/stable-linux-*.tar.zst fp
+          sed -i "s/^runtime-version: .*/runtime-version: '$GNOME'/" fp/com.amanm.aihat.yml
+          git clone -q --depth 1 https://github.com/flathub/shared-modules fp/shared-modules
+          flatpak-builder --user --install-deps-from=flathub --disable-rofiles-fuse --repo=fp-repo fp-build fp/com.amanm.aihat.yml
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo fp-repo "out/AI-Hat-$LABEL-$NAME.flatpak" com.amanm.aihat
+          ls -la out
 
       - uses: actions/upload-artifact@v4
         with:

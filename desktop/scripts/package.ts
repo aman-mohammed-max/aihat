@@ -8,6 +8,10 @@
  *
  *   bun scripts/package.ts deb <app .tar.zst from artifacts/> <x64|arm64> <out.deb>
  *     A Debian/Ubuntu package: the app in /opt/ai-hat, an app-menu entry, icons and an `ai-hat` command.
+ *
+ *   bun scripts/package.ts flatpak <app .tar.zst from artifacts/> <folder>
+ *     The files flatpak/com.amanm.aihat.yml builds from (the app, its menu entry, icons, the `ai-hat` command),
+ *     with the manifest copied beside them; then run flatpak-builder on <folder>/com.amanm.aihat.yml.
  */
 import { chmodSync, cpSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -36,13 +40,12 @@ function exe(setupDir: string, out: string) {
   const archive = readFileSync(only(join(setupDir, '.installer'), (n) => n.endsWith('.tar.zst'), 'app archive'));
   const file = Buffer.concat([readFileSync(setup), METADATA, Buffer.from(JSON.stringify(meta)), ARCHIVE, archive]);
 
-  // Find the archive the way the extractor does: the second metadata marker (the first is the extractor's own
-  // copy of the string), then the archive marker after it.
-  const first = file.indexOf(METADATA);
-  const second = file.indexOf(METADATA, first + METADATA.length);
-  const archiveAt = file.indexOf(ARCHIVE, second + METADATA.length);
-  if (first < 0 || second < 0 || archiveAt < 0) throw new Error('the markers are not where the extractor looks');
-  JSON.parse(file.subarray(second + METADATA.length, archiveAt).toString('utf8'));
+  // Find the archive the way the extractor does: the last metadata marker with an archive marker within 4 KB after
+  // it, and metadata in between that names a build channel.
+  const metaAt = file.lastIndexOf(METADATA);
+  const archiveAt = file.indexOf(ARCHIVE, metaAt + METADATA.length);
+  if (metaAt < 0 || archiveAt < 0 || archiveAt - metaAt > METADATA.length + 4096) throw new Error('the markers are not where the extractor looks');
+  if (!JSON.parse(file.subarray(metaAt + METADATA.length, archiveAt).toString('utf8')).channel) throw new Error('the metadata has no channel');
   if (!file.subarray(archiveAt + ARCHIVE.length).equals(archive)) throw new Error('the archive would not be found intact');
 
   writeFileSync(out, file);
@@ -62,7 +65,7 @@ function deb(tarZst: string, arch: string, out: string) {
   const bundle = join(work, 'app', readdirSync(join(work, 'app'))[0]);
   const opt = join(pkg, 'opt/ai-hat');
   cpSync(bundle, opt, { recursive: true, verbatimSymlinks: true });
-  rmSync(join(opt, `${app.expo.name}.desktop`), { force: true });
+  for (const f of readdirSync(opt)) if (f.endsWith('.desktop')) rmSync(join(opt, f));
 
   mkdirSync(join(pkg, 'usr/bin'), { recursive: true });
   writeFileSync(join(pkg, 'usr/bin/ai-hat'), '#!/bin/sh\nexec /opt/ai-hat/bin/launcher "$@"\n');
@@ -115,6 +118,32 @@ function deb(tarZst: string, arch: string, out: string) {
   console.log(`${out}: ${(statSync(out).size / 1024 / 1024).toFixed(1)} MB`);
 }
 
+function flatpak(tarZst: string, dir: string) {
+  rmSync(dir, { recursive: true, force: true });
+  mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'app.tar'), Bun.zstdDecompressSync(readFileSync(tarZst)));
+  writeFileSync(join(dir, 'ai-hat.sh'), '#!/bin/sh\nexec /app/ai-hat/bin/launcher "$@"\n');
+  writeFileSync(
+    join(dir, 'com.amanm.aihat.desktop'),
+    [
+      '[Desktop Entry]',
+      'Type=Application',
+      `Name=${app.expo.name}`,
+      'Comment=A chat app for any OpenAI-compatible endpoint.',
+      'Exec=ai-hat',
+      'Icon=com.amanm.aihat',
+      'Terminal=false',
+      `StartupWMClass=${app.expo.name}`,
+      'Categories=Utility;Network;Chat;',
+      '',
+    ].join('\n'),
+  );
+  cpSync(join(root, 'icons/icon.png'), join(dir, 'icon-512.png'));
+  cpSync(join(root, 'icons/icon-256.png'), join(dir, 'icon-256.png'));
+  cpSync(join(root, 'flatpak/com.amanm.aihat.yml'), join(dir, 'com.amanm.aihat.yml'));
+  console.log(`${dir}: ready for flatpak-builder`);
+}
+
 function size(path: string): number {
   const s = statSync(path);
   return s.isDirectory() ? readdirSync(path).reduce((n, f) => n + size(join(path, f)), 0) : s.size;
@@ -123,7 +152,8 @@ function size(path: string): number {
 const [kind, ...args] = process.argv.slice(2);
 if (kind === 'exe' && args.length === 2) exe(args[0], args[1]);
 else if (kind === 'deb' && args.length === 3) deb(args[0], args[1], args[2]);
+else if (kind === 'flatpak' && args.length === 2) flatpak(args[0], args[1]);
 else {
-  console.error('usage: bun scripts/package.ts exe <setup folder> <out.exe> | deb <app.tar.zst> <x64|arm64> <out.deb>');
+  console.error('usage: bun scripts/package.ts exe <setup folder> <out.exe> | deb <app.tar.zst> <x64|arm64> <out.deb> | flatpak <app.tar.zst> <folder>');
   process.exit(1);
 }

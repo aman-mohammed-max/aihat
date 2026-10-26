@@ -1,0 +1,42 @@
+# Flatpak of the desktop app, built by the "Desktop apps" workflow on Linux x64 and ARM64. The GNOME runtime brings
+# WebKitGTK 4.1 (the window's web view); the tray library comes from Flathub's shared modules. The workflow sets
+# runtime-version to the newest GNOME runtime on Flathub, and `bun scripts/package.ts flatpak` puts the app and the
+# files below next to a copy of this manifest.
+id: com.amanm.aihat
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+command: ai-hat
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  - --filesystem=xdg-download
+  - --talk-name=org.freedesktop.Notifications
+  - --talk-name=org.freedesktop.secrets
+  - --talk-name=org.kde.StatusNotifierWatcher
+modules:
+  - shared-modules/libayatana-appindicator/libayatana-appindicator-gtk3.json
+  - name: ai-hat
+    buildsystem: simple
+    build-commands:
+      - mkdir -p /app/ai-hat
+      - tar -xf app.tar -C /app/ai-hat --strip-components=1
+      - install -Dm755 ai-hat.sh /app/bin/ai-hat
+      - install -Dm644 com.amanm.aihat.desktop /app/share/applications/com.amanm.aihat.desktop
+      - install -Dm644 icon-512.png /app/share/icons/hicolor/512x512/apps/com.amanm.aihat.png
+      - install -Dm644 icon-256.png /app/share/icons/hicolor/256x256/apps/com.amanm.aihat.png
+    sources:
+      - type: file
+        path: app.tar
+      - type: file
+        path: ai-hat.sh
+      - type: file
+        path: com.amanm.aihat.desktop
+      - type: file
+        path: icon-512.png
+      - type: file
+        path: icon-256.png

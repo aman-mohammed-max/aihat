@@ -6,8 +6,8 @@ name: Build & Release
 #   Android   universal APK, plus one each for arm64-v8a, armeabi-v7a (32-bit ARM), x86_64 and x86 (32-bit Intel)
 #   iOS       arm64 (every iPhone and iPad; Apple has no other kind)
 #   macOS     arm64 (Apple Silicon) and x64 (Intel)
-#   Windows   x64 (Windows on ARM runs it through its x64 emulation)
-#   Linux     x64 and arm64
+#   Windows   x64 and arm64
+#   Linux     x64 and arm64, each as a .deb and a Flatpak
 # There are no 32-bit desktop builds: the desktop app runs on Bun, which is 64-bit only.
 #
 #   Push to main        → the "latest beta build" pre-release (tag beta-latest) is replaced with fresh files.
@@ -92,7 +92,9 @@ jobs:
   publish:
     needs: [plan, android, ios, desktop]
     # The desktop matrix counts as done when at least one system built (its jobs don't stop each other).
-    if: ${{ always() && needs.plan.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success' || needs.desktop.result != 'skipped') }}
+    # !cancelled(): a build stopped by a newer push publishes nothing (it used to replace the release with only the
+    # platforms that had finished). A platform that fails on its own is still left out, as before.
+    if: ${{ !cancelled() && needs.plan.result == 'success' && (needs.android.result == 'success' || needs.ios.result == 'success' || needs.desktop.result != 'skipped') }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -144,12 +146,17 @@ jobs:
           NOTE
             done
             for f in dist/*-Windows-*-Setup.exe; do [ -e "$f" ] || continue; cat <<NOTE
-          **Windows** (64-bit; Windows on ARM runs it through its built-in x64 emulation): download \`$(basename "$f")\` and run it; AI Hat installs and appears in the Start menu and on the desktop. Windows SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. Uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
+          **Windows** ($(basename "$f" -Setup.exe | sed 's/.*-Windows-//; s/x64/Intel or AMD PCs/; s/arm64/ARM PCs/')): download \`$(basename "$f")\` and run it; AI Hat installs and appears in the Start menu and on the desktop. Windows SmartScreen may say it protected your PC because the app isn't signed yet: choose **More info › Run anyway**. Uses Microsoft Edge WebView2, which Windows 10 and 11 already have.
 
           NOTE
             done
             for f in dist/*-Linux-*.deb; do [ -e "$f" ] || continue; cat <<NOTE
           **Debian / Ubuntu** ($(basename "$f" .deb | sed 's/.*-Linux-//')): \`sudo apt install ./$(basename "$f")\`, or open it with your software installer; AI Hat appears in your app menu, and \`ai-hat\` starts it from a terminal. Needs Debian 12, Ubuntu 22.04 or newer (apt fetches WebKitGTK 4.1 for you). Your keys go in your desktop's keyring (GNOME Keyring or KWallet); without one, in a private file.
+
+          NOTE
+            done
+            for f in dist/*-Linux-*.flatpak; do [ -e "$f" ] || continue; cat <<NOTE
+          **Flatpak, any Linux** ($(basename "$f" .flatpak | sed 's/.*-Linux-//')): \`flatpak install --user ./$(basename "$f")\` (with Flathub set up, so the GNOME runtime can be fetched), then start AI Hat from your app menu or with \`flatpak run com.amanm.aihat\`.
 
           NOTE
             done

@@ -30,7 +30,7 @@ jobs:
         with:
           bun-version: 1.4.3
       - working-directory: desktop
-        run: bun install --frozen-lockfile
+        run: bun install --frozen-lockfile && bunx electrobun sync
       - working-directory: desktop
         run: bun test
       - working-directory: desktop
