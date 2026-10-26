@@ -9,7 +9,7 @@
 import * as Crypto from 'expo-crypto';
 import { Directory, File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, View } from 'react-native';
 import { WebView } from 'react-native-webview';
 
 import { useSettings } from '@/store/settings';
@@ -257,27 +257,32 @@ export function SkillRuntimeHost() {
     bridge.reset();
     setKey((k) => k + 1);
   };
+  // react-native-webview puts `style` on the inner web view and gives its own wrapper flex: 1, which would take up
+  // half the screen. So the WebView sits in a 1×1 box of ours, out of the layout.
   return (
-    <WebView
-      key={key}
-      ref={(v) => bridge.attach(v)}
-      source={{ html: RUNNER_HTML, baseUrl: BASE_URL }}
-      originWhitelist={['*']}
-      onMessage={(e) => bridge.onMessage(e.nativeEvent.data)}
-      onShouldStartLoadWithRequest={(r) => r.url === BASE_URL || r.url === 'about:blank' || r.url.startsWith('data:')}
-      onContentProcessDidTerminate={restart}
-      onRenderProcessGone={restart}
-      javaScriptEnabled
-      domStorageEnabled
-      cacheEnabled
-      incognito={false}
-      setSupportMultipleWindows={false}
-      allowFileAccess={false}
-      mediaPlaybackRequiresUserAction
-      pointerEvents="none"
-      importantForAccessibility="no-hide-descendants"
-      accessibilityElementsHidden
-      style={{ position: 'absolute', width: 1, height: 1, opacity: 0, left: 0, top: 0 }}
-    />
+    <View pointerEvents="none" importantForAccessibility="no-hide-descendants" accessibilityElementsHidden style={{ position: 'absolute', left: 0, top: 0, width: 1, height: 1, opacity: 0, overflow: 'hidden' }}>
+      <WebView
+        key={key}
+        ref={(v) => bridge.attach(v)}
+        source={{ html: RUNNER_HTML, baseUrl: BASE_URL }}
+        originWhitelist={['*']}
+        onMessage={(e) => bridge.onMessage(e.nativeEvent.data)}
+        onShouldStartLoadWithRequest={(r) => r.url === BASE_URL || r.url === 'about:blank' || r.url.startsWith('data:')}
+        onContentProcessDidTerminate={restart}
+        onRenderProcessGone={restart}
+        javaScriptEnabled
+        domStorageEnabled
+        cacheEnabled
+        incognito={false}
+        setSupportMultipleWindows={false}
+        allowFileAccess={false}
+        mediaPlaybackRequiresUserAction
+        pointerEvents="none"
+        importantForAccessibility="no-hide-descendants"
+        accessibilityElementsHidden
+        containerStyle={{ width: 1, height: 1, flex: 0 }}
+        style={{ width: 1, height: 1 }}
+      />
+    </View>
   );
 }
