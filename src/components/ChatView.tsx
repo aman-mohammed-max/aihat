@@ -6,7 +6,9 @@ import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } fr
 import Animated2, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
 import { longPress, success, tap } from '@/lib/haptics';
+import { isDesktop } from '@/lib/device';
 import { speak, stopSpeaking } from '@/lib/tts';
+import { openOutput } from '@/skill-exec/outputs';
 import { useSettings } from '@/store/settings';
 import { useSpeech } from '@/store/speech';
 import { radii, useTheme } from '@/theme';
@@ -22,7 +24,8 @@ import { Text } from './Text';
 
 function ToolChip({ run }: { run: ToolRun }) {
   const { colors } = useTheme();
-  const label = run.server ? `${run.server}.${run.name}` : run.skill ?? run.name;
+  const command = run.name === 'execute' ? (() => { try { return String(JSON.parse(run.args || '{}').command ?? ''); } catch { return ''; } })() : '';
+  const label = command ? `$ ${command.length > 34 ? `${command.slice(0, 33)}…` : command}` : run.server ? `${run.server}.${run.name}` : run.skill ?? run.name;
   const tint = run.status === 'error' || run.status === 'rejected' ? colors.danger : colors.text2;
   return (
     <Pressable
@@ -183,6 +186,24 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 {m.attachments.filter((a) => a.kind === 'image').map((a, i, all) => (
                   <Pressable key={a.id} accessibilityRole="imagebutton" accessibilityLabel={`Image ${i + 1} of ${all.length}`} onPress={() => router.push({ pathname: '/image-viewer', params: { chatId, messageId: m.id, index: String(i) } })}>
                     <Image source={{ uri: a.uri }} style={{ width: all.length > 1 ? '48%' : 280, aspectRatio: 1, borderRadius: 14, backgroundColor: colors.surface, minWidth: 140 }} contentFit="cover" />
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            {m.attachments.some((a) => a.kind === 'file') && (
+              <View style={{ gap: 6 }}>
+                {m.attachments.filter((a) => a.kind === 'file').map((a) => (
+                  <Pressable
+                    key={a.id}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${a.name}. Open or save`}
+                    onPress={() => openOutput(a.uri, a.name).catch((e) => Alert.alert('Couldn’t open the file', e.message))}
+                    style={({ pressed }) => ({ alignSelf: 'flex-start', maxWidth: '92%', flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: colors.surface, borderRadius: 14, paddingVertical: 10, paddingHorizontal: 12, opacity: pressed ? 0.7 : 1 })}>
+                    <Icon name="file" size={18} color={colors.text2} />
+                    <View style={{ flexShrink: 1, gap: 1 }}>
+                      <Text size={14} numberOfLines={1}>{a.name}</Text>
+                      <Text size={12} color="muted" numberOfLines={1}>{`${a.meta ? `${a.meta} · ` : ''}${isDesktop ? 'Save to Downloads' : 'Tap to open or save'}`}</Text>
+                    </View>
                   </Pressable>
                 ))}
               </View>

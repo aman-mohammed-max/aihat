@@ -4,9 +4,9 @@ import { View } from 'react-native';
 
 import { Button, LinkRow, Panel, PanelRow, Screen, SectionTitle, Segmented, Text, Toggle } from '@/components';
 import { useCommandList } from '@/lib/commands';
-import { device } from '@/lib/device';
 import { fileSize, SCRIPT_FILE, sourceLabel } from '@/lib/skills';
 import { useLibrary, type Skill, type SkillFile } from '@/store/library';
+import { useSettings } from '@/store/settings';
 import { useTheme } from '@/theme';
 
 const PREVIEW = 1500;
@@ -14,6 +14,7 @@ const PREVIEW = 1500;
 export default function SkillDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { colors } = useTheme();
+  const scriptsOn = useSettings((s) => s.skillScripts);
   const s = useLibrary((x) => x.skills.find((k) => k.id === id));
   const commands = useCommandList();
   const [files, setFiles] = useState<SkillFile[]>([]);
@@ -46,10 +47,10 @@ export default function SkillDetail() {
           <SectionTitle space={8}>{`Files · ${files.length}`}</SectionTitle>
           <Panel>
             {files.map((f) => (
-              <PanelRow key={f.path} mono label={f.path} sub={SCRIPT_FILE.test(f.path) ? 'Script: read only, never run' : undefined} value={fileSize(f.size)} height={52} onPress={() => router.push({ pathname: '/skill-file', params: { id, path: f.path } })} />
+              <PanelRow key={f.path} mono label={f.path} sub={SCRIPT_FILE.test(f.path) ? (scriptsOn ? 'Script: can run in the sandbox' : 'Script: kept as text') : undefined} value={fileSize(f.size)} height={52} onPress={() => router.push({ pathname: '/skill-file', params: { id, path: f.path } })} />
             ))}
           </Panel>
-          <Text size={12.5} color="muted" style={{ marginTop: 8, paddingHorizontal: 4, lineHeight: 19 }}>{`The assistant can open these when the instructions point to them. Scripts are kept as text; they can’t be run on this ${device}.`}</Text>
+          <Text size={12.5} color="muted" style={{ marginTop: 8, paddingHorizontal: 4, lineHeight: 19 }}>{scriptsOn ? `The assistant can open these when the instructions point to them, and run the scripts (it asks first unless you changed that).` : `The assistant can open these when the instructions point to them. Scripts only run if you turn on Run skill scripts on the Skills page.`}</Text>
         </View>
       )}
       <View>

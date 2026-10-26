@@ -93,6 +93,11 @@ export type Settings = {
   genUiInvalid: 'text' | 'retry';
   developerMode: boolean;
   genUiDisabledModels: string[];
+  // Skill scripts
+  /** Skills may run their own Python and Node scripts (phone: in the downloaded sandbox; computer: with its Python). */
+  skillScripts: boolean;
+  /** Ask before each script runs. */
+  skillScriptsAsk: boolean;
 };
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -115,6 +120,8 @@ export const DEFAULT_SETTINGS: Settings = {
   showReasoning: true,
   haptics: true,
   notifyReplies: true,
+  skillScripts: false,
+  skillScriptsAsk: true,
   archiveDays: 0,
   tempByDefault: false,
   routes: {

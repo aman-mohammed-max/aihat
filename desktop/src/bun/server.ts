@@ -12,12 +12,14 @@
  *   /api/notify       a desktop notification
  *   /api/oauth/wait   waits for a browser sign-in to come back to /oauth/…
  *   /api/info         platform, version and where keys are kept
+ *   /api/exec         runs a skill's command with the computer's Python or Node (see exec.ts); /api/exec/tools, /api/exec/cancel
  */
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { extname, join, normalize, parse, sep } from 'node:path';
 
 import { openDb, type DbOp } from './db';
+import { cancelExec, findTools, runExec, type ExecJob } from './exec';
 import { bootstrap } from './inject';
 import { openSecrets } from './secrets';
 
@@ -211,6 +213,16 @@ export async function startServer({ webRoot, host, keysInFile = false, webDev }:
           if (!state) return json({ error: 'No sign-in to wait for.' }, 400);
           const back = await waitForSignIn(state, Math.min(Number(url.searchParams.get('ms')) || 300_000, 600_000), req.signal);
           return back ? json({ url: back }) : json({ error: 'Sign-in was cancelled or took too long.' }, 408);
+        }
+        case '/api/exec/tools':
+          return json(await findTools());
+        case '/api/exec': {
+          const { id, job } = (await req.json()) as { id: string; job: ExecJob };
+          return json(await runExec(String(id), job));
+        }
+        case '/api/exec/cancel': {
+          await cancelExec(String(url.searchParams.get('id')));
+          return json({ ok: true });
         }
         case '/api/info':
           return json({ platform: process.platform, arch: process.arch, version: host.version, keyStore: secrets.store, dataDir: host.dataDir, downloads: host.downloads });

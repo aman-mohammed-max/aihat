@@ -3,10 +3,16 @@ import { useState } from 'react';
 import { View } from 'react-native';
 
 import { Button, LinkCard, Screen, SearchBar, SectionTitle, Text, ThingRow } from '@/components';
+import { isDesktop } from '@/lib/device';
+import { useSkillRuntime } from '@/skill-exec/store';
 import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 
 export default function Skills() {
   const skills = useLibrary((s) => s.skills);
+  const scriptsOn = useSettings((s) => s.skillScripts);
+  const runtime = useSkillRuntime();
+  const scripts = runtime.status === 'downloading' ? `Downloading the add-on… ${Math.round((runtime.done / Math.max(1, runtime.total)) * 100)}%` : scriptsOn ? (isDesktop ? 'On · with this computer’s Python' : 'On · in a sandbox on this phone') : 'Off · let skills make Word, Excel and PDF files';
   const [q, setQ] = useState('');
   const list = skills.filter((s) => `${s.name} ${s.description}`.toLowerCase().includes(q.toLowerCase()));
   const on = list.filter((s) => s.enabled);
@@ -32,7 +38,12 @@ export default function Skills() {
             <SearchBar value={q} onChangeText={setQ} placeholder="Search skills" hint={q ? `${list.length} results` : undefined} />
           </View>
           <View style={{ paddingHorizontal: 16, paddingBottom: 6 }}>
-            <LinkCard items={[{ icon: 'store', label: 'Browse skills', sub: 'Find and add skills from public libraries', onPress: () => router.push('/market') }]} />
+            <LinkCard
+              items={[
+                { icon: 'store', label: 'Browse skills', sub: 'Find and add skills from public libraries', onPress: () => router.push('/market') },
+                { icon: 'tool', label: 'Run skill scripts', sub: scripts, onPress: () => router.push('/skill-scripts') },
+              ]}
+            />
           </View>
           <Text size={13} color="muted" style={{ paddingHorizontal: 20, paddingTop: 4, paddingBottom: 8, lineHeight: 19 }}>
             Skills are instructions the model loads only when a task needs them. Each one is also a command: type / and pick it, or type its name.

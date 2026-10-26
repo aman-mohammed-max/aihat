@@ -1,0 +1,290 @@
+{
+  "pyodide": "314.0.7",
+  "python": "3.14",
+  "totalBytes": 37694774,
+  "files": [
+    {
+      "name": "pyodide.js",
+      "kind": "core",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.js",
+      "size": 18912,
+      "sha256": "3141b814715a72e59b51b1b18b9ceae5bf19f7c852417e431bb0a34feadf825c"
+    },
+    {
+      "name": "pyodide.asm.mjs",
+      "kind": "core",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.asm.mjs",
+      "size": 1250344,
+      "sha256": "f7cdc8ece80678ceb712f8e65ebe6d3a83203a180c399865f49612a051693635"
+    },
+    {
+      "name": "pyodide.asm.wasm",
+      "kind": "core",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide.asm.wasm",
+      "size": 9598218,
+      "sha256": "cc36e3cab04fdfc9a63ff13eb52eae2b911bf46c025cc7b281f394bd3de1d5e6"
+    },
+    {
+      "name": "python_stdlib.zip",
+      "kind": "core",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/python_stdlib.zip",
+      "size": 2545637,
+      "sha256": "fa1957e5777068fc4f7437f96d860ae2fbe9c19732ba06c84e004ec16dd7dd7a"
+    },
+    {
+      "name": "pyodide-lock.json",
+      "kind": "core",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pyodide-lock.json",
+      "size": 119077,
+      "sha256": "5dc2fc119108bc148c7457dc86e7675b5c87e1cafd420b9c34c1eaef7b36c010"
+    },
+    {
+      "name": "cffi-2.0.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/cffi-2.0.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "size": 148947,
+      "sha256": "9ae1a61096321cef7248e02293f42d000fa87b73a3e795705a2444290590459d",
+      "package": "cffi"
+    },
+    {
+      "name": "charset_normalizer-3.4.7-py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/charset_normalizer-3.4.7-py3-none-any.whl",
+      "size": 61958,
+      "sha256": "9e437ef92fa51f06eedeb1ef092c0a887bd24fe0d40b1e900191117ce1653121",
+      "package": "charset-normalizer"
+    },
+    {
+      "name": "cryptography-47.0.0-cp314-abi3-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/cryptography-47.0.0-cp314-abi3-pyemscripten_2026_0_wasm32.whl",
+      "size": 2174338,
+      "sha256": "0b41491ced2cf85046559cac2502e875492cbef6d332addafa680e41be27f0ad",
+      "package": "cryptography"
+    },
+    {
+      "name": "lxml-6.1.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/lxml-6.1.3-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "size": 2145850,
+      "sha256": "6a0b98f57a538cb6af4868c3499efec2bb52f7ed59fed94b7fbf195d6e40281f",
+      "package": "lxml"
+    },
+    {
+      "name": "numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/numpy-2.4.6-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "size": 2960568,
+      "sha256": "a292c1f5d7d8a2208cd5e94fc467604c131cabcd2fc14fed6eefde121e7fabdf",
+      "package": "numpy"
+    },
+    {
+      "name": "pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pandas-3.0.2-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "size": 4177749,
+      "sha256": "45ff57772cc2f366a8582c7d3097cc4e6676342ecd5a3c08184a43462d5a02ae",
+      "package": "pandas"
+    },
+    {
+      "name": "pillow-12.2.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pillow-12.2.0-cp314-cp314-pyemscripten_2026_0_wasm32.whl",
+      "size": 1037806,
+      "sha256": "e29838b7a756e4ee0f27a9cfa9a387ee0dfa2e9dd44be2dd595130b9f9d93ac3",
+      "package": "pillow"
+    },
+    {
+      "name": "pycparser-3.0-py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pycparser-3.0-py3-none-any.whl",
+      "size": 48172,
+      "sha256": "0b4cbc12c42e25df55343342fb0da45b189181e4f360602f9721db2016fc3a4b",
+      "package": "pycparser"
+    },
+    {
+      "name": "python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/python_dateutil-2.9.0.post0-py2.py3-none-any.whl",
+      "size": 229892,
+      "sha256": "9b13365edf9c188f570baf9c540bbb3029ada2a2dacb9694b3659941693ee9e5",
+      "package": "python-dateutil"
+    },
+    {
+      "name": "pytz-2026.1.post1-py2.py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/pytz-2026.1.post1-py2.py3-none-any.whl",
+      "size": 510489,
+      "sha256": "b8249d6450146e0b61e6d710dc02ebb35a904796c4c2f97fe87d4ac5872db36a",
+      "package": "pytz"
+    },
+    {
+      "name": "six-1.17.0-py2.py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/six-1.17.0-py2.py3-none-any.whl",
+      "size": 11050,
+      "sha256": "228c50f73aa7addf2c2ccf2979c256802a59ab69cad8152b31b9443cc8140f42",
+      "package": "six"
+    },
+    {
+      "name": "typing_extensions-4.15.0-py3-none-any.whl",
+      "kind": "pyodide",
+      "url": "https://cdn.jsdelivr.net/pyodide/v314.0.7/full/typing_extensions-4.15.0-py3-none-any.whl",
+      "size": 44613,
+      "sha256": "4fec68770a05408e668a4fa53d6bf4f0f684b9dacf820c7c5d6e97d3ad225e29",
+      "package": "typing-extensions"
+    },
+    {
+      "name": "python_docx-1.2.0-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/d0/00/1e03a4989fa5795da308cd774f05b704ace555a70f9bf9d3be057b680bcf/python_docx-1.2.0-py3-none-any.whl",
+      "size": 252987,
+      "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7",
+      "package": "python-docx"
+    },
+    {
+      "name": "python_pptx-1.0.2-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/d9/4f/00be2196329ebbff56ce564aa94efb0fbc828d00de250b1980de1a34ab49/python_pptx-1.0.2-py3-none-any.whl",
+      "size": 472788,
+      "sha256": "160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba",
+      "package": "python-pptx"
+    },
+    {
+      "name": "xlsxwriter-3.3.0-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/ce/9d/3d30eaaa7e06bdb6172f938b2661d64f8d899bdca54120384ecf3759488a/xlsxwriter-3.3.0-py3-none-any.whl",
+      "size": 179548,
+      "sha256": "5f04772d43281da5109af66f39b65153359a203e896847c416476e709b024469",
+      "package": "XlsxWriter"
+    },
+    {
+      "name": "openpyxl-3.1.5-py2.py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl",
+      "size": 250910,
+      "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2",
+      "package": "openpyxl"
+    },
+    {
+      "name": "et_xmlfile-2.0.0-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl",
+      "size": 18059,
+      "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa",
+      "package": "et_xmlfile"
+    },
+    {
+      "name": "pypdf-6.21.2-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/1b/4d/c9d2d67f204eff463237a1a8f5e25a6923b7b1043982b91fcaf104c8ef60/pypdf-6.21.2-py3-none-any.whl",
+      "size": 407766,
+      "sha256": "1d44d1a3a200f25062adff0085b02040e4646431ac2ccac22e42679e91466084",
+      "package": "pypdf"
+    },
+    {
+      "name": "defusedxml-0.7.1-py2.py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/07/6c/aa3f2f849e01cb6a001cd8554a88d4c77c5c1a31c95bdf1cf9301e6d9ef4/defusedxml-0.7.1-py2.py3-none-any.whl",
+      "size": 25604,
+      "sha256": "a352e7e428770286cc899e2542b6cdaedb2b4953ff269a210103ec58f6198a61",
+      "package": "defusedxml"
+    },
+    {
+      "name": "pdfminer_six-20260107-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/20/8b/28c4eaec9d6b036a52cb44720408f26b1a143ca9bce76cc19e8f5de00ab4/pdfminer_six-20260107-py3-none-any.whl",
+      "size": 6592252,
+      "sha256": "366585ba97e80dffa8f00cebe303d2f381884d8637af4ce422f1df3ef38111a9",
+      "package": "pdfminer.six"
+    },
+    {
+      "name": "pdfplumber-0.11.10-py3-none-any.whl",
+      "kind": "wheel",
+      "url": "https://files.pythonhosted.org/packages/a2/9a/07d658e1e7fad860f1c541ab941348125dbdab773be3a0afaf32361866c7/pdfplumber-0.11.10-py3-none-any.whl",
+      "size": 60047,
+      "sha256": "7741ea81bf165b474b153e6789d10d18e06b6ddcf3ec84289c3ef2fed6802580",
+      "package": "pdfplumber"
+    },
+    {
+      "name": "pptxgenjs.js",
+      "kind": "js",
+      "url": "https://cdn.jsdelivr.net/npm/pptxgenjs@4.0.1/dist/pptxgen.bundle.js",
+      "size": 460889,
+      "sha256": "4fb9eac5cfefb213e2d8743c2b7151025f31bfb3f834c73c12062916daa0f3f8",
+      "lib": "pptxgenjs",
+      "global": "PptxGenJS",
+      "version": "4.0.1"
+    },
+    {
+      "name": "docx.js",
+      "kind": "js",
+      "url": "https://cdn.jsdelivr.net/npm/docx@9.14.0/dist/index.iife.js",
+      "size": 1365205,
+      "sha256": "941491df7848128d8c0d12ea145379907b018e1ed02cee8393237b12110e6f4b",
+      "lib": "docx",
+      "global": "docx",
+      "version": "9.14.0"
+    },
+    {
+      "name": "pdf-lib.js",
+      "kind": "js",
+      "url": "https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js",
+      "size": 525099,
+      "sha256": "0f9a5cad07941f0826586c94e089d89b918c46e5c17cf2d5a3c6f666e3bc694f",
+      "lib": "pdf-lib",
+      "global": "PDFLib",
+      "version": "1.17.1"
+    }
+  ],
+  "needs": {
+    "docx": [
+      "lxml",
+      "typing-extensions"
+    ],
+    "pptx": [
+      "lxml",
+      "pillow",
+      "typing-extensions"
+    ],
+    "pdfminer": [
+      "cryptography",
+      "charset-normalizer"
+    ],
+    "pdfplumber": [
+      "cryptography",
+      "charset-normalizer",
+      "pillow"
+    ],
+    "PIL": [
+      "pillow"
+    ],
+    "lxml": [
+      "lxml"
+    ],
+    "numpy": [
+      "numpy"
+    ],
+    "pandas": [
+      "pandas"
+    ]
+  },
+  "bundled": [
+    "charset-normalizer",
+    "cryptography",
+    "defusedxml",
+    "et_xmlfile",
+    "lxml",
+    "numpy",
+    "openpyxl",
+    "pandas",
+    "pdfminer.six",
+    "pdfplumber",
+    "pillow",
+    "pypdf",
+    "python-docx",
+    "python-pptx",
+    "typing-extensions",
+    "XlsxWriter"
+  ]
+}

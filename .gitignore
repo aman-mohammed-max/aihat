@@ -57,3 +57,4 @@ out/
 # editor settings
 .vscode/
 .claude/scheduled_tasks.lock
+.skill-runtime-cache/

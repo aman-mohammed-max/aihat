@@ -15,6 +15,7 @@ import { AlertHost } from '@/components/AlertHost';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
 import { updateSkillsIfDue } from '@/lib/skill-updates';
+import { SkillRuntimeHost } from '@/skill-exec/runtime';
 import { isDesktop } from '@/lib/device';
 import { useLayout } from '@/lib/layout';
 import { initNotifications } from '@/lib/notify';
@@ -67,6 +68,7 @@ export default function RootLayout() {
           <StatusBar style={isDark ? 'light' : 'dark'} />
           {!isDesktop && <PrivacyShield />}
           <Toast />
+          <SkillRuntimeHost />
           {/* On a tablet or computer the side menu stays put between pages, so pages swap in place instead of sliding. */}
           <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg }, animation: wide ? 'fade' : 'default', title: 'AI Hat' }}>
             <Stack.Screen name="(drawer)" />
@@ -104,6 +106,7 @@ export default function RootLayout() {
             <Stack.Screen name="settings" />
             <Stack.Screen name="skill-detail" />
             <Stack.Screen name="skill-file" />
+            <Stack.Screen name="skill-scripts" />
             <Stack.Screen name="skills" />
             <Stack.Screen name="web-search" />
             {/* Every sheet / dialog is a transparent modal over the current screen. */}

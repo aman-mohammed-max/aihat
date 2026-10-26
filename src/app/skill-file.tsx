@@ -4,10 +4,10 @@ import { useEffect, useState } from 'react';
 import { View } from 'react-native';
 
 import { Button, Screen, Text } from '@/components';
-import { device } from '@/lib/device';
 import * as haptic from '@/lib/haptics';
 import { SCRIPT_FILE } from '@/lib/skills';
 import { useLibrary } from '@/store/library';
+import { useSettings } from '@/store/settings';
 import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
@@ -17,6 +17,7 @@ const SHOWN = 40_000;
 export default function SkillFile() {
   const { id, path } = useLocalSearchParams<{ id: string; path: string }>();
   const { colors } = useTheme();
+  const scriptsOn = useSettings((s) => s.skillScripts);
   const skill = useLibrary((s) => s.skills.find((k) => k.id === id));
   const [text, setText] = useState<string | null | undefined>(undefined);
   useEffect(() => {
@@ -39,7 +40,7 @@ export default function SkillFile() {
           {text.length > SHOWN && <Text size={12} color="muted">{`Showing the first ${SHOWN.toLocaleString('en-US')} of ${text.length.toLocaleString('en-US')} characters. The assistant can read more.`}</Text>}
         </View>
       )}
-      {SCRIPT_FILE.test(path ?? '') && <Text size={12.5} color="warn" style={{ lineHeight: 19, paddingHorizontal: 4 }}>{`A script. AI Hat keeps it as text so the assistant can read it. It is never run on this ${device}.`}</Text>}
+      {SCRIPT_FILE.test(path ?? '') && <Text size={12.5} color="warn" style={{ lineHeight: 19, paddingHorizontal: 4 }}>{scriptsOn ? `A script. The assistant can run it in the sandbox when the skill needs it (Skills › Run skill scripts).` : `A script. AI Hat keeps it as text so the assistant can read it. It only runs if you turn on Skills › Run skill scripts.`}</Text>}
     </Screen>
   );
 }

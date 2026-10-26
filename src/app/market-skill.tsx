@@ -8,6 +8,7 @@ import * as haptic from '@/lib/haptics';
 import { compact, loadSiteSkill, loadSkill, loadSkillFiles, recallSkill, siteSourceLabel, skillSourceLabel, type SkillFileData } from '@/lib/market';
 import { fileSize, parseSkillMd, SCRIPT_FILE, slugify } from '@/lib/skills';
 import { useLibrary, type Skill } from '@/store/library';
+import { useSettings } from '@/store/settings';
 import { toast } from '@/store/toast';
 import { useTheme } from '@/theme';
 
@@ -24,6 +25,7 @@ const PREVIEW_CHARS = 2500;
 
 export default function MarketSkill() {
   const { colors } = useTheme();
+  const scriptsOn = useSettings((s) => s.skillScripts);
   const { key } = useLocalSearchParams<{ key: string }>();
   const listing = key ? recallSkill(key) : undefined;
   const skills = useLibrary((s) => s.skills);
@@ -157,7 +159,7 @@ export default function MarketSkill() {
           <View style={{ flexDirection: 'row', gap: 12, backgroundColor: colors.surface, borderRadius: 14, padding: 14 }}>
             <Icon name="warn" size={18} color={colors.warn} />
             <Text size={13} color="text2" style={{ flex: 1, lineHeight: 19.5 }}>
-              {`Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. Scripts that come with a skill are only stored as text; they never run on your ${device}.`}
+              {`Anyone can publish a skill, and its text steers how the assistant behaves. Read it before you add it. ${scriptsOn ? `Scripts that come with a skill can run in the sandbox on your ${device}, after you allow each run.` : `Scripts that come with a skill only run if you turn on Run skill scripts (Skills page).`}`}
             </Text>
           </View>
 
@@ -183,12 +185,12 @@ export default function MarketSkill() {
             <View>
               <SectionTitle space={8}>{`Files that come with it · ${fileData.list.length}`}</SectionTitle>
               <Panel>
-                {shown.map((f) => <PanelRow key={f.path} mono label={f.path} sub={SCRIPT_FILE.test(f.path) ? 'Script: read only, never run' : undefined} value={fileSize(f.size)} />)}
+                {shown.map((f) => <PanelRow key={f.path} mono label={f.path} sub={SCRIPT_FILE.test(f.path) ? (scriptsOn ? 'Script: can run in the sandbox' : 'Script: kept as text') : undefined} value={fileSize(f.size)} />)}
                 {rest.length > 0 && <PanelRow label={`and ${rest.length} more`} value={fileSize(rest.reduce((n, f) => n + f.size, 0))} />}
                 {!existing && <PanelRow label="Add these files too" sub={`${fileSize(fileBytes)} of text${fileData.omitted ? `; ${fileData.omitted} more were left out` : ''}`} height={56} toggle={{ on: withFiles, onChange: setWithFiles }} />}
               </Panel>
               <Text size={12.5} color="muted" style={{ marginTop: 8, paddingHorizontal: 4, lineHeight: 19 }}>
-                {`The assistant opens these when the instructions point to them.${hasScripts ? ` Scripts are kept as text and are never run on the ${device}; with a code-running tool connected (an MCP server), the assistant can pass them to it.` : ''}`}
+                {`The assistant opens these when the instructions point to them.${hasScripts ? (scriptsOn ? ' The assistant can run its scripts in the sandbox, asking you first.' : ' Its scripts are kept as text unless you turn on Run skill scripts.') : ''}`}
               </Text>
             </View>
           )}

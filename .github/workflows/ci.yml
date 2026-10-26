@@ -1,6 +1,7 @@
 name: Check
 
-# Type-checks and lints on every push to main and every pull request (the app, and the desktop backend with its tests).
+# Type-checks and lints on every push to main and every pull request (the app, the desktop backend with its tests,
+# and the skill-script runner).
 
 on:
   push:
@@ -35,3 +36,22 @@ jobs:
         run: bun test
       - working-directory: desktop
         run: bun scripts/typecheck.ts
+
+  skill-engine:
+    # The phone's skill-script runner: the embedded page is current, every pinned download still matches its
+    # checksum, and the self-tests pass with the real Pyodide and libraries.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/embed-skill-engine.mjs --check
+      - uses: actions/cache@v4
+        with:
+          path: .skill-runtime-cache
+          key: skill-runtime-${{ hashFiles('scripts/skill-runtime-manifest.mjs') }}
+      - run: node scripts/skill-runtime-manifest.mjs .skill-runtime-cache
+      - run: git diff --exit-code src/skill-exec/runtime.json
+      - run: node scripts/skill-runtime-test.mjs .skill-runtime-cache

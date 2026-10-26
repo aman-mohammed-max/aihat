@@ -1,0 +1,222 @@
+[
+ {
+  "id": "hello",
+  "title": "Python starts",
+  "command": "python3 -c \"import sys; print(sys.version)\"",
+  "files": {},
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "stdout": "3."
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "docx",
+  "title": "Word file (python-docx)",
+  "command": "python3 make_docx.py report.docx",
+  "files": {
+   "make_docx.py": "import sys\nfrom docx import Document\ndoc = Document()\ndoc.add_heading(\"Quarterly report\", level=1)\ndoc.add_paragraph(\"Made on the phone by a skill script, with python-docx.\")\ntable = doc.add_table(rows=3, cols=2)\nfor i, (k, v) in enumerate([(\"Item\", \"Value\"), (\"Apples\", \"12\"), (\"Pears\", \"7\")]):\n    table.cell(i, 0).text = k\n    table.cell(i, 1).text = v\ndoc.save(sys.argv[1])\nback = Document(sys.argv[1])\nprint(\"paragraphs:\", len(back.paragraphs), \"tables:\", len(back.tables))\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "report.docx"
+   ],
+   "stdout": "tables: 1"
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "xlsx",
+  "title": "Excel file (openpyxl)",
+  "command": "python3 make_xlsx.py",
+  "files": {
+   "make_xlsx.py": "from openpyxl import Workbook, load_workbook\nwb = Workbook()\nws = wb.active\nws.title = \"Sales\"\nws.append([\"Month\", \"Amount\"])\nfor row in [(\"Jan\", 120), (\"Feb\", 95), (\"Mar\", 143)]:\n    ws.append(row)\nws[\"A5\"] = \"Total\"\nws[\"B5\"] = \"=SUM(B2:B4)\"\nwb.save(\"sales.xlsx\")\nprint(\"formula:\", load_workbook(\"sales.xlsx\")[\"Sales\"][\"B5\"].value)\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "sales.xlsx"
+   ],
+   "stdout": "=SUM(B2:B4)"
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "pdf",
+  "title": "Merge PDFs (pypdf)",
+  "command": "python3 make_pdfs.py && python3 merge.py a.pdf b.pdf merged.pdf",
+  "files": {
+   "make_pdfs.py": "from pypdf import PdfWriter\nfor name, pages in ((\"a.pdf\", 1), (\"b.pdf\", 2)):\n    w = PdfWriter()\n    for _ in range(pages):\n        w.add_blank_page(width=595, height=842)\n    with open(name, \"wb\") as f:\n        w.write(f)\n",
+   "merge.py": "import sys\nfrom pypdf import PdfReader, PdfWriter\n*inputs, out = sys.argv[1:]\nw = PdfWriter()\nfor p in inputs:\n    for page in PdfReader(p).pages:\n        w.add_page(page)\nwith open(out, \"wb\") as f:\n    w.write(f)\nprint(\"pages:\", len(PdfReader(out).pages))\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "merged.pdf"
+   ],
+   "stdout": "pages: 3"
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "pptx-js",
+  "title": "PowerPoint with node (pptxgenjs)",
+  "command": "node make_deck.js",
+  "files": {
+   "make_deck.js": "const pptxgen = require(\"pptxgenjs\");\nconst pptx = new pptxgen();\nconst s1 = pptx.addSlide();\ns1.addText(\"Made on the phone\", { x: 1, y: 1, fontSize: 32 });\nconst s2 = pptx.addSlide();\ns2.addText(\"Slide two\", { x: 1, y: 1, fontSize: 24 });\npptx.writeFile({ fileName: \"deck.pptx\" }).then((name) => console.log(\"saved\", name));\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "deck.pptx"
+   ],
+   "stdout": "saved deck.pptx"
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "lxml-numpy",
+  "title": "lxml and numpy load",
+  "command": "python3 -c \"import lxml.etree as E, numpy as np; print(E.LXML_VERSION[0], int(np.arange(5).sum()))\"",
+  "files": {},
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "stdout": " 10"
+  },
+  "where": "all",
+  "note": ""
+ },
+ {
+  "id": "timeout",
+  "title": "A runaway script is stopped",
+  "command": "python3 -c \"while True: pass\"",
+  "files": {},
+  "timeoutMs": 3000,
+  "expect": {
+   "exitCode": 124
+  },
+  "where": "device",
+  "note": ""
+ },
+ {
+  "id": "network",
+  "title": "No internet for scripts",
+  "command": "python3 net.py",
+  "files": {
+   "net.py": "import urllib.request\nurllib.request.urlopen(\"https://example.com\", timeout=5).read()\nprint(\"REACHED THE INTERNET\")\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCodeNot": 0,
+   "stdoutNot": "REACHED THE INTERNET"
+  },
+  "where": "device",
+  "note": ""
+ },
+ {
+  "id": "pandas",
+  "title": "pandas table",
+  "command": "python3 -c \"import pandas as pd; df = pd.DataFrame({'a': [1, 2, 3]}); print(int(df.a.sum()))\"",
+  "files": {},
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "stdout": "6"
+  },
+  "where": "all",
+  "note": "extra"
+ },
+ {
+  "id": "pptx-py",
+  "title": "PowerPoint with python-pptx",
+  "command": "python3 make_pptx.py",
+  "files": {
+   "make_pptx.py": "from pptx import Presentation\np = Presentation()\ns = p.slides.add_slide(p.slide_layouts[1])\ns.shapes.title.text = \"Hello\"\ns.placeholders[1].text = \"From python-pptx\"\np.save(\"py.pptx\")\nprint(\"slides:\", len(Presentation(\"py.pptx\").slides))\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "py.pptx"
+   ],
+   "stdout": "slides: 1"
+  },
+  "where": "all",
+  "note": "extra"
+ },
+ {
+  "id": "pdf-text",
+  "title": "Read PDF text (pdfplumber)",
+  "command": "python3 make_pdf.py && python3 read_pdf.py",
+  "files": {
+   "make_pdf.py": "import docx  # noqa: just to load lxml alongside\nfrom pypdf import PdfWriter\nfrom pypdf.generic import NameObject, DictionaryObject, ArrayObject, DecodedStreamObject, FloatObject\nw = PdfWriter()\npage = w.add_blank_page(width=300, height=200)\nfont = DictionaryObject({NameObject(\"/Type\"): NameObject(\"/Font\"), NameObject(\"/Subtype\"): NameObject(\"/Type1\"), NameObject(\"/BaseFont\"): NameObject(\"/Helvetica\")})\npage[NameObject(\"/Resources\")] = DictionaryObject({NameObject(\"/Font\"): DictionaryObject({NameObject(\"/F1\"): w._add_object(font)})})\nstream = DecodedStreamObject()\nstream.set_data(b\"BT /F1 18 Tf 20 100 Td (Hello from a PDF) Tj ET\")\npage[NameObject(\"/Contents\")] = w._add_object(stream)\nwith open(\"hello.pdf\", \"wb\") as f:\n    w.write(f)\n",
+   "read_pdf.py": "import pdfplumber\nwith pdfplumber.open(\"hello.pdf\") as pdf:\n    print(pdf.pages[0].extract_text())\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "stdout": "Hello from a PDF"
+  },
+  "where": "all",
+  "note": "extra"
+ },
+ {
+  "id": "docx-js",
+  "title": "Word file with node (docx)",
+  "command": "node make_doc.mjs",
+  "files": {
+   "make_doc.mjs": "import * as fs from \"fs\";\nimport { Document, Packer, Paragraph, TextRun } from \"docx\";\nconst doc = new Document({ sections: [{ children: [new Paragraph({ children: [new TextRun(\"Made with docx on the phone\")] })] }] });\nconst buf = await Packer.toBuffer(doc);\nfs.writeFileSync(\"note.docx\", buf);\nconsole.log(\"bytes\", buf.length > 1000);\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "outputs": [
+    "note.docx"
+   ],
+   "stdout": "bytes true"
+  },
+  "where": "all",
+  "note": "extra"
+ },
+ {
+  "id": "subprocess",
+  "title": "Scripts that call other programs",
+  "command": "python3 sub.py",
+  "files": {
+   "sub.py": "import subprocess\nr = subprocess.run([\"python3\", \"-c\", \"print(6 * 7)\"], capture_output=True, text=True)\nprint(\"inner:\", r.stdout.strip())\ntry:\n    subprocess.run([\"soffice\", \"--version\"])\nexcept FileNotFoundError as e:\n    print(\"missing:\", e.strerror)\n"
+  },
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 0,
+   "stdout": "inner: 42"
+  },
+  "where": "all",
+  "note": "extra"
+ },
+ {
+  "id": "shell",
+  "title": "Shell basics",
+  "command": "mkdir -p out && echo hi > out/a.txt && cp out/a.txt out/b.txt && ls out && cat out/b.txt && soffice --headless",
+  "files": {},
+  "timeoutMs": 60000,
+  "expect": {
+   "exitCode": 127,
+   "stdout": "a.txt",
+   "stderr": "LibreOffice"
+  },
+  "where": "all",
+  "note": "extra"
+ }
+]

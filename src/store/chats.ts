@@ -17,6 +17,8 @@ import { now, uid } from '@/lib/id';
 
 import { fileNote, normPath, skillMenu } from '@/lib/skills';
 import { genUiSystemPrompt } from '@/genui/catalog';
+import { executor as skillExecutor } from '@/skill-exec/runtime';
+import { EXECUTE, executeTool, runForChat } from '@/skill-exec/tool';
 import { wantsUI } from '@/genui/parse';
 
 import { useLibrary, type McpServer } from './library';
@@ -451,6 +453,10 @@ export const useChats = create<State>((set, get) => ({
         tools.push({ type: 'function', function: { name: USE_SKILL, description: 'Load the full instructions of one of your skills by name.', parameters: { type: 'object', properties: { name: { type: 'string', description: 'The skill name, exactly as listed' } }, required: ['name'] } } });
       }
 
+      // Skill scripts: the model can run commands (phone: the sandboxed add-on; computer: its own Python and Node).
+      const runnable = on;
+      if (runnable.length && (await skillExecutor.isAvailable())) tools.push(executeTool(runnable.map((s) => s.name)));
+
       if (useSettings.getState().searchMode === 'auto') {
         tools.push({ type: 'function', function: { name: WEB_SEARCH, description: 'Search the web for current information. Returns numbered results with URLs; cite them as [n].', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } });
       }
@@ -529,6 +535,41 @@ export const useChats = create<State>((set, get) => ({
             if (hit) act(`Using the “${hit.name}” skill…`, hit.description.slice(0, 160));
             update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, status: hit ? 'done' : 'error', result: hit ? `Loaded ${hit.body.length.toLocaleString()} characters of instructions.` : out, error: hit ? undefined : out } : t)) });
             wire.push({ role: 'tool', tool_call_id: call.id, content: out });
+            continue;
+          }
+          if (call.function.name === EXECUTE) {
+            let a: { command?: unknown; skill?: unknown } = {};
+            try {
+              a = JSON.parse(call.function.arguments || '{}');
+            } catch {
+              /* the model sent broken JSON; runForChat says there is no command */
+            }
+            const run: ToolRun = { id: call.id, name: EXECUTE, server: 'Skill scripts', skill: a.skill ? String(a.skill) : undefined, args: call.function.arguments, status: 'running' };
+            update({ toolCalls: [...assistant.toolCalls, run] });
+            const finish = (patch: Partial<ToolRun>) => update({ toolCalls: assistant.toolCalls.map((t) => (t.id === run.id ? { ...t, ...patch } : t)) });
+            if (useSettings.getState().skillScriptsAsk) {
+              act('Waiting for your OK', String(a.command ?? '').slice(0, 120));
+              finish({ status: 'pending' });
+              const ok = await new Promise<boolean>((resolve) => set({ approval: { chatId, run, resolve } }));
+              set({ approval: null });
+              if (!ok) {
+                finish({ status: 'rejected' });
+                wire.push({ role: 'tool', tool_call_id: call.id, content: 'The user chose not to run this command.' });
+                continue;
+              }
+              finish({ status: 'running' });
+            }
+            try {
+              act('Running a script…', String(a.command ?? '').slice(0, 120));
+              const inputs = get().messages[chatId].flatMap((m) => (m.role === 'user' ? m.attachments : []));
+              const out = await runForChat(a, on, inputs, ctl.signal);
+              if (out.files.length) update({ attachments: [...assistant.attachments, ...out.files] });
+              finish({ status: out.ok ? 'done' : 'error', result: out.summary, error: out.ok ? undefined : out.forModel.slice(0, 600) });
+              wire.push({ role: 'tool', tool_call_id: call.id, content: out.forModel });
+            } catch (e: any) {
+              finish({ status: 'error', error: e.message });
+              wire.push({ role: 'tool', tool_call_id: call.id, content: `Error: ${e.message}` });
+            }
             continue;
           }
           if (call.function.name === WEB_SEARCH) {
