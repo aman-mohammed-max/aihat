@@ -51,9 +51,20 @@
     importScripts(blobUrl(m.loader));
     var mod;
     try {
+      // (forceClassic: tests only, to check the fallback below on any engine.)
+      if (manifest.forceClassic) throw new Error('classic loading requested');
       mod = await import(blobUrl(m.core));
     } catch (e) {
-      throw new Error('This phone’s web engine could not load Python (' + (e && e.message ? e.message : e) + ').');
+      // Some web engines (older WebKit) can't import() a module inside a worker: load it as a classic script instead.
+      // Its only module-only parts are import.meta.url (used to find files, which indexURL already gives) and the export.
+      try {
+        var classic = m.core.replace(/import\.meta\.url/g, JSON.stringify(LOCAL + 'pyodide.asm.mjs')).replace(/export\s+default\s+([\w$]+)\s*;/, 'self.__aihatCreatePyodide = $1;');
+        importScripts(blobUrl(classic));
+        mod = { default: self.__aihatCreatePyodide };
+        if (typeof mod.default !== 'function') throw new Error('no module function');
+      } catch (e2) {
+        throw new Error('This phone’s web engine could not load Python (' + (e && e.message ? e.message : e) + '; ' + (e2 && e2.message ? e2.message : e2) + ').');
+      }
     }
     var py = await self.loadPyodide({ indexURL: LOCAL, packageBaseUrl: LOCAL, createPyodideModule: mod.default, stdout: function () {}, stderr: function () {} });
     // Nothing else may load code from outside after this.

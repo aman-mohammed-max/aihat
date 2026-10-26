@@ -11,6 +11,7 @@ import { createRequire } from 'node:module';
 import { join, resolve } from 'node:path';
 
 const require = createRequire(import.meta.url);
+const logs = [];
 const cache = resolve(process.argv[2] || '.skill-runtime-cache');
 const engineName = process.argv[3] || 'chromium';
 const pw = await import('playwright-core');
@@ -25,13 +26,29 @@ const workerManifest = {
   bundled: manifest.bundled,
   wheels: manifest.files.filter((f) => f.kind === 'wheel').map((f) => f.name),
   js: Object.fromEntries(manifest.files.filter((f) => f.kind === 'js').map((f) => [f.lib, { file: f.name, global: f.global }])),
+  // FORCE_CLASSIC=1 checks the worker's fallback for engines that can't import() a module in a worker.
+  forceClassic: !!process.env.FORCE_CLASSIC,
 };
+
+/** On GitHub, failures also go on the run page as annotations (the logs need signing in; annotations don't). */
+const annotate = (title, text) => {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const esc = String(text).slice(-3500).replace(/%/g, '%25').replace(/\r/g, '').replace(/\n/g, '%0A');
+  console.log(`::error title=${engineName}: ${title.replace(/[:,\n]/g, ' ')}::${esc}`);
+};
+process.on('uncaughtException', (e) => {
+  annotate('the test crashed', `${e.stack ?? e}\n${logs.slice(-20).join('\n')}`);
+  process.exit(1);
+});
+process.on('unhandledRejection', (e) => {
+  annotate('the test crashed', `${e?.stack ?? e}\n${logs.slice(-20).join('\n')}`);
+  process.exit(1);
+});
 
 const browser = await pw[engineName].launch(process.env.BROWSER_PATH ? { executablePath: process.env.BROWSER_PATH, args: ['--no-sandbox'] } : {});
 console.log(`${engineName} ${browser.version()}`);
 const page = await browser.newPage();
 const waiters = [];
-const logs = [];
 page.on('console', (m) => logs.push(m.text()));
 page.on('pageerror', (e) => logs.push(`page error: ${e.message}`));
 await page.exposeFunction('__toNode', (s) => {
@@ -46,6 +63,7 @@ await page.addInitScript(() => {
 });
 // The page is served at the same made-up https address the app uses; anything else it asks for is a leak.
 const PAGE = 'https://runtime.aihat.invalid/';
+// The page's own console, for the failure notes.
 const leaks = [];
 await page.route('**/*', (r) => {
   if (r.request().url() === PAGE) return r.fulfill({ contentType: 'text/html', body: HTML });
@@ -80,6 +98,7 @@ await send({ t: 'warm', manifest: workerManifest });
 const w = await warm;
 if (w.error) {
   console.log(`Python didn't start: ${w.error}\n${logs.join('\n')}`);
+  annotate("Python didn't start", `${w.error}\n${logs.slice(-25).join('\n')}`);
   process.exit(1);
 }
 console.log(`Python started in ${((Date.now() - t0) / 1000).toFixed(1)} s\n`);
@@ -95,10 +114,16 @@ for (const [i, t] of tests.entries()) {
   const problems = check(t, r);
   if (problems.length) failed++;
   console.log(`${problems.length ? 'FAIL' : 'PASS'}  ${t.title}  ${((Date.now() - start) / 1000).toFixed(2)} s  exit ${r.exitCode}  ${Object.keys(r.outputFiles).join(', ')}`);
-  if (problems.length) console.log(`      ${problems.join('; ')}\n      stdout: ${r.stdout.slice(0, 400)}\n      stderr: ${r.stderr.slice(-1200)}`);
+  if (problems.length) {
+    console.log(`      ${problems.join('; ')}\n      stdout: ${r.stdout.slice(0, 400)}\n      stderr: ${r.stderr.slice(-1200)}`);
+    annotate(t.title, `${problems.join('; ')}\nexit ${r.exitCode}\nstdout: ${r.stdout.slice(0, 500)}\nstderr: ${r.stderr.slice(-2000)}\npage: ${logs.slice(-8).join(' | ')}`);
+  }
 }
 console.log(`\nrequests that tried to leave the page: ${leaks.length ? leaks.join(', ') : 'none'}`);
-if (leaks.length) failed++;
+if (leaks.length) {
+  failed++;
+  annotate('requests left the page', leaks.join('\n'));
+}
 console.log(failed ? `${failed} failed` : 'All passed');
 await browser.close();
 process.exit(failed ? 1 : 0);
