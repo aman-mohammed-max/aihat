@@ -1,4 +1,5 @@
 import { router } from 'expo-router';
+import { requireOptionalNativeModule } from 'expo';
 import { AppState, Platform } from 'react-native';
 
 import { useSettings } from '@/store/settings';
@@ -6,18 +7,47 @@ import { useSettings } from '@/store/settings';
 export { previewOf } from './preview';
 
 /**
- * expo-notifications, loaded on first use. Expo Go on Android lacks some of its native parts (the push ones), and importing
- * the package there throws, so a missing module just means "no reply notifications" instead of an app that won't start.
- * The APK and IPA builds include everything.
+ * The parts of expo-notifications this app uses (local notifications only), loaded on first use.
+ *
+ * Not the package's entry file: that one also loads the push-topic module, which Expo Go on Android doesn't have, and
+ * fails there even though local notifications work. The native modules these parts need are checked first (a check
+ * that can't throw), so a phone without them simply gets no reply notifications. The APK and IPA have everything.
  */
-type Mod = typeof import('expo-notifications');
+type Mod = {
+  setNotificationHandler: typeof import('expo-notifications/build/NotificationsHandler').setNotificationHandler;
+  addNotificationResponseReceivedListener: typeof import('expo-notifications/build/NotificationsEmitter').addNotificationResponseReceivedListener;
+  getLastNotificationResponseAsync: typeof import('expo-notifications/build/NotificationsEmitter').getLastNotificationResponseAsync;
+  getPermissionsAsync: typeof import('expo-notifications/build/NotificationPermissions').getPermissionsAsync;
+  requestPermissionsAsync: typeof import('expo-notifications/build/NotificationPermissions').requestPermissionsAsync;
+  scheduleNotificationAsync: typeof import('expo-notifications/build/scheduleNotificationAsync').scheduleNotificationAsync;
+  setNotificationChannelAsync: typeof import('expo-notifications/build/setNotificationChannelAsync').setNotificationChannelAsync;
+  AndroidImportance: typeof import('expo-notifications/build/NotificationChannelManager.types').AndroidImportance;
+};
 let cached: Mod | null | undefined;
+
+const NATIVE = ['ExpoNotificationsHandlerModule', 'ExpoNotificationsEmitter', 'ExpoNotificationPermissionsModule', 'ExpoNotificationScheduler'];
 
 function notifications(): Mod | null {
   if (cached !== undefined) return cached;
+  const native = Platform.OS === 'android' ? [...NATIVE, 'ExpoNotificationChannelManager'] : NATIVE;
+  if (!native.every((n) => requireOptionalNativeModule(n))) return (cached = null);
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    cached = require('expo-notifications') as Mod;
+    /* eslint-disable @typescript-eslint/no-require-imports */
+    const handler = require('expo-notifications/build/NotificationsHandler');
+    const emitter = require('expo-notifications/build/NotificationsEmitter');
+    const perms = require('expo-notifications/build/NotificationPermissions');
+    const types = require('expo-notifications/build/NotificationChannelManager.types');
+    cached = {
+      setNotificationHandler: handler.setNotificationHandler,
+      addNotificationResponseReceivedListener: emitter.addNotificationResponseReceivedListener,
+      getLastNotificationResponseAsync: emitter.getLastNotificationResponseAsync,
+      getPermissionsAsync: perms.getPermissionsAsync,
+      requestPermissionsAsync: perms.requestPermissionsAsync,
+      scheduleNotificationAsync: require('expo-notifications/build/scheduleNotificationAsync').scheduleNotificationAsync,
+      setNotificationChannelAsync: require('expo-notifications/build/setNotificationChannelAsync').setNotificationChannelAsync,
+      AndroidImportance: types.AndroidImportance,
+    };
+    /* eslint-enable @typescript-eslint/no-require-imports */
   } catch {
     cached = null;
   }
