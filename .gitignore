@@ -56,3 +56,4 @@ out/
 
 # editor settings
 .vscode/
+.claude/scheduled_tasks.lock
