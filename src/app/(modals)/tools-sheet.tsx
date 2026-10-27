@@ -57,6 +57,14 @@ export default function ToolsSheet() {
         <ListRow label="Web search" toggle={{ on: draft.searchOn, onChange: (searchOn) => draft.set({ searchOn }) }} />
         <ListRow label="Image generation" toggle={{ on: draft.imageOn, onChange: (imageOn) => draft.set({ imageOn }) }} />
         <ListRow label="Generative UI" toggle={{ on: settings.genUi, onChange: (genUi) => settings.set({ genUi }) }} />
+        {chat && !chat.temporary ? (
+          <ListRow
+            label="Memory in this chat"
+            sub={settings.memoryEnabled ? (chat.memoryEnabled ? 'On for this chat' : 'Off for this chat') : 'Memory is turned off in Settings'}
+            height={54}
+            toggle={{ on: chat.memoryEnabled, onChange: (memoryEnabled) => { void useChats.getState().patch(chat.id, { memoryEnabled }); } }}
+          />
+        ) : null}
       </View>
       <View>
         <Heading title="Skills" manage="/skills" />

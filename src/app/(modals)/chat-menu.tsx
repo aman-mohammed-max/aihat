@@ -7,7 +7,6 @@ import { useRefreshModels } from '@/lib/useRefreshModels';
 import { useChats } from '@/store/chats';
 import { useLibrary } from '@/store/library';
 import { useProviders } from '@/store/providers';
-import { useSettings } from '@/store/settings';
 import { useTheme } from '@/theme';
 
 export default function ChatMenu() {
@@ -17,7 +16,6 @@ export default function ChatMenu() {
   const count = useChats((s) => s.messages[chatId]?.length ?? 0);
   const prompt = useLibrary((s) => s.prompts.find((p) => p.id === chat?.promptId));
   const model = useProviders((s) => s.models.find((m) => m.id === chat?.modelId));
-  const memoryAvailable = useSettings((s) => s.memoryEnabled);
   const refresh = useRefreshModels();
   if (!chat) return null;
 
@@ -45,15 +43,6 @@ export default function ChatMenu() {
           <Text size={16} weight="semi" numberOfLines={1}>{chat.title}</Text>
           <Text size={12.5} color="muted" numberOfLines={1}>{[model?.name ?? chat.modelId, prompt?.name, `${count} messages`].filter(Boolean).join(' · ')}</Text>
         </View>
-        {!chat.temporary ? (
-          <ListRow
-            label="Memory in this chat"
-            sub={memoryAvailable ? (chat.memoryEnabled ? 'Saved details can be used and updated' : 'Off for this chat') : 'Memory is turned off in Settings'}
-            height={54}
-            chevron={false}
-            toggle={{ on: chat.memoryEnabled, onChange: (memoryEnabled) => { void useChats.getState().patch(chatId, { memoryEnabled }); } }}
-          />
-        ) : null}
         {rows.map((r) => <ListRow key={r.label} {...r} height={50} chevron={false} />)}
       </View>
     </RouteSheet>
