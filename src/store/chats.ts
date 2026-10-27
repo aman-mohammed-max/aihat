@@ -418,7 +418,7 @@ export const useChats = create<State>((set, get) => ({
         ? memoryContext(memorySettings.memoryItems)
         : '';
       const memoryInstructions = useMemory && memoryToolAvailable
-        ? 'When the user shares a durable preference, personal detail, or ongoing goal worth keeping, use the memory tool to save it. Update or remove saved details when the user corrects them or asks you to forget them. Do not save one-off requests, guesses, secrets, or sensitive details.'
+        ? 'Use cross-chat memory for useful information of any kind that may help in future chats, including facts, preferences, projects, decisions, plans, constraints, and ongoing work. Save it proactively when useful; the user does not need to say “remember this.” Update or delete memories when the user corrects them or asks you to forget. Do not save guesses, one-off details, secrets, or highly sensitive information.'
         : '';
       const prompt = lib.prompts.find((p) => p.id === chat.promptId);
       // Skills: "Always" ones are in the prompt in full, "Automatic" ones are listed and loaded by the model when a task

@@ -105,7 +105,7 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
       router.push('/welcome');
       throw new Error('No endpoint');
     }
-    const id = await useChats.getState().create({ providerId: provider.id, modelId: modelId ?? null, promptId: defaults.defaultPromptId });
+    const id = await useChats.getState().create({ providerId: provider.id, modelId: modelId ?? null, promptId: defaults.defaultPromptId, memoryEnabled: draft.memoryOn });
     router.replace(`/chat/${id}`);
     return id;
   };

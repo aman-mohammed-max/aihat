@@ -8,6 +8,8 @@ type Draft = {
   files: Attachment[];
   searchOn: boolean;
   imageOn: boolean;
+  /** Memory opt-in for the first turn of a new chat, before that chat has been created. */
+  memoryOn: boolean;
   uiOn: boolean;
   set: (p: Partial<Omit<Draft, 'set' | 'addFile' | 'removeFile' | 'reset'>>) => void;
   addFile: (f: Attachment) => void;
@@ -20,9 +22,10 @@ export const useDraft = create<Draft>((set) => ({
   files: [],
   searchOn: false,
   imageOn: false,
+  memoryOn: false,
   uiOn: false,
   set: (p) => set(p),
   addFile: (f) => set((s) => ({ files: [...s.files, f] })),
   removeFile: (id) => set((s) => ({ files: s.files.filter((f) => f.id !== id) })),
-  reset: () => set({ text: '', files: [] }),
+  reset: () => set({ text: '', files: [], memoryOn: false }),
 }));
