@@ -60,15 +60,13 @@ export default function ToolsSheet() {
         {chatId ? (chat && !chat.temporary ? (
           <ListRow
             label="Memory in this chat"
-            sub={settings.memoryEnabled ? (chat.memoryEnabled ? 'On for this chat' : 'Off for this chat') : 'Memory is turned off in Settings'}
-            height={54}
+            height={48}
             toggle={{ on: chat.memoryEnabled, onChange: (memoryEnabled) => { void useChats.getState().patch(chat.id, { memoryEnabled }); } }}
           />
         ) : null) : !settings.tempByDefault ? (
           <ListRow
             label="Memory in this chat"
-            sub={settings.memoryEnabled ? (draft.memoryOn ? 'On for this chat' : 'Off for this chat') : 'Memory is turned off in Settings'}
-            height={54}
+            height={48}
             toggle={{ on: draft.memoryOn, onChange: (memoryOn) => draft.set({ memoryOn }) }}
           />
         ) : null}

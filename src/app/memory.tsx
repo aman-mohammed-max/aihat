@@ -113,7 +113,7 @@ export default function Memory() {
       <View style={{ backgroundColor: colors.surface, borderRadius: 14, paddingHorizontal: 12 }}>
         <ListRow
           label="Auto-save for other models"
-          sub="Off by default; uses one extra request."
+          sub="Helps models that can’t save memories on their own. Uses one extra request."
           height={52}
           toggle={{ on: s.memoryFallbackEnabled, onChange: (memoryFallbackEnabled) => s.set({ memoryFallbackEnabled }) }}
         />

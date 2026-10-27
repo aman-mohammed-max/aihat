@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS chats (
   id TEXT PRIMARY KEY, title TEXT NOT NULL, pinned INTEGER NOT NULL DEFAULT 0,
   provider_id TEXT, model_id TEXT, prompt_id TEXT, params TEXT NOT NULL DEFAULT '{}',
   tool_ids TEXT NOT NULL DEFAULT '[]', search_mode INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL,
-  memory_enabled INTEGER NOT NULL DEFAULT 0
+  memory_enabled INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS messages (
   id TEXT PRIMARY KEY, chat_id TEXT NOT NULL, role TEXT NOT NULL, content TEXT NOT NULL DEFAULT '',
@@ -65,7 +65,12 @@ export async function migrate(db: Migratable) {
   if (!cols.includes('archived')) await db.execAsync('ALTER TABLE chats ADD COLUMN archived INTEGER NOT NULL DEFAULT 0');
   if (!cols.includes('title_locked')) await db.execAsync('ALTER TABLE chats ADD COLUMN title_locked INTEGER NOT NULL DEFAULT 0');
   if (!cols.includes('temporary')) await db.execAsync('ALTER TABLE chats ADD COLUMN temporary INTEGER NOT NULL DEFAULT 0');
-  if (!cols.includes('memory_enabled')) await db.execAsync('ALTER TABLE chats ADD COLUMN memory_enabled INTEGER NOT NULL DEFAULT 0');
+  if (!cols.includes('memory_enabled')) await db.execAsync('ALTER TABLE chats ADD COLUMN memory_enabled INTEGER NOT NULL DEFAULT 1');
+  const memoryDefault = await db.getAllAsync<{ value: string }>("SELECT value FROM kv WHERE key='chat_memory_default_on_v1'");
+  if (!memoryDefault.length) {
+    await db.execAsync('UPDATE chats SET memory_enabled=1 WHERE temporary=0');
+    await db.execAsync("INSERT OR REPLACE INTO kv (key,value) VALUES ('chat_memory_default_on_v1','1')");
+  }
   const mcpCols = (await db.getAllAsync<{ name: string }>('PRAGMA table_info(mcp_servers)')).map((c) => c.name);
   if (!mcpCols.includes('auth_header')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_header TEXT');
   if (!mcpCols.includes('auth_template')) await db.execAsync('ALTER TABLE mcp_servers ADD COLUMN auth_template TEXT');

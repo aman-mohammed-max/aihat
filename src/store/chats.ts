@@ -199,7 +199,7 @@ export const useChats = create<State>((set, get) => ({
     const chat: Chat = {
       id: uid(), title: 'New chat', pinned: false, providerId, modelId, promptId: null,
       params: { ...useSettings.getState().defaultParams, ...(chosen?.defaults ?? {}) }, toolIds: servers, searchMode: false, createdAt: now(), updatedAt: now(),
-      archived: false, temporary: useSettings.getState().tempByDefault, memoryEnabled: false, titleLocked: false, ...init,
+      archived: false, temporary: useSettings.getState().tempByDefault, memoryEnabled: true, titleLocked: false, ...init,
     };
     await db.runAsync(
       'INSERT INTO chats (id,title,pinned,provider_id,model_id,prompt_id,params,tool_ids,search_mode,created_at,updated_at,archived,temporary,memory_enabled,title_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',

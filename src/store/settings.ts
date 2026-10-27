@@ -130,7 +130,7 @@ export const DEFAULT_SETTINGS: Settings = {
   showStats: true,
   showReasoning: true,
   memoryEnabled: true,
-  memoryFallbackEnabled: false,
+  memoryFallbackEnabled: true,
   memoryFallbackRoute: { providerId: null, model: '' },
   memoryItems: [],
   memoryRevision: 0,
@@ -214,6 +214,8 @@ export const useSettings = create<Store>((set, get) => ({
     const db = await getDb();
     const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'settings');
     const saved = json<Partial<Omit<Settings, 'imageEngine'>> & { imageEngine?: string; memoryAutoSave?: boolean }>(row?.value, {});
+    const fallbackDefault = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'memory_auto_save_default_on_v1');
+    const applyMemoryFallbackDefault = !fallbackDefault;
     // Older builds saved 'openai' for the OpenAI-compatible image engine.
     if (saved.imageEngine === 'openai') saved.imageEngine = 'provider';
     const { memoryAutoSave: _legacyMemoryAutoSave, ...currentSaved } = saved;
@@ -228,13 +230,18 @@ export const useSettings = create<Store>((set, get) => ({
           return [{ id: typeof item.id === 'string' && item.id ? item.id : `memory-${index}`, title, text, createdAt: typeof item.createdAt === 'number' ? item.createdAt : Date.now() }];
         })
       : [];
-    set({
+    const loadedSettings: Settings = {
       ...DEFAULT_SETTINGS,
       ...(currentSaved as Partial<Settings>),
       memoryItems,
       memoryFallbackRoute: { ...DEFAULT_SETTINGS.memoryFallbackRoute, ...(currentSaved.memoryFallbackRoute ?? {}) },
       routes: { ...DEFAULT_SETTINGS.routes, ...(currentSaved.routes ?? {}) },
-      loaded: true,
-    });
+      ...(applyMemoryFallbackDefault ? { memoryFallbackEnabled: true } : {}),
+    };
+    set({ ...loadedSettings, loaded: true });
+    if (applyMemoryFallbackDefault) {
+      await db.runAsync('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', 'settings', JSON.stringify(loadedSettings));
+      await db.runAsync('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', 'memory_auto_save_default_on_v1', '1');
+    }
   },
 }));
