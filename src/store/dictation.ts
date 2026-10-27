@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import * as haptic from '@/lib/haptics';
+import { resolveRoute } from '@/lib/endpoints';
 import { phoneRecognitionAvailable } from '@/lib/speechrec';
 import { stopSpeaking } from '@/lib/tts';
 import { toast } from '@/store/toast';
@@ -39,12 +40,19 @@ export const useDictation = create<State>((set, get) => ({
   signal: { n: 0, kind: null },
 
   begin(o) {
-    if (get().phase !== 'idle') return get().finish();
+    const phase = get().phase;
+    if (phase === 'listening') return get().finish();
+    if (phase === 'starting' || phase === 'working') return get().cancel();
     const s = useSettings.getState();
     stopSpeaking(); // the microphone would hear a reply being read aloud
     haptic.tap();
     // No speech service on this phone (Expo Go, Siri & Dictation off, no Google speech service): use the endpoint instead.
     const fallback = s.dictationEngine === 'phone' && !phoneRecognitionAvailable();
+    const useEndpoint = fallback || s.dictationEngine === 'endpoint';
+    if (useEndpoint && !resolveRoute('transcription').provider) {
+      toast('Choose a transcription endpoint in Voice & speech settings first');
+      return;
+    }
     if (fallback) toast('Live dictation isn’t available on this phone, so your transcription endpoint is used');
     set({
       ...IDLE,
@@ -55,7 +63,7 @@ export const useDictation = create<State>((set, get) => ({
     });
   },
   finish() {
-    if (get().phase === 'idle' || get().phase === 'working') return;
+    if (get().phase !== 'listening') return;
     set((st) => ({ signal: { n: st.signal.n + 1, kind: 'finish' } }));
   },
   cancel() {

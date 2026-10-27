@@ -47,6 +47,7 @@ export default function CommandEdit() {
           accessibilityLabel="What it sends"
           value={template}
           onChangeText={(t) => { setTemplate(t); setError(''); }}
+          selectionColor={colors.accent}
           multiline
           textAlignVertical="top"
           autoCapitalize="sentences"

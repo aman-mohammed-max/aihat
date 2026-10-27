@@ -16,7 +16,7 @@ type Row = { label: string; path: string; also?: string[] };
 
 /** Settings sections, in the order of the desktop and tablet designs. */
 export const SETTINGS_GROUPS: { title: string; rows: Row[] }[] = [
-  { title: 'General', rows: [{ label: 'Appearance', path: '/appearance' }, { label: 'Chat defaults', path: '/chat-defaults' }, { label: 'Commands', path: '/commands', also: ['/command-edit'] }] },
+  { title: 'General', rows: [{ label: 'Appearance', path: '/appearance' }, { label: 'Chat defaults', path: '/chat-defaults' }, { label: 'Memory', path: '/memory' }, { label: 'Commands', path: '/commands', also: ['/command-edit'] }] },
   {
     title: 'Models & tools',
     rows: [
@@ -49,11 +49,14 @@ export function SettingsNav() {
   const pathname = usePathname();
   const { kind } = useLayout();
   const mode = useSettings((s) => s.mode);
+  const memoryEnabled = useSettings((s) => s.memoryEnabled);
+  const memoryCount = useSettings((s) => s.memoryItems.length);
   const providers = useProviders((s) => s.providers.length);
   const { skills, servers } = useLibrary();
   const commands = useCommands((s) => s.items.length);
   const values: Record<string, string> = {
     '/appearance': mode === 'system' ? 'System' : mode === 'dark' ? 'Dark' : 'Light',
+    '/memory': memoryEnabled ? `${memoryCount} saved` : 'Off',
     '/commands': commands ? `${commands} yours` : '',
     '/providers': String(providers),
     '/skills': `${skills.filter((s) => s.enabled).length} on`,

@@ -66,6 +66,7 @@ function AlertCard({ item }: { item: Item }) {
             value={text}
             onChangeText={setText}
             accessibilityLabel={item.title}
+            selectionColor={colors.accent}
             style={{ height: 44, borderRadius: radii.input, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, color: colors.text, paddingHorizontal: 12, fontSize: body, fontFamily: fonts.ui }}
           />
         ) : null}

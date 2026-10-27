@@ -94,6 +94,7 @@ export default function RootLayout() {
             <Stack.Screen name="market" />
             <Stack.Screen name="market-mcp" />
             <Stack.Screen name="market-skill" />
+            <Stack.Screen name="memory" />
             <Stack.Screen name="oauth/mcp" />
             <Stack.Screen name="mcp" />
             <Stack.Screen name="mcp-detail" />

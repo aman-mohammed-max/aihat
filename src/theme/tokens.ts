@@ -83,6 +83,34 @@ export const accents = [
   { id: 'snow', name: 'Snow', value: '#ECEDEF' },
 ] as const;
 
+export const defaultAccent = accents[0].value;
+
+/** Keep custom or legacy settings from feeding invalid color strings into native styles. */
+export function normalizeAccent(value: string) {
+  return /^#[\da-f]{6}$/i.test(value) ? value.toUpperCase() : defaultAccent;
+}
+
+/** A low contrast tint for chips and selected states, derived from the active accent. */
+export function accentContainer(accent: string, isDark: boolean) {
+  const tint = normalizeAccent(accent).slice(1);
+  const base = isDark ? '#0E0F11' : '#FFFFFF';
+  const mix = isDark ? 0.16 : 0.14;
+  const channels = [0, 2, 4].map((offset) => {
+    const value = Number.parseInt(tint.slice(offset, offset + 2), 16);
+    const neutral = Number.parseInt(base.slice(offset + 1, offset + 3), 16);
+    return Math.round(neutral + (value - neutral) * mix).toString(16).padStart(2, '0');
+  });
+  return `#${channels.join('')}`.toUpperCase();
+}
+
+/** Choose readable foreground text for the current accent, including older custom values. */
+export function accentForeground(accent: string) {
+  const hex = normalizeAccent(accent).slice(1);
+  const channels = [0, 2, 4].map((offset) => Number.parseInt(hex.slice(offset, offset + 2), 16) / 255);
+  const [r, g, b] = channels.map((channel) => channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.45 ? '#0E0F11' : '#FFFFFF';
+}
+
 export type ThemeMode = 'system' | 'light' | 'dark';
 export type ButtonShape = 'pill' | 'rounded' | 'square';
 export type TextSize = 'small' | 'default' | 'large';

@@ -112,6 +112,7 @@ export function Composer({
           onChangeText={onChangeText}
           placeholder={placeholder}
           placeholderTextColor={colors.muted}
+          selectionColor={colors.accent}
           multiline
           submitBehavior={sendWithEnter ? 'submit' : 'newline'}
           onSubmitEditing={sendWithEnter ? onSend : undefined}

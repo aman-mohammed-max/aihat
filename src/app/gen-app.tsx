@@ -76,7 +76,7 @@ export default function GenApp() {
         )}
       </ScrollView>
       <View style={[{ padding: 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }, column]}>
-        <TextInput accessibilityLabel="Change this app" value={ask} onChangeText={setAsk} placeholder={spec ? 'Ask to change this app…' : 'Describe the app…'} placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 46, borderRadius: radii.composer, backgroundColor: colors.surface, paddingHorizontal: 16, color: colors.text, fontFamily: fonts.ui, fontSize: body }} />
+        <TextInput accessibilityLabel="Change this app" value={ask} onChangeText={setAsk} selectionColor={colors.accent} placeholder={spec ? 'Ask to change this app…' : 'Describe the app…'} placeholderTextColor={colors.faint} style={{ flex: 1, minHeight: 46, borderRadius: radii.composer, backgroundColor: colors.surface, paddingHorizontal: 16, color: colors.text, fontFamily: fonts.ui, fontSize: body }} />
         <Pressable accessibilityRole="button" accessibilityLabel="Send" disabled={busy} onPress={run} style={{ width: 46, height: 46, borderRadius: 23, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', opacity: busy ? 0.5 : 1 }}>
           <Icon name="send" size={18} color={colors.onAccent} strokeWidth={2.2} />
         </Pressable>

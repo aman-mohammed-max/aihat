@@ -26,18 +26,21 @@ const allowMic = () =>
   ]);
 
 /** Put the spoken text in the message box, translated first when asked. */
-async function deliver(raw: string, translate: boolean) {
+async function deliver(raw: string, translate: boolean, signal?: AbortSignal) {
   let text = raw.trim();
+  if (signal?.aborted) return;
   if (!text) return toast('Didn’t catch anything');
   const lang = useSettings.getState().translateTo;
   if (translate && lang !== 'English') {
     useDictation.getState().patch({ phase: 'working', note: `Translating to ${lang}…` });
     try {
-      text = (await quickComplete({ system: `Translate the user's text into ${lang}. Reply with the translation only.`, user: text, maxTokens: 800, temperature: 0.2 })) || text;
+      text = (await quickComplete({ system: `Translate the user's text into ${lang}. Reply with the translation only.`, user: text, maxTokens: 800, temperature: 0.2, signal })) || text;
     } catch {
+      if (signal?.aborted) return;
       toast('Couldn’t translate, so the text was added as spoken');
     }
   }
+  if (signal?.aborted) return;
   const draft = useDraft.getState();
   draft.set({ text: (draft.text + ' ' + text).trim() });
   haptic.success();
@@ -83,9 +86,23 @@ function PhoneEngine() {
     let started = false;
     let mode: 'running' | 'stopping' | 'cancelled' | 'done' = 'running';
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const deliveryController = new AbortController();
+    const options = () => {
+      const s = useSettings.getState();
+      return {
+        lang: dictationLocale(s.dictationLang),
+        interimResults: true,
+        continuous: true,
+        addsPunctuation: true,
+        requiresOnDeviceRecognition: s.dictationOnDevice,
+        iosTaskHint: 'dictation' as const,
+        volumeChangeEventOptions: { enabled: true, intervalMillis: 120 },
+      };
+    };
 
     const finish = async () => {
       if (mode === 'done') return;
+      const signalNumber = st().signal.n;
       const cancelled = mode === 'cancelled';
       mode = 'done';
       clearTimeout(timer);
@@ -95,9 +112,12 @@ function PhoneEngine() {
       const text = assemble(finals, interim);
       try {
         if (!text && lastError && !['no-speech', 'speech-timeout', 'aborted'].includes(lastError)) Alert.alert('Dictation didn’t work', FRIENDLY[lastError] ?? 'Something went wrong with speech recognition. Try again.');
-        else await deliver(text, st().translate);
+        else {
+          st().patch({ phase: 'working', note: 'Adding text…' });
+          await deliver(text, st().translate, deliveryController.signal);
+        }
       } finally {
-        st().reset();
+        if (st().signal.n === signalNumber) st().reset();
       }
     };
 
@@ -122,9 +142,24 @@ function PhoneEngine() {
         lastError = e.error;
         if (!started) void finish(); // it never began (no permission, service off, language missing): report it now
       }),
-      // "end" is always the last event, including after errors and after the phone stops listening on its own (a pause on older Android).
+      // Some iOS versions end a recognition session after a pause even in continuous mode. Keep dictation open
+      // and start a fresh native segment; only a user tap on Done should finish the dictation UI.
       M.addListener('end', () => {
-        if (started) void finish();
+        if (!started || mode === 'done' || mode === 'cancelled') return;
+        if (mode === 'stopping') return void finish();
+        if (lastError && !['no-speech', 'speech-timeout'].includes(lastError)) return void finish();
+        lastError = null;
+        st().patch({ phase: 'listening', level: 0, text: assemble(finals, interim) });
+        clearTimeout(timer);
+        timer = setTimeout(() => {
+          if (mode !== 'running') return;
+          try {
+            M.start(options());
+          } catch {
+            lastError = 'unknown';
+            void finish();
+          }
+        }, 250);
       }),
     ];
 
@@ -133,13 +168,27 @@ function PhoneEngine() {
         if (mode !== 'running') return;
         mode = 'stopping';
         st().patch({ level: 0 });
-        M.stop();
+        try {
+          M.stop();
+        } catch {
+          void finish();
+          return;
+        }
         timer = setTimeout(() => void finish(), 3000); // never leave the bar hanging if "end" doesn't arrive
       },
       abort: () => {
-        if (mode === 'done') return;
+        deliveryController.abort();
+        if (mode === 'done') {
+          st().reset();
+          return;
+        }
+        if (mode === 'cancelled') return;
         mode = 'cancelled';
-        M.abort();
+        try {
+          M.abort();
+        } catch {
+          /* already stopped */
+        }
         void finish();
       },
     };
@@ -159,15 +208,7 @@ function PhoneEngine() {
           mode = 'cancelled';
           return void finish();
         }
-        M.start({
-          lang: dictationLocale(s.dictationLang),
-          interimResults: true,
-          continuous: true,
-          addsPunctuation: true,
-          requiresOnDeviceRecognition: s.dictationOnDevice,
-          iosTaskHint: 'dictation',
-          volumeChangeEventOptions: { enabled: true, intervalMillis: 120 },
-        });
+        M.start(options());
       } catch (e: any) {
         lastError = 'unknown';
         Alert.alert('Dictation didn’t work', e?.message ?? 'Try again.');
@@ -178,6 +219,7 @@ function PhoneEngine() {
 
     return () => {
       ctl.current = null;
+      deliveryController.abort();
       if (mode === 'done') return;
       // Closing the bar, or React re-running this effect in development: stop listening and forget this session.
       mode = 'cancelled';
@@ -209,33 +251,49 @@ function EndpointEngine() {
   const rec = useAudioRecorderState(recorder, 120);
   const started = useRef(false);
   const dropped = useRef(false);
+  const request = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let alive = true;
     const st = useDictation.getState;
+    dropped.current = false;
+    started.current = false;
     (async () => {
       try {
         requireRoute('transcription'); // throws a helpful message when no endpoint is added
         const perm = await requestRecordingPermissionsAsync();
-        if (!alive) return;
+        if (!alive || dropped.current || st().phase === 'idle') return;
         if (!perm.granted) {
           allowMic();
           return st().reset();
         }
         await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+        if (!alive || dropped.current || st().phase === 'idle') {
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+          return;
+        }
         await recorder.prepareToRecordAsync();
-        if (!alive) return;
+        if (!alive || dropped.current || st().phase === 'idle') {
+          await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+          return;
+        }
         recorder.record();
         started.current = true;
         haptic.soft();
         st().patch({ phase: 'listening', startedAt: Date.now() });
       } catch (e: any) {
-        Alert.alert('Dictation didn’t work', e?.message ?? 'Try again.');
-        st().reset();
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
+        if (!dropped.current && alive) {
+          Alert.alert('Dictation didn’t work', e?.message ?? 'Try again.');
+          st().reset();
+        }
       }
     })();
     return () => {
       alive = false;
+      dropped.current = true;
+      request.current?.abort();
+      request.current = null;
       if (started.current) recorder.stop().catch(() => {});
       // iOS plays no haptics while the audio session is in recording mode, so hand it back.
       setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
@@ -250,9 +308,13 @@ function EndpointEngine() {
     const st = useDictation.getState;
     if (signal.kind === 'cancel') {
       dropped.current = true;
+      request.current?.abort();
       st().reset();
     } else if (signal.kind === 'finish' && started.current) {
       (async () => {
+        const signalNumber = st().signal.n;
+        const controller = new AbortController();
+        request.current = controller;
         st().patch({ phase: 'working', note: 'Transcribing…', level: 0 });
         try {
           await recorder.stop();
@@ -261,12 +323,13 @@ function EndpointEngine() {
           const uri = recorder.uri;
           if (!uri) throw new Error('Nothing was recorded.');
           const stt = requireRoute('transcription');
-          const text = await transcribe(stt.provider, stt.model, uri);
-          if (!dropped.current) await deliver(text, st().translate);
+          const text = await transcribe(stt.provider, stt.model, uri, false, controller.signal);
+          if (!dropped.current) await deliver(text, st().translate, controller.signal);
         } catch (e: any) {
-          if (!dropped.current) Alert.alert('Could not transcribe', e?.message ?? 'Try again.');
+          if (!dropped.current && !controller.signal.aborted) Alert.alert('Could not transcribe', e?.message ?? 'Try again.');
         } finally {
-          st().reset();
+          if (request.current === controller) request.current = null;
+          if (!dropped.current && st().signal.n === signalNumber) st().reset();
         }
       })();
     }
@@ -365,7 +428,7 @@ export function DictationBar() {
           </Pressable>
         )}
         {btn('close', 'Cancel dictation', () => useDictation.getState().cancel())}
-        {!working && btn('check', 'Done, add to message', () => useDictation.getState().finish(), true)}
+        {!working && d.phase === 'listening' && btn('check', 'Done, add to message', () => useDictation.getState().finish(), true)}
       </View>
       {!working && !!d.text && (
         <Text size={15} color="text" style={{ paddingRight: 14, paddingBottom: 12, lineHeight: 21 }} accessibilityLiveRegion="none">{tail(d.text)}</Text>

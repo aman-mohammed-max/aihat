@@ -43,7 +43,7 @@ type State = {
   /** Re-fetch every provider's model list. */
   refreshAll: () => Promise<{ ok: number; failed: string[]; added: number; total: number }>;
   addModel: (providerId: string, m: { id: string; name?: string; kind: ModelKind }) => Promise<{ ok: boolean; error?: string }>;
-  updateModel: (providerId: string, id: string, patch: { name?: string; kind?: ModelKind; enabled?: boolean }) => Promise<void>;
+  updateModel: (providerId: string, id: string, patch: { name?: string; kind?: ModelKind; enabled?: boolean; tools?: boolean }) => Promise<void>;
   deleteModel: (providerId: string, id: string) => Promise<void>;
   toggleModel: (providerId: string, modelId: string, enabled: boolean) => Promise<void>;
   setModelDefaults: (providerId: string, modelId: string, defaults: Partial<Params>) => Promise<void>;
@@ -177,9 +177,12 @@ export const useProviders = create<State>((set, get) => ({
   async updateModel(providerId, id, patch) {
     const cur = get().models.find((m) => m.providerId === providerId && m.id === id);
     if (!cur) return;
-    const caps: Caps = patch.kind && patch.kind !== cur.caps.kind
-      ? { ...cur.caps, kind: patch.kind, kindLocked: true, embeddings: patch.kind === 'embedding', tools: patch.kind === 'chat' }
-      : cur.caps;
+    const changedKind = patch.kind && patch.kind !== cur.caps.kind;
+    const caps: Caps = {
+      ...cur.caps,
+      ...(changedKind ? { kind: patch.kind, kindLocked: true, embeddings: patch.kind === 'embedding', tools: patch.kind === 'chat' } : {}),
+      ...(patch.tools !== undefined ? { tools: patch.tools } : {}),
+    };
     await (await getDb()).runAsync('UPDATE models SET name=?, enabled=?, caps=? WHERE id=? AND provider_id=?', patch.name?.trim() || cur.name, (patch.enabled ?? cur.enabled) ? 1 : 0, JSON.stringify(caps), id, providerId);
     await get().load();
   },

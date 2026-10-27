@@ -62,6 +62,7 @@ export default function PromptEdit() {
           accessibilityLabel="Prompt"
           value={text}
           onChangeText={setText}
+          selectionColor={colors.accent}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           multiline

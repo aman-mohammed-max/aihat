@@ -89,6 +89,7 @@ export default function Palette() {
               setQ(t);
               setSel(0);
             }}
+            selectionColor={colors.accent}
             onKeyPress={onKey}
             placeholder="Search chats, commands and settings"
             placeholderTextColor={colors.muted}

@@ -120,6 +120,7 @@ export default function AddMcp() {
             accessibilityLabel="Server config"
             value={json}
             onChangeText={setJson}
+            selectionColor={colors.accent}
             multiline
             autoCapitalize="none"
             autoCorrect={false}

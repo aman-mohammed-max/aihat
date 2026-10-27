@@ -2,7 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
 import { View } from 'react-native';
 
-import { Banner, Button, Chip, Field, Note, SectionTitle, Text } from '@/components';
+import { Banner, Button, Chip, Field, ListRow, Note, SectionTitle, Text } from '@/components';
 import { RouteSheet } from '@/components/RouteOverlays';
 import * as haptic from '@/lib/haptics';
 import { KIND_LABEL, SUGGESTED_MODELS, type ModelKind } from '@/lib/models';
@@ -23,6 +23,7 @@ export default function ModelEdit() {
   const [modelId, setModelId] = useState(existing?.id ?? '');
   const [name, setName] = useState(existing && existing.name !== existing.id ? existing.name : '');
   const [kind, setKind] = useState<ModelKind>(existing?.caps.kind ?? kindParam ?? 'chat');
+  const [tools, setTools] = useState(existing?.caps.tools ?? true);
   const [error, setError] = useState('');
   const editing = !!existing;
   const custom = !!existing?.caps.custom;
@@ -31,7 +32,7 @@ export default function ModelEdit() {
   const save = async () => {
     const store = useProviders.getState();
     if (editing) {
-      await store.updateModel(providerId, existing!.id, { name, kind });
+      await store.updateModel(providerId, existing!.id, { name, kind, tools: kind === 'chat' && tools });
     } else {
       const r = await store.addModel(providerId, { id: modelId, name, kind });
       if (!r.ok) {
@@ -59,10 +60,18 @@ export default function ModelEdit() {
       <View style={{ gap: 8 }}>
         <SectionTitle space={0}>Type</SectionTitle>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-          {KINDS.map((k) => <Chip key={k} label={KIND_LABEL[k]} selected={kind === k} onPress={() => setKind(k)} />)}
+          {KINDS.map((k) => <Chip key={k} label={KIND_LABEL[k]} selected={kind === k} onPress={() => { setKind(k); if (k !== 'chat') setTools(false); else if (existing?.caps.kind !== 'chat') setTools(true); }} />)}
         </View>
         {kind !== 'chat' && CAP_OF[kind] ? <Note>{`It will appear in the model list for ${KIND_LABEL[kind].toLowerCase()} features.`}</Note> : null}
       </View>
+      {kind === 'chat' ? (
+        <ListRow
+          label="Supports tool calls"
+          sub="Turn off for models that cannot use chat tools."
+          height={52}
+          toggle={{ on: tools, onChange: setTools }}
+        />
+      ) : null}
       {!editing && SUGGESTED_MODELS[kind] ? (
         <View style={{ gap: 8 }}>
           <SectionTitle space={0}>{`Common ${KIND_LABEL[kind].toLowerCase()} models`}</SectionTitle>

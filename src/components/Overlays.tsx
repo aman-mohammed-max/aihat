@@ -226,12 +226,13 @@ type DialogProps = {
   children?: React.ReactNode;
   cancelLabel?: string;
   confirmLabel: string;
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   destructive?: boolean;
 };
 
 /** Centred surface r24 card with a two-button footer; moves up with the keyboard. */
-export function Dialog({ visible, onClose, title, message, children, cancelLabel = 'Cancel', confirmLabel, onConfirm, destructive }: DialogProps) {
+export function Dialog({ visible, onClose, title, message, children, cancelLabel = 'Cancel', confirmLabel, confirmDisabled, onConfirm, destructive }: DialogProps) {
   const { colors } = useTheme();
   useEscape(visible ? onClose : null);
   return (
@@ -244,7 +245,7 @@ export function Dialog({ visible, onClose, title, message, children, cancelLabel
             {children}
             <View style={{ flexDirection: 'row', gap: 8, paddingTop: message && !children ? 10 : 4 }}>
               <Button label={cancelLabel} variant="outline" onPress={onClose} flex />
-              <Button label={confirmLabel} variant={destructive ? 'dangerFill' : 'primary'} onPress={onConfirm} flex />
+              <Button label={confirmLabel} variant={destructive ? 'dangerFill' : 'primary'} onPress={onConfirm} flex disabled={confirmDisabled} />
             </View>
           </Pressable>
         </Pressable>

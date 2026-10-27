@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 
 import { getDb, json } from '@/db';
-import type { ButtonShape, TextSize, ThemeMode } from '@/theme/tokens';
+import { defaultAccent, type ButtonShape, type TextSize, type ThemeMode } from '@/theme/tokens';
 
 import type { Params } from '@/api/openai';
+
+export type MemoryItem = { id: string; title: string; text: string; createdAt: number };
 
 /** Which added provider serves a job. `providerId: null` means the default provider. */
 export type Route = { providerId: string | null; model: string };
@@ -32,6 +34,15 @@ export type Settings = {
   sendWithEnter: boolean;
   showStats: boolean;
   showReasoning: boolean;
+  /** Use saved personal context in chats with any configured provider. */
+  memoryEnabled: boolean;
+  /** On models without tool calling, optionally use a second request to save memories. */
+  memoryFallbackEnabled: boolean;
+  /** Optional model used by the memory fallback. Empty uses the chat's model. */
+  memoryFallbackRoute: Route;
+  memoryItems: MemoryItem[];
+  /** Invalidates a memory suggestion when the user changes memory settings while it is running. */
+  memoryRevision: number;
   haptics: boolean;
   /** A notification when a reply finishes and you are not looking at that chat. */
   notifyReplies: boolean;
@@ -103,7 +114,7 @@ export type Settings = {
 export const DEFAULT_SETTINGS: Settings = {
   welcomed: false,
   mode: 'dark',
-  accent: '#C6F46B',
+  accent: defaultAccent,
   materialYou: false,
   sidebarCollapsed: false,
   sourcesPanel: true,
@@ -118,6 +129,11 @@ export const DEFAULT_SETTINGS: Settings = {
   sendWithEnter: false,
   showStats: true,
   showReasoning: true,
+  memoryEnabled: true,
+  memoryFallbackEnabled: false,
+  memoryFallbackRoute: { providerId: null, model: '' },
+  memoryItems: [],
+  memoryRevision: 0,
   haptics: true,
   notifyReplies: true,
   skillScripts: false,
@@ -186,7 +202,8 @@ export const useSettings = create<Store>((set, get) => ({
   loaded: false,
 
   set: (patch) => {
-    set(patch);
+    const memoryChanged = 'memoryItems' in patch || 'memoryEnabled' in patch || 'memoryFallbackEnabled' in patch || 'memoryFallbackRoute' in patch;
+    set({ ...patch, ...(memoryChanged ? { memoryRevision: get().memoryRevision + 1 } : {}) });
     const { loaded: _l, set: _s, load: _ld, ...settings } = get();
     getDb()
       .then((db) => db.runAsync('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', 'settings', JSON.stringify(settings)))
@@ -196,13 +213,27 @@ export const useSettings = create<Store>((set, get) => ({
   load: async () => {
     const db = await getDb();
     const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'settings');
-    const saved = json<Partial<Omit<Settings, 'imageEngine'>> & { imageEngine?: string }>(row?.value, {});
+    const saved = json<Partial<Omit<Settings, 'imageEngine'>> & { imageEngine?: string; memoryAutoSave?: boolean }>(row?.value, {});
     // Older builds saved 'openai' for the OpenAI-compatible image engine.
     if (saved.imageEngine === 'openai') saved.imageEngine = 'provider';
+    const { memoryAutoSave: _legacyMemoryAutoSave, ...currentSaved } = saved;
+    const memoryItems = Array.isArray(currentSaved.memoryItems)
+      ? currentSaved.memoryItems.slice(0, 40).flatMap((item, index) => {
+          if (!item || typeof item !== 'object' || typeof item.text !== 'string') return [];
+          const text = item.text.trim().slice(0, 280);
+          if (!text) return [];
+          const title = typeof item.title === 'string' && item.title.trim()
+            ? item.title.trim().slice(0, 72)
+            : text.split(/[.!?\n]/, 1)[0].trim().split(/\s+/).slice(0, 6).join(' ').slice(0, 72) || 'Saved memory';
+          return [{ id: typeof item.id === 'string' && item.id ? item.id : `memory-${index}`, title, text, createdAt: typeof item.createdAt === 'number' ? item.createdAt : Date.now() }];
+        })
+      : [];
     set({
       ...DEFAULT_SETTINGS,
-      ...(saved as Partial<Settings>),
-      routes: { ...DEFAULT_SETTINGS.routes, ...(saved.routes ?? {}) },
+      ...(currentSaved as Partial<Settings>),
+      memoryItems,
+      memoryFallbackRoute: { ...DEFAULT_SETTINGS.memoryFallbackRoute, ...(currentSaved.memoryFallbackRoute ?? {}) },
+      routes: { ...DEFAULT_SETTINGS.routes, ...(currentSaved.routes ?? {}) },
       loaded: true,
     });
   },

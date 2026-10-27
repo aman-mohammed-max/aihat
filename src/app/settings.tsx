@@ -34,6 +34,7 @@ export default function Settings() {
       rows: [
         { icon: 'contrast', label: 'Appearance', path: '/appearance', value: s.mode === 'system' ? 'System' : s.mode === 'dark' ? 'Dark' : 'Light' },
         { icon: 'chat', label: 'Chat defaults', path: '/chat-defaults', value: s.defaultModelId ?? undefined },
+        { icon: 'sparkle', label: 'Memory', path: '/memory', value: s.memoryEnabled ? `${s.memoryItems.length} saved` : 'Off' },
       ],
     },
     {

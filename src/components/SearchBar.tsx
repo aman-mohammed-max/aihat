@@ -27,6 +27,7 @@ export function SearchBar({ value, onChangeText, placeholder = 'Search', hint, a
         onChangeText={onChangeText}
         placeholder={placeholder}
         placeholderTextColor={colors.muted}
+        selectionColor={colors.accent}
         autoFocus={autoFocus}
         returnKeyType="search"
         onSubmitEditing={onSubmit}

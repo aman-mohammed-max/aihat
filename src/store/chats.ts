@@ -8,6 +8,7 @@ import { mergeLoaded } from '@/lib/merge';
 import { clearIndex, indexFile, retrieve, shouldIndex } from '@/lib/rag';
 import { generateImages, type ImageOverrides } from '@/lib/imagegen';
 import { quickComplete } from '@/lib/llm';
+import { applyMemoryTool, learnFromTurn, memoryContext, memoryTool, MEMORY_TOOL } from '@/lib/memory';
 import { speak } from '@/lib/tts';
 import * as haptic from '@/lib/haptics';
 import { ensureNotifyPermission, notifyReply, previewOf } from '@/lib/notify';
@@ -45,7 +46,7 @@ export type Message = {
 export type Chat = {
   id: string; title: string; pinned: boolean; providerId: string | null; modelId: string | null; promptId: string | null;
   params: Params; toolIds: string[]; searchMode: boolean; createdAt: number; updatedAt: number;
-  archived: boolean; temporary: boolean;
+  archived: boolean; temporary: boolean; memoryEnabled: boolean;
   /** True once the user renamed the chat; automatic naming then leaves it alone. */
   titleLocked: boolean;
 };
@@ -86,7 +87,7 @@ const IMAGE_PROMPT_SYSTEM =
 const chatRow = (r: any): Chat => ({
   id: r.id, title: r.title, pinned: !!r.pinned, providerId: r.provider_id, modelId: r.model_id, promptId: r.prompt_id,
   params: json(r.params, {}), toolIds: json(r.tool_ids, []), searchMode: !!r.search_mode, createdAt: r.created_at, updatedAt: r.updated_at,
-  archived: !!r.archived, temporary: !!r.temporary, titleLocked: !!r.title_locked,
+  archived: !!r.archived, temporary: !!r.temporary, memoryEnabled: !!r.memory_enabled, titleLocked: !!r.title_locked,
 });
 const msgRow = (r: any): Message => ({
   id: r.id, chatId: r.chat_id, role: r.role, content: r.content, attachments: json(r.attachments, []),
@@ -198,12 +199,12 @@ export const useChats = create<State>((set, get) => ({
     const chat: Chat = {
       id: uid(), title: 'New chat', pinned: false, providerId, modelId, promptId: null,
       params: { ...useSettings.getState().defaultParams, ...(chosen?.defaults ?? {}) }, toolIds: servers, searchMode: false, createdAt: now(), updatedAt: now(),
-      archived: false, temporary: useSettings.getState().tempByDefault, titleLocked: false, ...init,
+      archived: false, temporary: useSettings.getState().tempByDefault, memoryEnabled: false, titleLocked: false, ...init,
     };
     await db.runAsync(
-      'INSERT INTO chats (id,title,pinned,provider_id,model_id,prompt_id,params,tool_ids,search_mode,created_at,updated_at,archived,temporary,title_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      'INSERT INTO chats (id,title,pinned,provider_id,model_id,prompt_id,params,tool_ids,search_mode,created_at,updated_at,archived,temporary,memory_enabled,title_locked) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
       chat.id, chat.title, 0, chat.providerId, chat.modelId, chat.promptId, JSON.stringify(chat.params),
-      JSON.stringify(chat.toolIds), 0, chat.createdAt, chat.updatedAt, chat.archived ? 1 : 0, chat.temporary ? 1 : 0, chat.titleLocked ? 1 : 0,
+      JSON.stringify(chat.toolIds), 0, chat.createdAt, chat.updatedAt, chat.archived ? 1 : 0, chat.temporary ? 1 : 0, chat.memoryEnabled ? 1 : 0, chat.titleLocked ? 1 : 0,
     );
     set((s) => ({ chats: [chat, ...s.chats], messages: { ...s.messages, [chat.id]: [] } }));
     return chat.id;
@@ -214,9 +215,9 @@ export const useChats = create<State>((set, get) => ({
     if (!cur) return;
     const n = { ...cur, ...patch, updatedAt: now() };
     await (await getDb()).runAsync(
-      'UPDATE chats SET title=?,pinned=?,provider_id=?,model_id=?,prompt_id=?,params=?,tool_ids=?,search_mode=?,updated_at=?,archived=?,temporary=?,title_locked=? WHERE id=?',
+      'UPDATE chats SET title=?,pinned=?,provider_id=?,model_id=?,prompt_id=?,params=?,tool_ids=?,search_mode=?,updated_at=?,archived=?,temporary=?,memory_enabled=?,title_locked=? WHERE id=?',
       n.title, n.pinned ? 1 : 0, n.providerId, n.modelId, n.promptId, JSON.stringify(n.params), JSON.stringify(n.toolIds),
-      n.searchMode ? 1 : 0, n.updatedAt, n.archived ? 1 : 0, n.temporary ? 1 : 0, n.titleLocked ? 1 : 0, id,
+      n.searchMode ? 1 : 0, n.updatedAt, n.archived ? 1 : 0, n.temporary ? 1 : 0, n.memoryEnabled ? 1 : 0, n.titleLocked ? 1 : 0, id,
     );
     set((s) => ({ chats: s.chats.map((c) => (c.id === id ? n : c)).sort((a, b) => +b.pinned - +a.pinned || b.updatedAt - a.updatedAt) }));
   },
@@ -407,6 +408,18 @@ export const useChats = create<State>((set, get) => ({
       if (isFirst) await get().patch(chatId, { title: initialTitle(text) });
 
       const lib = useLibrary.getState();
+      const memorySettings = useSettings.getState();
+      const memoryModel = useProviders.getState().models.find((model) =>
+        model.id === chat.modelId && (!chat.providerId || model.providerId === chat.providerId),
+      );
+      const memoryToolAvailable = !!memoryModel && isChatModel(memoryModel) && memoryModel.caps.tools !== false;
+      const useMemory = !chat.temporary && chat.memoryEnabled && memorySettings.memoryEnabled;
+      const personalMemory = useMemory
+        ? memoryContext(memorySettings.memoryItems)
+        : '';
+      const memoryInstructions = useMemory && memoryToolAvailable
+        ? 'When the user shares a durable preference, personal detail, or ongoing goal worth keeping, use the memory tool to save it. Update or remove saved details when the user corrects them or asks you to forget them. Do not save one-off requests, guesses, secrets, or sensitive details.'
+        : '';
       const prompt = lib.prompts.find((p) => p.id === chat.promptId);
       // Skills: "Always" ones are in the prompt in full, "Automatic" ones are listed and loaded by the model when a task
       // matches (so many installed skills cost little), and "When I ask" ones only run through their /command.
@@ -427,6 +440,8 @@ export const useChats = create<State>((set, get) => ({
         indexError ||= e?.message ?? '';
       }
       const system = [
+        personalMemory,
+        memoryInstructions,
         prompt ? applyVariables(prompt.body, prompt.variables, chat.modelId) : '',
         ...always.map(skillText),
         ...forced.map((s) => `The user chose the “${s.name}” skill for this message. Follow it.\n\n${skillText(s)}`),
@@ -463,6 +478,8 @@ export const useChats = create<State>((set, get) => ({
       if (useSettings.getState().searchMode === 'auto') {
         tools.push({ type: 'function', function: { name: WEB_SEARCH, description: 'Search the web for current information. Returns numbered results with URLs; cite them as [n].', parameters: { type: 'object', properties: { query: { type: 'string' } }, required: ['query'] } } });
       }
+
+      if (useMemory && memoryToolAvailable) tools.push(memoryTool);
 
       const toWire = (m: Message): ChatMessage => {
         // Whole files are capped so one big document can't overflow the model's context window.
@@ -502,6 +519,12 @@ export const useChats = create<State>((set, get) => ({
 
         wire.push({ role: 'assistant', content: stripThink(roundText) || null, tool_calls: pending });
         for (const call of pending) {
+          if (call.function.name === MEMORY_TOOL) {
+            const currentChat = get().chats.find((item) => item.id === chatId);
+            const out = applyMemoryTool(call.function.arguments, chat.temporary, !!currentChat?.memoryEnabled);
+            wire.push({ role: 'tool', tool_call_id: call.id, content: out });
+            continue;
+          }
           if (call.function.name === READ_SKILL_FILE) {
             let a: { skill?: unknown; path?: unknown } = {};
             try {
@@ -650,6 +673,10 @@ export const useChats = create<State>((set, get) => ({
       if (assistant.error) haptic.error();
       else if (assistant.content) {
         haptic.success();
+        const memoryChat = get().chats.find((item) => item.id === chatId);
+        if (!ctl.signal.aborted && memoryChat) {
+          void learnFromTurn(memoryChat, userMsg.content, assistant.content, () => get().chats.find((item) => item.id === chatId)?.memoryEnabled === true);
+        }
         void maybeRetitle(chatId);
       }
       if (!ctl.signal.aborted) {

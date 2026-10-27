@@ -6,8 +6,11 @@ import { useSettings } from '@/store/settings';
 import {
   bodySize,
   buttonRadius,
+  accentContainer,
+  accentForeground,
   darkColors,
   lightColors,
+  normalizeAccent,
   type Colors,
 } from './tokens';
 import { useWallpaperVersion, wallpaperPalette } from './wallpaper';
@@ -30,9 +33,14 @@ export function useTheme() {
       colors = { ...base, accent: wall.primary, onAccent: wall.onPrimary, accentSoft: wall.container };
     } else {
       // Snow accent is invisible on a white background: flip it to the text colour.
-      const a = !isDark && accent.toUpperCase() === '#ECEDEF' ? '#17181A' : accent;
-      const onAccent = a === '#17181A' ? '#FFFFFF' : '#0E0F11';
-      colors = { ...base, accent: a, onAccent, accentSoft: isDark ? '#2A3220' : '#EEF6DA' };
+      const selected = normalizeAccent(accent);
+      const a = !isDark && selected === '#ECEDEF' ? base.text : selected;
+      colors = {
+        ...base,
+        accent: a,
+        onAccent: accentForeground(a),
+        accentSoft: accentContainer(a, isDark),
+      };
     }
     return {
       colors,

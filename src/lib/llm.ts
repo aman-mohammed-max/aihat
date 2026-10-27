@@ -19,6 +19,7 @@ export async function quickComplete(o: {
   user: string;
   maxTokens?: number;
   temperature?: number;
+  signal?: AbortSignal;
 }) {
   const { provider, modelId } = resolveChatModel(o.chat);
   if (!provider || !modelId) throw new Error('Add an endpoint and pick a chat model first.');
@@ -27,6 +28,7 @@ export async function quickComplete(o: {
     model: modelId,
     params: { stream: true, maxTokens: o.maxTokens ?? 400, temperature: o.temperature ?? 0.7 },
     messages: [{ role: 'system', content: o.system }, { role: 'user', content: o.user }],
+    signal: o.signal,
   })) {
     if (ev.type === 'delta') out += ev.text;
   }

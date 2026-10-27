@@ -109,7 +109,7 @@ function ProvidersDesktop() {
           <View style={{ paddingHorizontal: 14, paddingBottom: 12 }}>
             <View style={{ height: 40, borderRadius: 12, backgroundColor: colors.surface, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 12 }}>
               <Icon name="search" size={16} color={colors.muted} />
-              <TextInput accessibilityLabel="Filter providers" value={q} onChangeText={setQ} placeholder="Filter" placeholderTextColor={colors.muted} style={[{ flex: 1, color: colors.text, fontSize: 14, fontFamily: fonts.ui }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null]} />
+              <TextInput accessibilityLabel="Filter providers" value={q} onChangeText={setQ} selectionColor={colors.accent} placeholder="Filter" placeholderTextColor={colors.muted} style={[{ flex: 1, color: colors.text, fontSize: 14, fontFamily: fonts.ui }, Platform.OS === 'web' ? ({ outlineStyle: 'none' } as object) : null]} />
             </View>
           </View>
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 10, gap: 2 }}>

@@ -24,6 +24,7 @@ export function Field({ label, hint, mono, error, aside, ...props }: Props) {
     <TextInput
       accessibilityLabel={label}
       placeholderTextColor={colors.faint}
+      selectionColor={props.selectionColor ?? colors.accent}
       autoCapitalize="none"
       autoCorrect={false}
       {...props}

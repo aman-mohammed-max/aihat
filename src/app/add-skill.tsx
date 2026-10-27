@@ -131,7 +131,7 @@ export default function AddSkill() {
           <Field label="What it does" value={desc} onChangeText={setDesc} autoCapitalize="sentences" placeholder="Writes commit messages from a diff" hint="The assistant reads this to decide when to use the skill." />
           <View style={{ gap: 6 }}>
             <Text size={12} weight="medium" color="muted" style={{ paddingLeft: 4 }}>Instructions</Text>
-            <TextInput accessibilityLabel="Instructions" value={text} onChangeText={setText} multiline textAlignVertical="top" placeholderTextColor={colors.faint} placeholder="When asked for a commit message…" style={{ minHeight: 180, borderRadius: radii.input, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.field, padding: 12, color: colors.text, fontFamily: fonts.mono, fontSize: body - 1.5, lineHeight: (body - 1.5) * 1.5 }} />
+            <TextInput accessibilityLabel="Instructions" value={text} onChangeText={setText} selectionColor={colors.accent} multiline textAlignVertical="top" placeholderTextColor={colors.faint} placeholder="When asked for a commit message…" style={{ minHeight: 180, borderRadius: radii.input, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.field, padding: 12, color: colors.text, fontFamily: fonts.mono, fontSize: body - 1.5, lineHeight: (body - 1.5) * 1.5 }} />
           </View>
         </>
       )}

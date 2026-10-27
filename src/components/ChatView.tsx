@@ -1,6 +1,6 @@
 import * as Clipboard from 'expo-clipboard';
-import { router } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { router, useFocusEffect } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } from 'react-native';
 import Animated2, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
@@ -150,10 +150,41 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
   const { colors } = useTheme();
   const showStats = useSettings((s) => s.showStats);
   const list = useRef<FlatList<Message>>(null);
-  const lastLen = messages.at(-1)?.content.length;
+  const followsOutput = useRef(true);
+  const focused = useRef(false);
+  const dragging = useRef(false);
+  const pendingScrollFrame = useRef<number | null>(null);
+  const lastMessage = messages.at(-1);
+  const followOutput = useCallback(() => {
+    if (!focused.current || !followsOutput.current || pendingScrollFrame.current !== null) return;
+    pendingScrollFrame.current = requestAnimationFrame(() => {
+      pendingScrollFrame.current = null;
+      if (focused.current && followsOutput.current) list.current?.scrollToEnd({ animated: false });
+    });
+  }, []);
+  const isNearBottom = (event: { nativeEvent: { contentOffset: { y: number }; contentSize: { height: number }; layoutMeasurement: { height: number } } }) => {
+    const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
+    return contentSize.height - layoutMeasurement.height - contentOffset.y <= 72;
+  };
+
   useEffect(() => {
-    list.current?.scrollToEnd({ animated: true });
-  }, [messages.length, lastLen]);
+    if (lastMessage?.role === 'user') {
+      followsOutput.current = true;
+      followOutput();
+    }
+  }, [lastMessage?.id, lastMessage?.role, followOutput]);
+
+  useFocusEffect(useCallback(() => {
+    focused.current = true;
+    followOutput();
+    return () => {
+      focused.current = false;
+      if (pendingScrollFrame.current !== null) {
+        cancelAnimationFrame(pendingScrollFrame.current);
+        pendingScrollFrame.current = null;
+      }
+    };
+  }, [followOutput]));
 
   return (
     <FlatList
@@ -162,6 +193,24 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
       keyExtractor={(m) => m.id}
       contentContainerStyle={[{ padding: column ? 24 : 16, gap: 18 }, column]}
       keyboardShouldPersistTaps="handled"
+      onContentSizeChange={followOutput}
+      onLayout={followOutput}
+      onScroll={(event) => {
+        if (!dragging.current) followsOutput.current = isNearBottom(event);
+      }}
+      onScrollBeginDrag={() => {
+        dragging.current = true;
+        followsOutput.current = false;
+      }}
+      onScrollEndDrag={(event) => {
+        dragging.current = false;
+        followsOutput.current = isNearBottom(event);
+      }}
+      onMomentumScrollEnd={(event) => {
+        dragging.current = false;
+        followsOutput.current = isNearBottom(event);
+      }}
+      scrollEventThrottle={16}
       renderItem={({ item: m }) => {
         if (m.role === 'user') {
           return (

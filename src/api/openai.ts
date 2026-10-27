@@ -1,4 +1,4 @@
-import { fetch as streamFetch } from 'expo/fetch';
+import { fetch as expoFetch } from 'expo/fetch';
 
 import { readBytes } from '@/lib/files';
 import { getApiKey } from '@/lib/keys';
@@ -46,10 +46,17 @@ export class ApiError extends Error {
   }
 }
 
+function abortError() {
+  const error = new Error('Transcription was cancelled.');
+  error.name = 'AbortError';
+  return error;
+}
+
 function withTimeout(ms = 60000) {
   const ctl = new AbortController();
-  const t = setTimeout(() => ctl.abort(), ms);
-  return { signal: ctl.signal, abort: () => ctl.abort(), done: () => clearTimeout(t) };
+  let expired = false;
+  const t = setTimeout(() => { expired = true; ctl.abort(); }, ms);
+  return { signal: ctl.signal, abort: () => ctl.abort(), done: () => clearTimeout(t), timedOut: () => expired };
 }
 
 async function check(res: Response) {
@@ -103,7 +110,9 @@ export async function* streamChat(
 ): AsyncGenerator<StreamEvent> {
   const started = Date.now();
   const t = withTimeout(p.timeoutMs ?? 60000);
-  req.signal?.addEventListener('abort', t.abort);
+  const abort = () => t.abort();
+  if (req.signal?.aborted) t.abort();
+  else req.signal?.addEventListener('abort', abort, { once: true });
   const { params = {} } = req;
   const body: Record<string, unknown> = {
     model: req.model,
@@ -118,7 +127,7 @@ export async function* streamChat(
   };
 
   try {
-    const res = await streamFetch(`${base(p.baseUrl)}/chat/completions`, {
+    const res = await expoFetch(`${base(p.baseUrl)}/chat/completions`, {
       method: 'POST',
       headers: await headers(p),
       body: JSON.stringify(body),
@@ -189,6 +198,7 @@ export async function* streamChat(
     if (assembled.length) yield { type: 'tool_calls', calls: assembled };
     yield { type: 'done', tokens, ms: Date.now() - started };
   } finally {
+    req.signal?.removeEventListener('abort', abort);
     t.done();
   }
 }
@@ -216,21 +226,58 @@ export function multipartBody(fields: Record<string, string>, file: { field: str
 }
 
 /** POST {base}/audio/transcriptions (Whisper-compatible), or /translations for English output. */
-export async function transcribe(p: ProviderConn, model: string, fileUri: string, translate = false) {
+export async function transcribe(p: ProviderConn, model: string, fileUri: string, translate = false, signal?: AbortSignal) {
+  if (signal?.aborted) throw abortError();
   const bytes = await readBytes(fileUri);
+  if (signal?.aborted) throw abortError();
   if (!bytes.length) throw new Error('The recording was empty. Hold the mic a little longer and try again.');
   // Phones record m4a; the desktop app's web view records webm (Windows, Linux) or mp4 (macOS). Servers go by the name.
   const ext = audioExtension(bytes);
-  const type = ext === 'm4a' ? 'audio/m4a' : ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`;
-  const { body, contentType } = multipartBody({ model: model || 'whisper-1' }, { field: 'file', name: `audio.${ext}`, type, bytes });
+  const type = ext === 'm4a' ? 'audio/mp4' : ext === 'mp3' ? 'audio/mpeg' : `audio/${ext}`;
+  const modelId = model.trim() || (translate ? 'whisper-1' : '');
+  const { body, contentType } = multipartBody(modelId ? { model: modelId } : {}, { field: 'file', name: `audio.${ext}`, type, bytes });
   const h = await headers(p);
-  const res = await fetch(`${base(p.baseUrl)}/audio/${translate ? 'translations' : 'transcriptions'}`, {
-    method: 'POST',
-    headers: { ...h, 'Content-Type': contentType },
-    body,
-  });
-  await check(res);
-  return ((await res.json()).text ?? '') as string;
+  const timeout = withTimeout(p.timeoutMs ?? 60000);
+  const abort = () => timeout.abort();
+  if (signal?.aborted) timeout.abort();
+  else signal?.addEventListener('abort', abort, { once: true });
+  try {
+    const res = await expoFetch(`${base(p.baseUrl)}/audio/${translate ? 'translations' : 'transcriptions'}`, {
+      method: 'POST',
+      headers: { ...h, 'Content-Type': contentType },
+      body,
+      signal: timeout.signal,
+    });
+    await check(res);
+    const raw = await res.text();
+    let data: unknown;
+    try {
+      data = JSON.parse(raw);
+    } catch {
+      if (raw.trim()) return raw.trim();
+      throw new ApiError(502, 'The transcription endpoint returned an empty response.');
+    }
+    const result = typeof data === 'string'
+      ? data
+      : data && typeof data === 'object'
+        ? (data as { text?: unknown; transcript?: unknown; transcription?: unknown; result?: unknown }).text
+          ?? (data as { transcript?: unknown }).transcript
+          ?? (data as { transcription?: unknown }).transcription
+          ?? (data as { result?: unknown }).result
+        : undefined;
+    if (typeof result === 'string' && result.trim()) return result.trim();
+    const detail = data && typeof data === 'object'
+      ? (data as { error?: { message?: unknown }; message?: unknown }).error?.message
+        ?? (data as { message?: unknown }).message
+      : undefined;
+    throw new ApiError(502, typeof detail === 'string' ? detail : 'The transcription endpoint returned no text. Check its model and response format.');
+  } catch (error) {
+    if (timeout.timedOut()) throw new ApiError(408, 'The transcription request timed out. Check the endpoint or increase its timeout.');
+    throw error;
+  } finally {
+    signal?.removeEventListener('abort', abort);
+    timeout.done();
+  }
 }
 
 /** File extension for audio bytes, from the file header (servers don't always return what was asked for). */
