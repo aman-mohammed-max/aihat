@@ -5,7 +5,7 @@ import { Image } from 'expo-image';
 import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } from 'react-native';
 import Animated2, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
 
-import { longPress, success, tap } from '@/lib/haptics';
+import { success, tap } from '@/lib/haptics';
 import { isDesktop } from '@/lib/device';
 import { speak, stopSpeaking } from '@/lib/tts';
 import { openOutput } from '@/skill-exec/outputs';
@@ -215,18 +215,20 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
         if (m.role === 'user') {
           return (
             <Animated2.View entering={fresh(m)} style={{ alignSelf: 'flex-end', maxWidth: '86%' }}>
-            <Pressable
-              onLongPress={() => { longPress(); router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } }); }}
-              style={{ backgroundColor: colors.surface2, borderRadius: radii.bubble, paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
-              {m.attachments.map((a) => (
-                <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Icon name={a.kind === 'image' ? 'image' : 'file'} size={16} color={colors.muted} />
-                  <Text size={13} color="text2" numberOfLines={1} style={{ flexShrink: 1 }}>{a.name}</Text>
-                  {a.meta ? <Text size={11.5} color="muted">{a.meta}</Text> : null}
-                </View>
-              ))}
-              <Text>{m.content}</Text>
-            </Pressable>
+              <View style={{ backgroundColor: colors.surface2, borderRadius: radii.bubble, paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
+                {m.attachments.map((a) => (
+                  <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Icon name={a.kind === 'image' ? 'image' : 'file'} size={16} color={colors.muted} />
+                    <Text size={13} color="text2" numberOfLines={1} style={{ flexShrink: 1 }}>{a.name}</Text>
+                    {a.meta ? <Text size={11.5} color="muted">{a.meta}</Text> : null}
+                  </View>
+                ))}
+                {m.content ? <Text selectable>{m.content}</Text> : null}
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
+                {m.content ? <ActionButton icon="copy" label="Copy prompt" onPress={() => { success(); Clipboard.setStringAsync(m.content); }} /> : null}
+                <ActionButton icon="more" label="More message actions" onPress={() => router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } })} />
+              </View>
             </Animated2.View>
           );
         }
