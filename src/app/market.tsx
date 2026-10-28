@@ -61,10 +61,12 @@ function useList<T>(key: string, enabled: boolean, load: (key: string) => Promis
   };
 }
 
-const TILE = ['#2A3220', '#1F2A33', '#33271F', '#2B2540', '#3A2330', '#242B36'];
+/** Tile colours: the first follows the chosen accent, the others are fixed muted tints (dark theme). */
+const TILE = ['accent', '#1F2A33', '#33271F', '#2B2540', '#3A2330', '#242B36'];
 function Tile({ name }: { name: string }) {
-  const { colors } = useTheme();
-  const tint = TILE[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % TILE.length];
+  const { colors, isDark } = useTheme();
+  const pick = TILE[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % TILE.length];
+  const tint = pick === 'accent' || !isDark ? colors.accentSoft : pick;
   return (
     <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
       <Text weight="semi" size={16} style={{ color: colors.text }}>{(name.trim()[0] ?? '?').toUpperCase()}</Text>

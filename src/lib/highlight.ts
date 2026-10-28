@@ -94,24 +94,27 @@ export function highlight(code: string, language: string | null): Segment[] {
 /** Token kinds that get a colour (the rest use the code's normal colour). */
 const COLOR_KEYS = new Set(['comment', 'prolog', 'doctype', 'cdata', 'string', 'template-string', 'char', 'regex', 'url', 'number', 'boolean', 'constant', 'keyword', 'important', 'atrule', 'builtin', 'function', 'class-name', 'tag', 'attr-name', 'attr-value', 'property', 'selector', 'operator', 'punctuation', 'variable', 'symbol', 'inserted', 'deleted', 'namespace', 'annotation', 'decorator', 'macro', 'title', 'parameter']);
 
-/** Colours for each kind, in the app's palette (lilac keywords, green strings, sky functions, peach numbers). */
+/**
+ * Colours for each kind, from GitHub's code themes. Deliberately none of the app's accent colours, so code never
+ * looks like a button or a link, whichever accent is chosen.
+ */
 export function codeColors(dark: boolean): Record<string, string> {
   const d = dark;
-  const keyword = d ? '#C4B5FD' : '#6D28D9';
-  const string = d ? '#B9E87C' : '#3F7A12';
-  const fn = d ? '#7DD3FC' : '#0369A1';
-  const num = d ? '#FDBA74' : '#B45309';
-  const type = d ? '#F9A8D4' : '#BE185D';
-  const comment = d ? '#6F747C' : '#9A9FA7';
-  const punct = d ? '#9BA0A8' : '#5E636B';
+  const keyword = d ? '#FF7B72' : '#CF222E';
+  const string = d ? '#A5D6FF' : '#0A3069';
+  const fn = d ? '#D2A8FF' : '#8250DF';
+  const num = d ? '#79C0FF' : '#0550AE';
+  const type = d ? '#FFA657' : '#953800';
+  const comment = d ? '#8B949E' : '#6E7781';
+  const plain = d ? '#E6EDF3' : '#1F2328';
   return {
     comment, prolog: comment, doctype: comment, cdata: comment,
-    string, 'template-string': string, char: string, regex: d ? '#FCA5A5' : '#B91C1C', url: string, 'attr-value': string, inserted: string,
-    number: num, boolean: num, constant: num, symbol: num, important: num,
-    keyword, atrule: keyword, selector: keyword, macro: keyword, deleted: d ? '#FCA5A5' : '#B91C1C',
+    string, 'template-string': string, char: string, regex: string, url: string, 'attr-value': string,
+    inserted: d ? '#AFF5B4' : '#116329', deleted: d ? '#FFDCD7' : '#82071E',
+    number: num, boolean: num, constant: num, symbol: num, important: keyword, property: num, 'attr-name': num,
+    keyword, atrule: keyword, selector: keyword, macro: keyword, tag: keyword,
     builtin: fn, function: fn, title: fn,
-    'class-name': type, tag: type, namespace: type, annotation: type, decorator: type,
-    'attr-name': num, property: d ? '#ECEDEF' : '#17181A', variable: d ? '#ECEDEF' : '#17181A', parameter: d ? '#E5E7EB' : '#27272A',
-    operator: punct, punctuation: punct,
+    'class-name': type, namespace: type, annotation: type, decorator: type,
+    variable: plain, parameter: plain, operator: plain, punctuation: d ? '#C9D1D9' : '#57606A',
   };
 }

@@ -3,7 +3,7 @@ import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
 import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } from 'react-native';
-import Animated2, { FadeIn, FadeInDown, FadeOut, LinearTransition } from 'react-native-reanimated';
+import Animated2, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { success, tap } from '@/lib/haptics';
 import { isDesktop } from '@/lib/device';
@@ -101,7 +101,7 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
   const open = manual ?? live;
   const label = live ? `Thinking${secs ? ` · ${secs}s` : '…'}` : took ? `Thought for ${took}s` : 'Thoughts';
   return (
-    <Animated2.View layout={LinearTransition.duration(200)} style={{ gap: 4 }}>
+    <View style={{ gap: 4 }}>
       <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={open ? `${label}. Hide the thoughts` : `${label}. Show the thoughts`} onPress={() => { tap(); setManual(!open); }} hitSlop={6} style={{ alignSelf: 'flex-start', minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
         <Animated.View style={{ opacity: pulse }}>
           <Icon name="sparkle" size={14} color={live ? colors.accent : colors.muted} />
@@ -110,11 +110,11 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
         <Icon name={open ? 'chevronDown' : 'chevronRight'} size={13} color={colors.faint} />
       </Pressable>
       {open ? (
-        <Animated2.View entering={FadeIn.duration(180)} exiting={FadeOut.duration(120)} style={{ marginLeft: 6, paddingLeft: 13, borderLeftWidth: 2, borderLeftColor: colors.border }}>
+        <Animated2.View entering={FadeIn.duration(180)} style={{ marginLeft: 6, paddingLeft: 13, borderLeftWidth: 2, borderLeftColor: colors.border }}>
           <Text size={13.5} color="muted" selectable style={{ lineHeight: 20.5, opacity: live ? 0.7 : 0.85 }}>{live ? tail(text) : text}</Text>
         </Animated2.View>
       ) : null}
-    </Animated2.View>
+    </View>
   );
 }
 
