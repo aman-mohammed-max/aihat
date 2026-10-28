@@ -65,21 +65,29 @@ function splitThink(content: string) {
   return { think: closed.filter(Boolean).join('\n\n'), rest: rest.trim(), open: open >= 0 };
 }
 
-/** While thinking, only the latest few lines show, so the reply doesn't jump around. */
-const tail = (s: string, n = 700) => {
-  if (s.length <= n) return s;
-  const cut = s.slice(-n);
-  const at = cut.search(/\s/);
-  return `…${cut.slice(at >= 0 ? at : 0)}`;
+/** The latest thought while the model is still thinking: its last sentence or two. */
+const latest = (s: string) => {
+  const lines = s.trim().split(/\n+/).map((l) => l.trim()).filter(Boolean);
+  const last = lines.at(-1) ?? '';
+  return last.length > 220 ? `…${last.slice(-220).replace(/^\S*\s/, '')}` : last;
 };
 
+/** The reasoning as steps: one per paragraph (or numbered / bulleted line). */
+const steps = (s: string) =>
+  s
+    .trim()
+    .split(/\n\s*\n|\n(?=\s*(?:\d+[.)]|[-*•])\s)/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
 /**
- * The model's reasoning, the way Claude shows it: while it thinks, its latest thoughts appear in faint text beside a
- * thin line; once the answer starts they fold away to "Thought for 7s". Tap the line to read them again.
+ * The model's reasoning. While it thinks: a "Thinking" line with a pulsing spark and a timer, and a two-line preview
+ * of its latest thought. Afterwards it folds into a small "Thought for 7s" pill; tapping it opens the reasoning as a
+ * timeline of steps.
  */
 function Reasoning({ text, live }: { text: string; live: boolean }) {
   const { colors } = useTheme();
-  const [manual, setManual] = useState<boolean | null>(null); // the user's own choice wins over the automatic one
+  const [open, setOpen] = useState(false);
   const started = useRef<number | null>(null);
   const [secs, setSecs] = useState(0);
   const [took, setTook] = useState<number | null>(null);
@@ -90,8 +98,8 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
       started.current ??= Date.now();
       const t = setInterval(() => setSecs(Math.round((Date.now() - started.current!) / 1000)), 500);
       const loop = Animated.loop(Animated.sequence([
-        Animated.timing(pulse, { toValue: 0.35, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 1, duration: 700, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 0.3, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 650, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
       ]));
       loop.start();
       return () => { clearInterval(t); loop.stop(); pulse.setValue(1); };
@@ -99,20 +107,43 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
     if (started.current) setTook(Math.max(1, Math.round((Date.now() - started.current) / 1000)));
   }, [live, pulse]);
 
-  const open = manual ?? live;
-  const label = live ? `Thinking${secs ? ` · ${secs}s` : '…'}` : took ? `Thought for ${took}s` : 'Thoughts';
+  const label = live ? 'Thinking' : took ? `Thought for ${took}s` : 'Thoughts';
+  const list = open ? steps(text) : [];
   return (
-    <View style={{ gap: 4 }}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} accessibilityLabel={open ? `${label}. Hide the thoughts` : `${label}. Show the thoughts`} onPress={() => { tap(); setManual(!open); }} hitSlop={6} style={{ alignSelf: 'flex-start', minHeight: 32, flexDirection: 'row', alignItems: 'center', gap: 7 }}>
+    <View style={{ gap: 8 }}>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityState={{ expanded: open }}
+        accessibilityLabel={`${label}${live ? `, ${secs} seconds` : ''}. ${open ? 'Hide' : 'Show'} the thoughts`}
+        onPress={() => { tap(); setOpen(!open); }}
+        hitSlop={6}
+        style={({ pressed }) => ({
+          alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 7, height: 32, paddingLeft: 10, paddingRight: 8, borderRadius: 16,
+          backgroundColor: live ? colors.accentSoft : colors.surface, borderWidth: 1, borderColor: live ? 'transparent' : colors.hairline, opacity: pressed ? 0.7 : 1,
+        })}>
         <Animated.View style={{ opacity: pulse }}>
           <Icon name="sparkle" size={14} color={live ? colors.accent : colors.muted} />
         </Animated.View>
-        <Text size={13.5} color="muted">{label}</Text>
+        <Text size={13} weight="medium" color={live ? 'text' : 'text2'}>{label}</Text>
+        {live ? <Text mono size={12} color="muted">{`${secs}s`}</Text> : null}
         <Icon name={open ? 'chevronDown' : 'chevronRight'} size={13} color={colors.faint} />
       </Pressable>
+
+      {live && !open && text ? (
+        <Text size={13} color="muted" numberOfLines={2} style={{ lineHeight: 19, fontStyle: 'italic', paddingLeft: 12, opacity: 0.85 }}>{latest(text)}</Text>
+      ) : null}
+
       {open ? (
-        <Animated2.View entering={FadeIn.duration(180)} style={{ marginLeft: 6, paddingLeft: 13, borderLeftWidth: 2, borderLeftColor: colors.border }}>
-          <Text size={13.5} color="muted" selectable style={{ lineHeight: 20.5, opacity: live ? 0.7 : 0.85 }}>{live ? tail(text) : text}</Text>
+        <Animated2.View entering={FadeIn.duration(180)} style={{ paddingLeft: 4 }}>
+          {list.map((step, i) => (
+            <View key={i} style={{ flexDirection: 'row', gap: 12 }}>
+              <View style={{ width: 12, alignItems: 'center' }}>
+                <View style={{ width: 7, height: 7, borderRadius: 4, marginTop: 7, backgroundColor: i === list.length - 1 && live ? colors.accent : colors.border }} />
+                {i < list.length - 1 ? <View style={{ flex: 1, width: 1.5, backgroundColor: colors.hairline, marginTop: 3 }} /> : null}
+              </View>
+              <Text size={13.5} color="muted" selectable style={{ flex: 1, lineHeight: 20.5, paddingBottom: i < list.length - 1 ? 12 : 0 }}>{step}</Text>
+            </View>
+          ))}
         </Animated2.View>
       ) : null}
     </View>
