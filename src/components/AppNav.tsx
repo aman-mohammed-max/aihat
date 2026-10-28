@@ -10,6 +10,7 @@ import { useSettings } from '@/store/settings';
 import { useTheme } from '@/theme';
 
 import { Icon, type IconName } from './Icon';
+import { SETTINGS_PAGES } from './SettingsNav';
 import { groupChats } from './Sidebar';
 import { Text } from './Text';
 
@@ -59,6 +60,7 @@ export function AppSidebar({ onCollapse, onNavigate }: { onCollapse?: () => void
   const insets = useSafeAreaInsets();
   const pathname = usePathname();
   const { wide } = useLayout();
+  const inSettings = SETTINGS_PAGES.has(pathname) || pathname === '/settings';
   const chats = useChats((s) => s.chats);
   const { prompts, skills, servers } = useLibrary();
   const groups = groupChats(chats);
@@ -134,9 +136,19 @@ export function AppSidebar({ onCollapse, onNavigate }: { onCollapse?: () => void
         ))}
       </ScrollView>
 
-      <Pressable accessibilityRole="button" onPress={go(openSettings)} style={(s) => ({ height: 44, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, borderRadius: 10, borderTopWidth: 1, borderTopColor: colors.hairline, backgroundColor: rowBg(s, false, colors) })}>
-        <Icon name="settings" size={17} color={colors.text2} />
-        <Text size={14} color="text2" style={{ flex: 1 }}>Settings</Text>
+      <View style={{ height: 1, backgroundColor: colors.hairline, marginHorizontal: 4, marginBottom: 8 }} />
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        onPress={go(openSettings)}
+        style={(s) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: inSettings ? colors.border : colors.hairline, backgroundColor: inSettings ? colors.surface2 : rowBg(s, false, colors) === 'transparent' ? colors.surface : rowBg(s, false, colors) })}>
+        <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: inSettings ? colors.accentSoft : colors.surface2, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="settings" size={17} color={inSettings ? colors.accent : colors.text} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text size={14} weight="medium" numberOfLines={1}>Settings</Text>
+          <Text size={11.5} color="muted" numberOfLines={1}>Providers, memory, appearance</Text>
+        </View>
         <Kbd k="," />
       </Pressable>
     </View>

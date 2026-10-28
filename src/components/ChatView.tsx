@@ -7,6 +7,7 @@ import Animated2, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { success, tap } from '@/lib/haptics';
 import { contextMenu } from '@/lib/contextMenu';
+import { explainError } from '@/lib/errors';
 import { isDesktop } from '@/lib/device';
 import { speak, stopSpeaking } from '@/lib/tts';
 import { openOutput } from '@/skill-exec/outputs';
@@ -145,6 +146,51 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
             </View>
           ))}
         </Animated2.View>
+      ) : null}
+    </View>
+  );
+}
+
+/** A failed reply: what went wrong in words, what to do, and the server's own answer under Details. */
+function ErrorCard({ error, onRetry, onSwitchModel, onFixEndpoint }: { error: string; onRetry: () => void; onSwitchModel: () => void; onFixEndpoint: () => void }) {
+  const { colors } = useTheme();
+  const [open, setOpen] = useState(false);
+  const e = explainError(error);
+  const pill = (label: string, onPress: () => void, main?: boolean) => (
+    <Pressable key={label} accessibilityRole="button" onPress={onPress} style={({ pressed }) => ({ height: 36, paddingHorizontal: 14, borderRadius: 18, justifyContent: 'center', backgroundColor: main ? colors.accent : 'transparent', borderWidth: main ? 0 : 1, borderColor: colors.border, opacity: pressed ? 0.75 : 1 })}>
+      <Text size={13.5} weight={main ? 'semi' : 'regular'} color={main ? 'onAccent' : 'text'}>{label}</Text>
+    </Pressable>
+  );
+  return (
+    <View accessibilityRole="alert" style={{ backgroundColor: colors.surface, borderRadius: radii.card, borderWidth: 1, borderColor: colors.hairline, padding: 14, gap: 10 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+        <View style={{ width: 30, height: 30, borderRadius: 15, backgroundColor: colors.dangerSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name="alert" size={16} color={colors.danger} strokeWidth={2} />
+        </View>
+        <Text size={15} weight="semi" style={{ flex: 1 }}>{e.title}</Text>
+        {e.status ? <Text mono size={11.5} color="muted">{e.status}</Text> : null}
+      </View>
+      {e.message ? <Text size={13.5} color="text2" selectable style={{ lineHeight: 20 }}>{e.message}</Text> : null}
+      {e.hint ? <Text size={13} color="muted" style={{ lineHeight: 19 }}>{e.hint}</Text> : null}
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, paddingTop: 2 }}>
+        {pill('Retry', onRetry, true)}
+        {pill('Switch model', onSwitchModel)}
+        {pill('Endpoint settings', onFixEndpoint)}
+        {e.details ? (
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} hitSlop={6} style={{ height: 36, paddingHorizontal: 6, flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+            <Text size={13} color="muted">Details</Text>
+            <Icon name={open ? 'chevronDown' : 'chevronRight'} size={13} color={colors.faint} />
+          </Pressable>
+        ) : null}
+      </View>
+      {open && e.details ? (
+        <View style={{ backgroundColor: colors.bg, borderRadius: 10, padding: 12, gap: 8 }}>
+          <Text mono size={12} color="text2" selectable style={{ lineHeight: 18 }}>{e.details}</Text>
+          <Pressable accessibilityRole="button" onPress={() => { success(); Clipboard.setStringAsync(e.details ?? ''); }} style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Icon name="copy" size={13} color={colors.muted} />
+            <Text size={12.5} color="muted">Copy details</Text>
+          </Pressable>
+        </View>
       ) : null}
     </View>
   );
@@ -306,20 +352,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
             )}
             {m.content ? <AssistantBody chatId={chatId} content={m.content} streaming={streaming && last} citations={m.citations} /> : m.status ? <ActivityBox status={m.status} detail={m.statusDetail} since={m.statusSince ?? m.createdAt} /> : last && streaming && !m.error && m.attachments.length === 0 ? <ActivityBox status="Thinking…" since={m.createdAt} /> : null}
             {m.error ? (
-              <View style={{ backgroundColor: colors.surface, borderRadius: radii.card, padding: 14, gap: 12 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <Icon name="warn" size={18} color={colors.warn} />
-                  <Text weight="semi" color="warn">Couldn’t get a reply</Text>
-                </View>
-                <Text color="text2" size={13.5}>{m.error}</Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
-                  {[['Retry', onRetry], ['Switch model', onSwitchModel], ['Endpoint', onFixEndpoint]].map(([l, f]) => (
-                    <Pressable key={l as string} accessibilityRole="button" onPress={f as () => void} style={{ minHeight: 44, paddingHorizontal: 14, borderRadius: 22, borderWidth: 1, borderColor: colors.border, justifyContent: 'center' }}>
-                      <Text size={13.5}>{l as string}</Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </View>
+              <ErrorCard error={m.error} onRetry={onRetry} onSwitchModel={onSwitchModel} onFixEndpoint={onFixEndpoint} />
             ) : null}
             {!streaming || !last ? (
               <View style={{ flexDirection: 'row', alignItems: 'center' }}>

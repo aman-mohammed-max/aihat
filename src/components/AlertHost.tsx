@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, TextInput, View, type AlertButton } from 'react-native';
+import { KeyboardAvoidingView, Modal, Platform, Pressable, TextInput, View, type AlertButton } from 'react-native';
 import { create } from 'zustand';
 
 import { fonts, radii, useTheme } from '@/theme';
@@ -11,7 +11,7 @@ type Item = { id: number; title: string; message?: string; buttons: AlertButton[
 const useAlerts = create<{ queue: Item[] }>(() => ({ queue: [] }));
 let next = 1;
 
-/** Queue an alert (the desktop app's stand-in for the system alert, which a web page doesn't have). */
+/** Queue an alert: the app's own dialog, used instead of the system alert on every platform (see lib/alerts.ts). */
 export function showAlert(title: string, message?: string, buttons?: AlertButton[], prompt?: Item['prompt']) {
   const list = buttons?.length ? buttons : [{ text: 'OK' }];
   useAlerts.setState((s) => ({ queue: [...s.queue, { id: next++, title, message, buttons: list, prompt }] }));
@@ -26,7 +26,7 @@ export function AlertHost() {
 }
 
 function AlertCard({ item }: { item: Item }) {
-  const { colors, body } = useTheme();
+  const { colors, body, isDark } = useTheme();
   const [text, setText] = useState(item.prompt?.value ?? '');
 
   const press = useCallback(
@@ -39,6 +39,8 @@ function AlertCard({ item }: { item: Item }) {
   );
 
   useEffect(() => {
+    // Desktop: Esc cancels, Enter presses the main button. Capture phase: text fields stop key events bubbling up.
+    if (Platform.OS !== 'web') return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -50,16 +52,24 @@ function AlertCard({ item }: { item: Item }) {
         press([...item.buttons].reverse().find((b) => b.style !== 'cancel') ?? item.buttons[0]);
       }
     };
-    // Capture phase: text fields stop key events from bubbling up.
     window.addEventListener('keydown', onKey, true);
     return () => window.removeEventListener('keydown', onKey, true);
   }, [item, press]);
 
-  return (
-    <View accessibilityViewIsModal style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000, backgroundColor: colors.scrim, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <View accessibilityRole="alert" style={{ width: '100%', maxWidth: 420, backgroundColor: colors.surface, borderRadius: radii.dialog, padding: 20, gap: 12 }}>
-        <Text size={17} weight="semi">{item.title}</Text>
-        {item.message ? <Text color="text2" size={14} style={{ lineHeight: 20 }}>{item.message}</Text> : null}
+  const cancel = () => {
+    const c = item.buttons.find((b) => b.style === 'cancel');
+    if (c) press(c);
+    else if (item.buttons.length === 1) press(item.buttons[0]);
+  };
+  // Two buttons sit side by side (cancel first); one or three-plus stack, the main one on top.
+  const side = item.buttons.length === 2;
+  const ordered = side ? [...item.buttons].sort((a, b) => (a.style === 'cancel' ? -1 : b.style === 'cancel' ? 1 : 0)) : [...item.buttons].reverse();
+  const card = (
+    <View style={{ flex: 1, backgroundColor: colors.scrim, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Pressable accessibilityLabel="Close" onPress={cancel} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} />
+      <View accessibilityRole="alert" accessibilityViewIsModal style={{ width: '100%', maxWidth: 380, backgroundColor: colors.surface, borderRadius: radii.dialog, paddingTop: 22, paddingHorizontal: 20, paddingBottom: 18, gap: 10, borderWidth: 1, borderColor: colors.hairline }}>
+        <Text size={18} weight="semi">{item.title}</Text>
+        {item.message ? <Text color="muted" size={14.5} selectable style={{ lineHeight: 21.75 }}>{item.message}</Text> : null}
         {item.prompt ? (
           <TextInput
             autoFocus
@@ -67,20 +77,23 @@ function AlertCard({ item }: { item: Item }) {
             onChangeText={setText}
             accessibilityLabel={item.title}
             selectionColor={colors.accent}
-            style={{ height: 44, borderRadius: radii.input, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.bg, color: colors.text, paddingHorizontal: 12, fontSize: body, fontFamily: fonts.ui }}
+            onSubmitEditing={() => press([...item.buttons].reverse().find((b) => b.style !== 'cancel') ?? item.buttons[0])}
+            style={{ height: 46, marginTop: 4, borderRadius: radii.input, borderWidth: 1, borderColor: colors.accent, backgroundColor: colors.bg, color: colors.text, paddingHorizontal: 12, fontSize: body, fontFamily: fonts.ui }}
           />
         ) : null}
-        <View style={{ flexDirection: 'row', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 8, paddingTop: 4 }}>
-          {item.buttons.map((b, i) => {
-            const main = b.style !== 'cancel' && i === item.buttons.length - 1;
-            const bg = b.style === 'destructive' ? colors.danger : main ? colors.accent : 'transparent';
+        <View style={{ flexDirection: side ? 'row' : 'column', gap: 8, paddingTop: 10 }}>
+          {ordered.map((b, i) => {
+            const isCancel = b.style === 'cancel';
+            const danger = b.style === 'destructive';
+            const main = !isCancel && (side ? i === 1 : i === 0);
+            const bg = danger ? colors.danger : main ? colors.accent : 'transparent';
             return (
               <Pressable
                 key={`${b.text}-${i}`}
                 accessibilityRole="button"
                 onPress={() => press(b)}
-                style={{ minHeight: 40, minWidth: 80, paddingHorizontal: 16, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: bg, borderWidth: bg === 'transparent' ? 1 : 0, borderColor: colors.border }}>
-                <Text size={14} weight="medium" style={{ color: b.style === 'destructive' || main ? colors.onAccent : colors.text }}>{b.text ?? 'OK'}</Text>
+                style={({ pressed }) => ({ flex: side ? 1 : undefined, height: 46, paddingHorizontal: 16, borderRadius: 23, alignItems: 'center', justifyContent: 'center', backgroundColor: bg, borderWidth: bg === 'transparent' ? 1 : 0, borderColor: colors.border, opacity: pressed ? 0.8 : 1 })}>
+                <Text size={15} weight={main || danger ? 'semi' : 'regular'} numberOfLines={1} style={{ color: danger ? (isDark ? '#2A0E0E' : '#FFFFFF') : main ? colors.onAccent : colors.text }}>{b.text ?? 'OK'}</Text>
               </Pressable>
             );
           })}
@@ -88,4 +101,13 @@ function AlertCard({ item }: { item: Item }) {
       </View>
     </View>
   );
+  // Phones and tablets: a native overlay, so the dialog sits above sheets and modal screens too.
+  if (Platform.OS !== 'web') {
+    return (
+      <Modal visible transparent animationType="fade" statusBarTranslucent onRequestClose={cancel}>
+        <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }}>{card}</KeyboardAvoidingView>
+      </Modal>
+    );
+  }
+  return <View style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1000 }}>{card}</View>;
 }

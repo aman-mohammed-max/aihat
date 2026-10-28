@@ -65,7 +65,7 @@ async function check(res: Response) {
   try {
     body = await res.text();
   } catch {}
-  throw new ApiError(res.status, body.slice(0, 300) || res.statusText);
+  throw new ApiError(res.status, body.slice(0, 2000) || res.statusText);
 }
 
 /** GET {base}/models. Also measures latency, used for the provider status dot. `raw` keeps any metadata the server sends. */
