@@ -6,8 +6,8 @@ import { Alert, Animated, Easing, FlatList, Platform, Pressable, View, type View
 import Animated2, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { success, tap } from '@/lib/haptics';
-import { contextMenu } from '@/lib/contextMenu';
 import { explainError } from '@/lib/errors';
+import { messageMenu } from '@/lib/menus';
 import { isDesktop } from '@/lib/device';
 import { speak, stopSpeaking } from '@/lib/tts';
 import { openOutput } from '@/skill-exec/outputs';
@@ -19,6 +19,7 @@ import type { Message, ToolRun } from '@/store/chats';
 import { GenUIBlock } from '@/genui/GenUI';
 import { parseReply } from '@/genui/parse';
 
+import { ContextMenuArea } from './ContextMenuArea';
 import { Icon, type IconName } from './Icon';
 import { Markdown } from './Markdown';
 import { ActivityBox } from './Motion';
@@ -233,8 +234,6 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
   const dragging = useRef(false);
   const pendingScrollFrame = useRef<number | null>(null);
   const lastMessage = messages.at(-1);
-  /** Right-click on a message: the same actions as its ⋯ button. */
-  const openMenu = (messageId: string) => router.push({ pathname: '/message-sheet', params: { chatId, messageId } });
   const followOutput = useCallback(() => {
     if (!focused.current || !followsOutput.current || pendingScrollFrame.current !== null) return;
     pendingScrollFrame.current = requestAnimationFrame(() => {
@@ -296,7 +295,8 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
       renderItem={({ item: m }) => {
         if (m.role === 'user') {
           return (
-            <Animated2.View entering={fresh(m)} {...contextMenu(() => openMenu(m.id))} style={{ alignSelf: 'flex-end', maxWidth: '86%' }}>
+            <ContextMenuArea menu={() => messageMenu(chatId, m.id)}>
+            <Animated2.View entering={fresh(m)} style={{ alignSelf: 'flex-end', maxWidth: '86%' }}>
               <View style={{ backgroundColor: colors.surface2, borderRadius: radii.bubble, paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
                 {m.attachments.map((a) => (
                   <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -313,11 +313,13 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 <ActionButton icon="more" label="More message actions" onPress={() => router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } })} />
               </View>
             </Animated2.View>
+            </ContextMenuArea>
           );
         }
         const last = m === messages.at(-1);
         return (
-          <Animated2.View entering={fresh(m)} {...contextMenu(() => openMenu(m.id))} style={{ gap: 10 }}>
+          <ContextMenuArea menu={() => messageMenu(chatId, m.id)}>
+          <Animated2.View entering={fresh(m)} style={{ gap: 10 }}>
             {m.toolCalls.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {m.toolCalls.map((t) => <ToolChip key={t.id} run={t} />)}
@@ -371,6 +373,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
               </View>
             ) : null}
           </Animated2.View>
+          </ContextMenuArea>
         );
       }}
     />

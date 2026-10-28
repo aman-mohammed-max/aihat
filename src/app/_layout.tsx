@@ -12,6 +12,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import '@/lib/alerts';
 import '@/lib/webstyle';
 import { AlertHost } from '@/components/AlertHost';
+import { ContextMenuHost } from '@/components/ContextMenu';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
 import { updateSkillsIfDue } from '@/lib/skill-updates';
@@ -129,6 +130,7 @@ export default function RootLayout() {
             <Stack.Screen name="(modals)/tool-detail" options={sheet} />
             <Stack.Screen name="(modals)/palette" options={sheet} />
           </Stack>
+          <ContextMenuHost />
           <AlertHost />
       </SafeAreaProvider>
     </GestureHandlerRootView>

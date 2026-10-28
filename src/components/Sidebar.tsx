@@ -4,11 +4,12 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { contextMenu } from '@/lib/contextMenu';
+import { chatMenu } from '@/lib/menus';
 import { useChats, type Chat } from '@/store/chats';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
 
+import { ContextMenuArea, NATIVE_MENU } from './ContextMenuArea';
 import { Icon, type IconName } from './Icon';
 import { Text } from './Text';
 
@@ -75,15 +76,15 @@ export function Sidebar({ navigation }: DrawerContentComponentProps) {
           <View key={title}>
             <Text size={12} weight="medium" color="muted" style={{ paddingHorizontal: 10, paddingTop: 10, paddingBottom: 4 }}>{title}</Text>
             {list.map((c) => (
+              <ContextMenuArea key={c.id} menu={() => chatMenu(c.id)}>
               <Pressable
-                key={c.id}
                 accessibilityRole="button"
                 onPress={() => go(`/chat/${c.id}`)}
-                onLongPress={() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } })}
-                {...contextMenu(() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } }))}
+                onLongPress={NATIVE_MENU ? undefined : () => router.push({ pathname: '/chat-menu', params: { chatId: c.id } })}
                 style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
                 <Text numberOfLines={1}>{c.title}</Text>
               </Pressable>
+              </ContextMenuArea>
             ))}
           </View>
         ))}
