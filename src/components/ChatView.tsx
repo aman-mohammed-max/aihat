@@ -2,7 +2,7 @@ import * as Clipboard from 'expo-clipboard';
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Image } from 'expo-image';
-import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } from 'react-native';
+import { Alert, Animated, Easing, FlatList, Platform, Pressable, View, type ViewStyle } from 'react-native';
 import Animated2, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { success, tap } from '@/lib/haptics';
@@ -141,7 +141,7 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
                 <View style={{ width: 7, height: 7, borderRadius: 4, marginTop: 7, backgroundColor: i === list.length - 1 && live ? colors.accent : colors.border }} />
                 {i < list.length - 1 ? <View style={{ flex: 1, width: 1.5, backgroundColor: colors.hairline, marginTop: 3 }} /> : null}
               </View>
-              <Text size={13.5} color="muted" selectable style={{ flex: 1, lineHeight: 20.5, paddingBottom: i < list.length - 1 ? 12 : 0 }}>{step}</Text>
+              <Text size={13.5} color="muted" selectable={Platform.OS === 'web'} style={{ flex: 1, lineHeight: 20.5, paddingBottom: i < list.length - 1 ? 12 : 0 }}>{step}</Text>
             </View>
           ))}
         </Animated2.View>
@@ -259,10 +259,11 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                     {a.meta ? <Text size={11.5} color="muted">{a.meta}</Text> : null}
                   </View>
                 ))}
-                {m.content ? <Text selectable>{m.content}</Text> : null}
+                {m.content ? <Text selectable={Platform.OS === 'web'}>{m.content}</Text> : null}
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
                 {m.content ? <ActionButton icon="copy" label="Copy prompt" onPress={() => { success(); Clipboard.setStringAsync(m.content); }} /> : null}
+                {Platform.OS !== 'web' && m.content ? <ActionButton icon="text" label="Select text" onPress={() => router.push({ pathname: '/select-text', params: { chatId, messageId: m.id } })} /> : null}
                 <ActionButton icon="more" label="More message actions" onPress={() => router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } })} />
               </View>
             </Animated2.View>
@@ -325,6 +326,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                 <ActionButton icon="copy" label="Copy" onPress={() => { success(); Clipboard.setStringAsync(splitThink(m.content).rest); }} />
                 <ActionButton icon="speaker" label="Read aloud" onPress={() => { tap(); if (useSpeech.getState().status !== 'idle') return stopSpeaking(); speak(splitThink(m.content).rest).catch((e) => { stopSpeaking(); Alert.alert('Could not read aloud', e.message); }); }} />
                 <ActionButton icon="refresh" label="Regenerate" onPress={onRegenerate} />
+                {Platform.OS !== 'web' && m.content ? <ActionButton icon="text" label="Select text" onPress={() => router.push({ pathname: '/select-text', params: { chatId, messageId: m.id } })} /> : null}
                 <ActionButton icon="more" label="More message actions" onPress={() => router.push({ pathname: '/message-sheet', params: { chatId, messageId: m.id } })} />
                 <View style={{ flex: 1 }} />
                 {m.citations.length > 0 && (

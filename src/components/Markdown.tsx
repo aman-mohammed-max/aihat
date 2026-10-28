@@ -95,7 +95,7 @@ function Rich({ text, cites, size, weight, color = 'text', lineHeight }: { text:
   const nodes = useMemo(() => parseInline(text, cites.length), [text, cites.length]);
   const s = size ?? body;
   return (
-    <Text selectable size={s} weight={weight} color={color} style={{ lineHeight: lineHeight ?? Math.round(s * 1.55) }}>
+    <Text selectable={Platform.OS === 'web'} size={s} weight={weight} color={color} style={{ lineHeight: lineHeight ?? Math.round(s * 1.55) }}>
       <Spans nodes={nodes} cites={cites} />
     </Text>
   );

@@ -1,6 +1,5 @@
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
 import { Alert, Pressable, Share, View } from 'react-native';
 
 import { Icon, ListRow, Text, type IconName } from '@/components';
@@ -44,7 +43,6 @@ export default function MessageSheet() {
   const msg = useChats((s) => s.messages[chatId]?.find((m) => m.id === messageId));
   const chat = useChats((s) => s.chats.find((c) => c.id === chatId));
   const translateTo = useSettings((s) => s.translateTo);
-  const [select, setSelect] = useState(false);
   if (!msg) return null;
   const done = (fn: () => void | Promise<void>) => async () => {
     await fn();
@@ -76,12 +74,7 @@ export default function MessageSheet() {
         }} />
         <ListRow icon="translate" label="Translate" value={`to ${translateTo}`} height={50} chevron={false} onPress={done(() => submit(chatId, `Translate this into ${translateTo}. Keep formatting, code and names unchanged.\n\n${msg.content}`))} />
         <ListRow icon="cloud" label="Save as a file" value={isDesktop ? 'Downloads' : 'Drive, Files…'} height={50} chevron={false} onPress={done(async () => { await exportText(`message-${messageId.slice(0, 6)}.md`, msg.content); })} />
-        <ListRow icon="text" label="Select text" height={50} chevron={false} onPress={() => setSelect(!select)} />
-        {select && (
-          <View style={{ backgroundColor: colors.bg, borderRadius: 14, padding: 14, marginVertical: 4 }}>
-            <Text size={14} selectable style={{ lineHeight: 21 }}>{msg.content}</Text>
-          </View>
-        )}
+        <ListRow icon="text" label="Select text" height={50} chevron={false} onPress={() => router.replace({ pathname: '/select-text', params: { chatId, messageId } })} />
         <ListRow icon="trash" label="Delete message" danger height={50} chevron={false} onPress={done(() => useChats.getState().deleteMessage(chatId, messageId))} />
       </View>
     </RouteSheet>
