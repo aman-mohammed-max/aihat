@@ -6,6 +6,7 @@ import { Alert, Animated, Easing, FlatList, Pressable, View, type ViewStyle } fr
 import Animated2, { FadeIn, FadeInDown } from 'react-native-reanimated';
 
 import { success, tap } from '@/lib/haptics';
+import { contextMenu } from '@/lib/contextMenu';
 import { isDesktop } from '@/lib/device';
 import { speak, stopSpeaking } from '@/lib/tts';
 import { openOutput } from '@/skill-exec/outputs';
@@ -155,6 +156,8 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
   const dragging = useRef(false);
   const pendingScrollFrame = useRef<number | null>(null);
   const lastMessage = messages.at(-1);
+  /** Right-click on a message: the same actions as its ⋯ button. */
+  const openMenu = (messageId: string) => router.push({ pathname: '/message-sheet', params: { chatId, messageId } });
   const followOutput = useCallback(() => {
     if (!focused.current || !followsOutput.current || pendingScrollFrame.current !== null) return;
     pendingScrollFrame.current = requestAnimationFrame(() => {
@@ -196,7 +199,9 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
       onContentSizeChange={followOutput}
       onLayout={followOutput}
       onScroll={(event) => {
-        if (!dragging.current) followsOutput.current = isNearBottom(event);
+        // Layout changes (the keyboard closing, a reply growing) also scroll: they may switch following back on, but
+        // only the user's own scrolling switches it off.
+        if (!dragging.current && isNearBottom(event)) followsOutput.current = true;
       }}
       onScrollBeginDrag={() => {
         dragging.current = true;
@@ -214,7 +219,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
       renderItem={({ item: m }) => {
         if (m.role === 'user') {
           return (
-            <Animated2.View entering={fresh(m)} style={{ alignSelf: 'flex-end', maxWidth: '86%' }}>
+            <Animated2.View entering={fresh(m)} {...contextMenu(() => openMenu(m.id))} style={{ alignSelf: 'flex-end', maxWidth: '86%' }}>
               <View style={{ backgroundColor: colors.surface2, borderRadius: radii.bubble, paddingHorizontal: 14, paddingVertical: 10, gap: 8 }}>
                 {m.attachments.map((a) => (
                   <View key={a.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -234,7 +239,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
         }
         const last = m === messages.at(-1);
         return (
-          <Animated2.View entering={fresh(m)} style={{ gap: 10 }}>
+          <Animated2.View entering={fresh(m)} {...contextMenu(() => openMenu(m.id))} style={{ gap: 10 }}>
             {m.toolCalls.length > 0 && (
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
                 {m.toolCalls.map((t) => <ToolChip key={t.id} run={t} />)}

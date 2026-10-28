@@ -2,6 +2,7 @@ import { router, usePathname, type Href } from 'expo-router';
 import { Platform, Pressable, ScrollView, View, type PressableStateCallbackType, type ViewStyle } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contextMenu } from '@/lib/contextMenu';
 import { keyLabel, RAIL, showKeys, SIDEBAR, useLayout, useMenu } from '@/lib/layout';
 import { useChats } from '@/store/chats';
 import { useLibrary } from '@/store/library';
@@ -123,6 +124,7 @@ export function AppSidebar({ onCollapse, onNavigate }: { onCollapse?: () => void
                   accessibilityRole="button"
                   onPress={go(() => openChat(`/chat/${c.id}`))}
                   onLongPress={() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } })}
+                  {...contextMenu(() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } }))}
                   style={(s) => ({ minHeight: ROW - 4, justifyContent: 'center', paddingHorizontal: 10, borderRadius: 10, backgroundColor: rowBg(s, active, colors) })}>
                   <Text size={13.5} color={active ? 'text' : 'text2'} numberOfLines={1}>{c.title}</Text>
                 </Pressable>

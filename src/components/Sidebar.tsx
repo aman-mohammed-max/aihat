@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { contextMenu } from '@/lib/contextMenu';
 import { useChats, type Chat } from '@/store/chats';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
@@ -79,6 +80,7 @@ export function Sidebar({ navigation }: DrawerContentComponentProps) {
                 accessibilityRole="button"
                 onPress={() => go(`/chat/${c.id}`)}
                 onLongPress={() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } })}
+                {...contextMenu(() => router.push({ pathname: '/chat-menu', params: { chatId: c.id } }))}
                 style={{ minHeight: 44, justifyContent: 'center', paddingHorizontal: 10 }}>
                 <Text numberOfLines={1}>{c.title}</Text>
               </Pressable>

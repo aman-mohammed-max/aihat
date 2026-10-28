@@ -8,7 +8,7 @@ import { mergeLoaded } from '@/lib/merge';
 import { clearIndex, indexFile, retrieve, shouldIndex } from '@/lib/rag';
 import { generateImages, type ImageOverrides } from '@/lib/imagegen';
 import { quickComplete } from '@/lib/llm';
-import { applyMemoryTool, learnFromTurn, memoryContext, memoryTool, MEMORY_TOOL } from '@/lib/memory';
+import { applyMemoryTool, GUIDANCE as MEMORY_GUIDANCE, learnFromTurn, memoryContext, memoryTool, MEMORY_TOOL } from '@/lib/memory';
 import { speak } from '@/lib/tts';
 import * as haptic from '@/lib/haptics';
 import { ensureNotifyPermission, notifyReply, previewOf } from '@/lib/notify';
@@ -418,7 +418,7 @@ export const useChats = create<State>((set, get) => ({
         ? memoryContext(memorySettings.memoryItems)
         : '';
       const memoryInstructions = useMemory && memoryToolAvailable
-        ? 'Use cross-chat memory for useful information of any kind that may help in future chats, including facts, preferences, projects, decisions, plans, constraints, and ongoing work. Save it proactively when useful; the user does not need to say “remember this.” Update or delete memories when the user corrects them or asks you to forget. Do not save guesses, one-off details, secrets, or highly sensitive information.'
+        ? `You have a long-term memory tool (${MEMORY_TOOL}). ${MEMORY_GUIDANCE} Saving is quiet: don't announce it, just keep answering.`
         : '';
       const prompt = lib.prompts.find((p) => p.id === chat.promptId);
       // Skills: "Always" ones are in the prompt in full, "Automatic" ones are listed and loaded by the model when a task
@@ -653,11 +653,25 @@ export const useChats = create<State>((set, get) => ({
           }
         }
       }
+      // The model finished without saying anything (no text, no tool, no picture): say so instead of a blank reply.
+      if (!ctl.signal.aborted && !stripThink(assistant.content) && !assistant.attachments.length && !assistant.error) {
+        update({ error: assistant.content.trim() ? 'The model only thought and gave no answer. Try again, or turn reasoning down in Model settings.' : 'The model sent back an empty reply. Try again, or pick another model.' });
+      }
     } catch (e: any) {
       if (e?.name !== 'AbortError') {
-        const msg = e?.status === 401 ? 'Endpoint rejected the key (401).' : e?.status ? `Endpoint error ${e.status}: ${e.message}` : 'Could not reach the endpoint.';
+        // Keep the real reason: a timeout, a dropped connection or a broken reply each need a different fix.
+        const why = String(e?.message ?? e ?? '').slice(0, 300);
+        const network = /network request failed|failed to fetch|load failed|timed? ?out|ECONN|ENOTFOUND|aborted/i.test(why);
+        const msg = e?.status === 401
+          ? 'Endpoint rejected the key (401).'
+          : e?.status
+            ? `Endpoint error ${e.status}: ${e.message}`
+            : network
+              ? `Could not reach the endpoint (${why || 'no answer'}). Check the address and your connection.`
+              : `The reply failed: ${why || 'unknown error'}`;
         update({ error: msg });
-        await useProviders.getState().update(provider.id, { status: e?.status === 401 ? 'rejected' : 'offline' });
+        // Only a real network or key failure marks the endpoint as offline or rejected.
+        if (e?.status === 401 || network) await useProviders.getState().update(provider.id, { status: e?.status === 401 ? 'rejected' : 'offline' });
       }
     } finally {
       aborts.delete(chatId);
