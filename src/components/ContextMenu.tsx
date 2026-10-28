@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, BackHandler, Easing, Platform, Pressable, View } from 'react-native';
+import { GestureDetector, useHoverGesture } from 'react-native-gesture-handler';
 import { create } from 'zustand';
 
 import { tidy, type Menu, type MenuItem } from '@/lib/menus';
@@ -117,32 +118,45 @@ function MenuCard({ menu, x, y }: Open) {
         }}>
         {menu.map((m, i) =>
           m ? (
-            <Pressable
-              key={`${i}-${m.label}`}
-              accessibilityRole="menuitem"
-              accessibilityLabel={m.label}
-              onPress={() => choose(m)}
-              onHoverIn={() => setActive(i)}
-              onHoverOut={() => setActive((a) => (a === i ? -1 : a))}
-              style={({ pressed }) => ({
-                height: ROW,
-                flexDirection: 'row',
-                alignItems: 'center',
-                gap: 10,
-                paddingHorizontal: 10,
-                borderRadius: 9,
-                backgroundColor: pressed || active === i ? (m.danger ? colors.dangerSoft : colors.surface2) : 'transparent',
-              })}>
-              <Icon name={m.icon} size={16} color={m.danger ? colors.danger : colors.muted} />
-              <Text size={14} color={m.danger ? 'danger' : 'text'} numberOfLines={1} style={{ flex: 1 }}>{m.label}</Text>
-              {m.hint ? <Text mono size={11.5} color="faint">{m.hint}</Text> : null}
-            </Pressable>
+            <Row key={`${i}-${m.label}`} item={m} active={active === i} onHover={(on) => setActive((a) => (on ? i : a === i ? -1 : a))} />
           ) : (
             <View key={`divider-${i}`} style={{ height: 1, backgroundColor: colors.hairline, marginVertical: 4, marginHorizontal: 8 }} />
           ),
         )}
       </Animated.View>
     </View>
+  );
+}
+
+/**
+ * One row. It lights up under the mouse: on computers through the browser's hover, on Android through Gesture
+ * Handler, because React Native doesn't report hovering there.
+ */
+function Row({ item, active, onHover }: { item: MenuItem; active: boolean; onHover: (on: boolean) => void }) {
+  const { colors } = useTheme();
+  const hover = useHoverGesture({ enabled: Platform.OS === 'android', runOnJS: true, cancelsJSResponder: false, onActivate: () => onHover(true), onFinalize: () => onHover(false) });
+  return (
+    <GestureDetector gesture={hover}>
+      <Pressable
+        accessibilityRole="menuitem"
+        accessibilityLabel={item.label}
+        onPress={() => choose(item)}
+        onHoverIn={() => onHover(true)}
+        onHoverOut={() => onHover(false)}
+        style={({ pressed }) => ({
+          height: ROW,
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 10,
+          paddingHorizontal: 10,
+          borderRadius: 9,
+          backgroundColor: pressed || active ? (item.danger ? colors.dangerSoft : colors.surface2) : 'transparent',
+        })}>
+        <Icon name={item.icon} size={16} color={item.danger ? colors.danger : colors.muted} />
+        <Text size={14} color={item.danger ? 'danger' : 'text'} numberOfLines={1} style={{ flex: 1 }}>{item.label}</Text>
+        {item.hint ? <Text mono size={11.5} color="faint">{item.hint}</Text> : null}
+      </Pressable>
+    </GestureDetector>
   );
 }
 
