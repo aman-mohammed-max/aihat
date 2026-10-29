@@ -3,6 +3,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import * as haptic from '@/lib/haptics';
 import { useKeyboardVisible } from '@/lib/keyboard';
+import type { NavKey } from '@/lib/palettenav';
 import { useSettings } from '@/store/settings';
 import { fonts, radii, useTheme } from '@/theme';
 
@@ -33,6 +34,8 @@ type Props = {
   voiceActive?: boolean;
   /** Opens the command list (puts a / in the box). */
   onSlash?: () => void;
+  /** Computers: offered each key press first; returns true when the open command list used it (arrows, Enter, Tab, Esc). */
+  onNavKey?: (e: NavKey) => boolean;
 };
 
 function RoundButton({ label, onPress, children, bg, size = 38 }: { label: string; onPress?: () => void; children: React.ReactNode; bg?: string; size?: number }) {
@@ -69,9 +72,18 @@ function ModeChip({ icon, label, onPress, onClear }: { icon: IconName; label: st
   );
 }
 
-/** Desktop: Enter sends, Shift+Enter starts a new line (and Enter while an input method is composing does neither). */
-function enterToSend(e: TextInputKeyPressEvent, send: () => void) {
-  const k = e.nativeEvent as TextInputKeyPressEvent['nativeEvent'] & { shiftKey?: boolean; isComposing?: boolean; keyCode?: number };
+type WebKey = TextInputKeyPressEvent['nativeEvent'] & Omit<NavKey, 'key'>;
+
+/**
+ * Desktop: the open command list gets the key first (arrows, Enter, Tab, Esc). Otherwise Enter sends and Shift+Enter
+ * starts a new line (and Enter while an input method is composing does neither).
+ */
+function onWebKey(e: TextInputKeyPressEvent, send: () => void, nav?: (e: NavKey) => boolean) {
+  const k = e.nativeEvent as WebKey;
+  if (nav?.({ key: k.key, shiftKey: k.shiftKey, ctrlKey: k.ctrlKey, metaKey: k.metaKey, altKey: k.altKey, isComposing: k.isComposing, keyCode: k.keyCode })) {
+    e.preventDefault();
+    return;
+  }
   if (k.key !== 'Enter' || k.shiftKey || k.isComposing || k.keyCode === 229) return;
   e.preventDefault();
   send();
@@ -79,7 +91,7 @@ function enterToSend(e: TextInputKeyPressEvent, send: () => void) {
 
 export function Composer({
   value, onChangeText, onSend, placeholder = 'Message', files = [], onRemoveFile,
-  searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, voiceActive, onSlash,
+  searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, voiceActive, onSlash, onNavKey,
 }: Props) {
   const { colors, body } = useTheme();
   const insets = useSafeAreaInsets();
@@ -116,7 +128,7 @@ export function Composer({
           multiline
           submitBehavior={sendWithEnter ? 'submit' : 'newline'}
           onSubmitEditing={sendWithEnter ? onSend : undefined}
-          onKeyPress={Platform.OS === 'web' ? (e) => enterToSend(e, onSend) : undefined}
+          onKeyPress={Platform.OS === 'web' ? (e) => onWebKey(e, onSend, onNavKey) : undefined}
           style={{ color: colors.text, fontSize: body, fontFamily: fonts.ui, paddingHorizontal: 8, paddingVertical: 8, maxHeight: 140 }}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>

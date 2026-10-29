@@ -19,7 +19,7 @@ import { useTheme } from '@/theme';
 
 import { ChatView } from './ChatView';
 import { Composer } from './Composer';
-import { CommandPalette } from './CommandPalette';
+import { CommandPalette, usePalette } from './CommandPalette';
 import { DictationBar } from './DictationBar';
 import { SpeechBar } from './SpeechBar';
 import { Header } from './Header';
@@ -110,9 +110,25 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
     return id;
   };
 
+  const palette = usePalette(draft.text, {
+    onInsert: (text) => draft.set({ text }),
+    onRun: async (text) => {
+      draft.set({ text: '' });
+      try {
+        await runCommandText(text, { chatId, ensureChat });
+      } catch (e: any) {
+        if (e?.message !== 'No endpoint') Alert.alert('Command failed', e?.message ?? 'Try again.');
+      }
+    },
+  });
+
   const send = async () => {
     const text = draft.text.trim();
     if (!text && draft.files.length === 0) return;
+
+    // A command still being typed ("/the"): Send and Enter use the best match instead of sending that text as a message.
+    const best = palette.open && draft.files.length === 0 ? palette.shown[palette.active] : undefined;
+    if (best) return palette.choose(best);
 
     // Slash commands: "/image a cabin", "/effort high", "/search …" run instead of being sent as text.
     if (text.startsWith('/') && draft.files.length === 0) {
@@ -233,18 +249,7 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
         <View style={[{ width: '100%' }, column]}>
           <SpeechBar />
           <DictationBar />
-          <CommandPalette
-            text={draft.text}
-            onInsert={(text) => draft.set({ text })}
-            onRun={async (text) => {
-              draft.set({ text: '' });
-              try {
-                await runCommandText(text, { chatId, ensureChat });
-              } catch (e: any) {
-                if (e?.message !== 'No endpoint') Alert.alert('Command failed', e?.message ?? 'Try again.');
-              }
-            }}
-          />
+          <CommandPalette text={draft.text} palette={palette} />
           <Composer
             value={draft.text}
             onChangeText={(text) => draft.set({ text })}
@@ -265,10 +270,11 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
             onVoice={() => useDictation.getState().begin()}
             voiceActive={dictating}
             onSlash={() => draft.set({ text: draft.text.startsWith('/') ? '' : '/' })}
+            onNavKey={palette.onKey}
           />
           {Platform.OS === 'web' ? (
             <View style={{ flexDirection: 'row', justifyContent: 'center', flexWrap: 'wrap', gap: 14, marginTop: -6, paddingBottom: 10 }}>
-              {['Enter to send', 'Shift + Enter for a new line', 'Drop files anywhere'].map((t) => <Text key={t} size={11.5} color="faint">{t}</Text>)}
+              {['Enter to send', 'Shift + Enter for a new line', '/ for commands', 'Drop files anywhere'].map((t) => <Text key={t} size={11.5} color="faint">{t}</Text>)}
             </View>
           ) : null}
         </View>

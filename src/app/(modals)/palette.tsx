@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Platform, Pressable, ScrollView, TextInput, View, type TextInputKeyPressEvent } from 'react-native';
 
 import { Icon, Text, type IconName } from '@/components';
@@ -7,6 +7,7 @@ import { openChat, openPage } from '@/components/AppNav';
 import { useEscape } from '@/components/Overlays';
 import { SETTINGS_GROUPS } from '@/components/SettingsNav';
 import { matchCommands, useCommandList } from '@/lib/commands';
+import { useKeepInView } from '@/lib/keepinview';
 import { keyLabel } from '@/lib/layout';
 import { useChats } from '@/store/chats';
 import { useDraft } from '@/store/draft';
@@ -63,13 +64,19 @@ export default function Palette() {
       .map((p): Item => ({ key: `p${p.path}`, group: 'Go to', icon: 'layout', label: p.label, run: () => openPage(p.path) })),
   ];
   const active = Math.min(sel, Math.max(items.length - 1, 0));
+  const inView = useKeepInView(active);
+  const lastKey = useRef(0);
 
   const onKey = (e: TextInputKeyPressEvent) => {
-    const k = e.nativeEvent.key;
-    if (k === 'ArrowDown' || k === 'ArrowUp') {
+    const k = e.nativeEvent as TextInputKeyPressEvent['nativeEvent'] & { isComposing?: boolean; keyCode?: number };
+    if (k.isComposing || k.keyCode === 229 || items.length === 0) return;
+    const to = k.key === 'ArrowDown' ? active + 1 : k.key === 'ArrowUp' ? active - 1 : k.key === 'PageDown' ? active + 6 : k.key === 'PageUp' ? active - 6 : null;
+    if (to !== null) {
       e.preventDefault();
-      setSel(Math.max(0, Math.min(items.length - 1, active + (k === 'ArrowDown' ? 1 : -1))));
-    } else if (k === 'Enter') {
+      lastKey.current = Date.now();
+      // Down from the last row wraps to the first, as in the command list.
+      setSel(Math.abs(to - active) === 1 ? (to + items.length) % items.length : Math.max(0, Math.min(items.length - 1, to)));
+    } else if (k.key === 'Enter') {
       e.preventDefault();
       items[active]?.run();
     }
@@ -101,17 +108,17 @@ export default function Palette() {
             </View>
           ) : null}
         </View>
-        <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 8 }}>
+        <ScrollView {...inView.scroll} keyboardShouldPersistTaps="handled" contentContainerStyle={{ padding: 8 }}>
           {items.length === 0 && <Text color="muted" style={{ padding: 12 }}>Nothing matches “{q}”.</Text>}
           {items.map((it, i) => {
             const header = i === 0 || items[i - 1].group !== it.group ? it.group : null;
             return (
-              <View key={it.key}>
+              <View key={it.key} onLayout={inView.row(i)}>
                 {header ? <Text size={11.5} weight="medium" color="muted" style={{ paddingHorizontal: 10, paddingTop: i ? 10 : 4, paddingBottom: 6 }}>{header}</Text> : null}
                 <Pressable
                   accessibilityRole="button"
                   onPress={it.run}
-                  onHoverIn={() => setSel(i)}
+                  onHoverIn={() => { if (Date.now() - lastKey.current > 300) setSel(i); }}
                   style={{ minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, paddingVertical: 8, borderRadius: 10, backgroundColor: i === active ? colors.surface2 : 'transparent' }}>
                   {it.slash ? <Text mono color="accent" style={{ width: 16 }}>/</Text> : <Icon name={it.icon!} size={16} color={colors.muted} />}
                   <Text size={14} numberOfLines={1} style={{ flexShrink: 1 }}>{it.label}</Text>

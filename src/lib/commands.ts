@@ -75,9 +75,9 @@ export function parseFlags(args: string, valueFlags: string[], boolFlags: string
   return { flags, rest: rest.replace(/\s+/g, ' ').trim() };
 }
 
-/** `/name rest of the message` → { name, args }. Plain text and `//escaped` text return null. */
+/** `/name rest of the message` → { name, args } (`/?` is help). Plain text and `//escaped` text return null. */
 export function splitCommand(text: string): { name: string; args: string } | null {
-  const m = text.match(/^\/([a-z0-9][a-z0-9_-]*)(?:\s+([\s\S]*))?$/i);
+  const m = text.match(/^\/(\?|[a-z0-9][a-z0-9_-]*)(?:\s+([\s\S]*))?$/i);
   return m ? { name: m[1].toLowerCase(), args: (m[2] ?? '').trim() } : null;
 }
 
@@ -560,14 +560,7 @@ export function allCommands(
 
 export const findCommand = (name: string, list = allCommands()) => list.find((c) => c.name === name || c.aliases?.includes(name));
 
-/** Commands whose name starts with (or contains) what has been typed after the slash. */
-export function matchCommands(query: string, list: Command[]) {
-  const q = query.toLowerCase();
-  if (!q) return list;
-  const starts = list.filter((c) => c.name.startsWith(q) || c.aliases?.some((a) => a.startsWith(q)));
-  const has = list.filter((c) => !starts.includes(c) && (c.name.includes(q) || c.summary.toLowerCase().includes(q)));
-  return [...starts, ...has];
-}
+export { matchCommands } from './commandmatch';
 
 /** React hook: the merged command list, updating when custom commands change. */
 export function useCommandList() {

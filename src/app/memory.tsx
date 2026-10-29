@@ -128,8 +128,9 @@ export default function Memory() {
         ) : null}
       </View>
 
-      <View style={{ width: '100%', marginTop: 12 }}>
+      <View style={{ width: '100%', marginTop: 12, gap: 6 }}>
         <Button label="Add memory" height={40} disabled={s.memoryItems.length >= MAX_MEMORIES} onPress={startAdd} />
+        {s.memoryItems.length >= MAX_MEMORIES ? <Text size={12.5} color="muted" style={{ paddingHorizontal: 4 }}>Memory is full ({MAX_MEMORIES}). Delete one to add another.</Text> : null}
       </View>
 
       <Dialog

@@ -22,6 +22,12 @@ const clean = (value: unknown, max: number) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, max)
   : '';
 
+/** The memory an action means: the one with that exact id, else the one with that title (ignoring case). */
+function findMemory(items: MemoryItem[], id: string, title: string) {
+  const key = title.toLocaleLowerCase();
+  return (id ? items.find((item) => item.id === id) : undefined) ?? (key ? items.find((item) => item.title.toLocaleLowerCase() === key) : undefined);
+}
+
 function titleFromText(text: string) {
   return text.split(/[.!?]/, 1)[0].trim().split(/\s+/).slice(0, 6).join(' ').slice(0, MAX_MEMORY_TITLE_LENGTH) || 'Saved memory';
 }
@@ -85,8 +91,7 @@ export function applyMemoryTool(raw: string, temporary = false, chatMemoryEnable
   if (action === 'clear') return 'Clearing all memories can only be done by the user, in Settings › Memory. Delete single memories instead, or tell the user where to clear them.';
   if (action === 'delete') {
     const id = clean(args.id, 120);
-    const title = clean(args.title, MAX_MEMORY_TITLE_LENGTH).toLocaleLowerCase();
-    const hit = items.find((item) => (id && item.id === id) || (title && item.title.toLocaleLowerCase() === title));
+    const hit = findMemory(items, id, clean(args.title, MAX_MEMORY_TITLE_LENGTH));
     if (!hit) return 'No matching memory was found.';
     settings.set({ memoryItems: items.filter((item) => item.id !== hit.id) });
     toast(`Forgot: ${hit.title}`);
@@ -95,12 +100,13 @@ export function applyMemoryTool(raw: string, temporary = false, chatMemoryEnable
   if (action !== 'save' && action !== 'update') return 'Error: choose save, update or delete.';
 
   const text = clean(args.text, MAX_MEMORY_LENGTH);
-  const title = clean(args.title, MAX_MEMORY_TITLE_LENGTH) || titleFromText(text);
   if (!text) return 'Error: memory text cannot be empty.';
 
   const id = clean(args.id, 120);
-  const titleKey = title.toLocaleLowerCase();
-  const hit = items.find((item) => (id && item.id === id) || item.title.toLocaleLowerCase() === titleKey);
+  const given = clean(args.title, MAX_MEMORY_TITLE_LENGTH);
+  const hit = findMemory(items, id, given || titleFromText(text));
+  // Updating by id without a new title keeps the title it has.
+  const title = given || (id && hit?.id === id ? hit.title : '') || titleFromText(text);
   if (action === 'update' && !hit) return 'No matching memory was found. Save it as a new memory or use an existing memory id.';
   if (!hit && items.length >= MAX_MEMORIES) return `Memory list is full (${MAX_MEMORIES}). Update or delete an item first.`;
 
