@@ -17,11 +17,12 @@
 
 ## What is AI Hat?
 
-AI Hat is a chat app for AI models. Unlike most chat apps, it isn't tied to one company: you connect it to the AI service you want, such as OpenRouter, Groq or Ollama, or a server you run yourself. Your chats stay on your device.
+AI Hat is a chat app for AI models. Unlike most chat apps, it isn't tied to one company: you connect it to the AI service you want, such as OpenRouter, Groq or Ollama, or a server you run yourself, or you download a model that runs on your phone itself. Your chats stay on your device.
 
 - **Chat** with any AI model, and switch models whenever you like
 - **Make pictures** from a description
-- **Talk** instead of typing, and have replies read aloud
+- **Run AI on your phone or tablet**: download a model from the Marketplace and chat offline, with nothing sent anywhere
+- **Talk** instead of typing, and have replies read aloud. Phonon-2 turns your English speech into text on the phone itself
 - **Search the web** and get answers with their sources
 - **Read your files**: PDF, Word, Excel, PowerPoint and more
 - **Skills and tools** from a built-in marketplace, which can even make Word, Excel and PDF files for you
@@ -39,7 +40,7 @@ AI Hat is a chat app for AI models. Unlike most chat apps, it isn't tied to one 
 
 ## Getting started
 
-1. **Open AI Hat and add an AI service.** Choose one from the list, paste its address and, if it needs one, your API key.
+1. **Open AI Hat and add an AI service.** Choose one from the list, paste its address and, if it needs one, your API key. Or, on a phone or tablet, open **Marketplace › Local models** and download a model that runs on the device.
 2. **Start chatting.** Tap the model name at the top to switch models.
 3. **Type `/`** to see everything AI Hat can do, like `/image a cabin in the snow`.
 
@@ -56,14 +57,14 @@ AI Hat is a chat app for AI models. Unlike most chat apps, it isn't tied to one 
 
 ## Your privacy
 
-No account, no ads, no tracking. AI Hat has no servers of its own: your messages go only to the AI services you add. Your API keys stay in your device's secure storage and are never included in backups.
+No account, no ads, no tracking. AI Hat has no servers of its own: your messages go only to the AI services you add, and models on your phone (and Phonon-2 dictation) send nothing at all. Your API keys stay in your device's secure storage and are never included in backups.
 
 ## Limitations
 
 AI Hat is a beta, so some things are missing or only partly work:
 
 - **iPhone** apps aren't signed yet, so they need AltStore, SideStore or Sideloadly to install.
-- **No AI built into the app.** You need an AI service to connect to.
+- **Models on the phone need a recent device with enough memory.** The Marketplace says which ones fit yours. The computer apps can't run them yet, and Expo Go can't either.
 - **Some skills can't fully run on a phone**, because they need programs that only exist on computers.
 - **The computer apps are new** and haven't been tried much yet.
 
