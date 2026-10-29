@@ -1,0 +1,49 @@
+fermion-research
+Copyright 2026 Fermion Research
+
+This package (the `fermion` command line, the Phonon speech engines and the Neutrino runtime) is licensed under the
+Apache License, Version 2.0. The full text is in the LICENSE file beside this one.
+
+================================================================================
+THIRD-PARTY CODE INCLUDED IN THIS PACKAGE
+================================================================================
+
+fermion/_vendor/qwen3_asr_backend/
+    Copyright 2026 The Qwen team, Alibaba Group, and the HuggingFace Inc. team.
+    Licensed under the Apache License, Version 2.0. Model code for Qwen3-ASR, carried here so that Phonon-1 loads
+    without a matching transformers release.
+
+fermion/_vendor/parakeet_tdt/
+    Copyright 2025 The HuggingFace Inc. team; architecture by NVIDIA (NeMo Parakeet / Fast Conformer).
+    Licensed under the Apache License, Version 2.0. The Parakeet-TDT model classes from transformers
+    (models/parakeet), rendered on plain PyTorch so that Phonon-2 loads where transformers has no ParakeetForTDT
+    for the installed torch (Intel Macs).
+
+================================================================================
+BASE MODELS
+================================================================================
+
+Phonon-2 is derived from NVIDIA's Parakeet TDT 0.6B v3 (nvidia/parakeet-tdt-0.6b-v3).
+    Copyright (c) NVIDIA Corporation. Licensed under the Creative Commons Attribution 4.0 International
+    licence (CC-BY-4.0).
+    https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3
+    https://creativecommons.org/licenses/by/4.0/
+
+The Phonon-1 family (Phonon-1, Phonon-1 Big, Phonon-1 Micro) is derived from Qwen/Qwen3-ASR-0.6B.
+    Licensed under the Apache License, Version 2.0.
+    https://huggingface.co/Qwen/Qwen3-ASR-0.6B
+
+================================================================================
+MODEL WEIGHTS ARE NOT IN THIS PACKAGE
+================================================================================
+
+The command line downloads model weights from their own repositories, each with its own licence and NOTICE:
+
+    FermionResearch/Phonon-2      CC-BY-4.0   derived from nvidia/parakeet-tdt-0.6b-v3 (CC-BY-4.0)
+                                  https://huggingface.co/FermionResearch/Phonon-2/blob/main/NOTICE
+    FermionResearch/Phonon-1      Apache-2.0  built on Qwen/Qwen3-ASR-0.6B (Apache-2.0)
+    FermionResearch/Neutrino-*    see each repository
+
+The native binaries shipped in this package (fermion/bin/, fermion/_speech/_engine_phonon2_cpu/ and the native
+library in fermion/_speech/_engine/) are Fermion Research's own work, licensed with this package under the Apache
+License, Version 2.0.

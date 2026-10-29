@@ -53,7 +53,8 @@ export type Settings = {
   routes: Record<Capability, Route>;
   translateTo: string;
   /** Dictation (mic button): the phone's own recognizer shows live text; the endpoint records, then transcribes. */
-  dictationEngine: 'phone' | 'endpoint';
+  /** 'phonon': Phonon-2 on the device (Settings › Voice & speech downloads it). */
+  dictationEngine: 'phone' | 'endpoint' | 'phonon';
   /** BCP-47 tag for the phone recognizer, or '' for the phone's own language. */
   dictationLang: string;
   /** Never send dictation audio to Apple or Google; refuse when the phone can't do it locally. */

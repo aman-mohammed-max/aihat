@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["PhononModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.phonon.PhononModule"]
+  }
+}

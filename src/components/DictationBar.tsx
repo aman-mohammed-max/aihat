@@ -4,6 +4,7 @@ import { Alert, Animated, Easing, Linking, Platform, Pressable, View } from 'rea
 
 import { transcribe } from '@/api/openai';
 import { requireRoute } from '@/lib/endpoints';
+import { phononTranscribe } from '@/lib/local/phonon';
 import * as haptic from '@/lib/haptics';
 import { quickComplete } from '@/lib/llm';
 import { assemble, dictationLocale, phoneRecognitionOnDevice, speechRec } from '@/lib/speechrec';
@@ -243,11 +244,15 @@ function PhoneEngine() {
 }
 
 const RECORDING = { ...RecordingPresets.HIGH_QUALITY, isMeteringEnabled: true };
+/** Phonon-2 on the device reads 16 kHz mono, so it records that way (no resampling, and a smaller file). */
+const RECORDING_16K = { ...RecordingPresets.HIGH_QUALITY, sampleRate: 16000, numberOfChannels: 1, bitRate: 64000, isMeteringEnabled: true };
 
 /** Records, then sends the audio to the transcription endpoint. No live text, because the words only exist after the upload. */
 function EndpointEngine() {
   const signal = useDictation((s) => s.signal);
-  const recorder = useAudioRecorder(RECORDING);
+  // The same recorder for Phonon-2 on the device: it records, then the words come from the device instead of an upload.
+  const [local] = useState(() => useDictation.getState().engine === 'phonon');
+  const recorder = useAudioRecorder(local ? RECORDING_16K : RECORDING);
   const rec = useAudioRecorderState(recorder, 120);
   const started = useRef(false);
   const dropped = useRef(false);
@@ -260,7 +265,7 @@ function EndpointEngine() {
     started.current = false;
     (async () => {
       try {
-        requireRoute('transcription'); // throws a helpful message when no endpoint is added
+        if (!local) requireRoute('transcription'); // throws a helpful message when no endpoint is added
         const perm = await requestRecordingPermissionsAsync();
         if (!alive || dropped.current || st().phase === 'idle') return;
         if (!perm.granted) {
@@ -298,7 +303,7 @@ function EndpointEngine() {
       // iOS plays no haptics while the audio session is in recording mode, so hand it back.
       setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
     };
-  }, [recorder]);
+  }, [recorder, local]);
 
   useEffect(() => {
     if (rec.metering !== undefined) useDictation.getState().patch({ level: Math.max(0, Math.min(1, (rec.metering + 55) / 55)) });
@@ -322,8 +327,14 @@ function EndpointEngine() {
           await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true }).catch(() => {});
           const uri = recorder.uri;
           if (!uri) throw new Error('Nothing was recorded.');
-          const stt = requireRoute('transcription');
-          const text = await transcribe(stt.provider, stt.model, uri, false, controller.signal);
+          let text: string;
+          if (local) {
+            st().patch({ note: 'Transcribing on this device…' });
+            text = await phononTranscribe(uri);
+          } else {
+            const stt = requireRoute('transcription');
+            text = await transcribe(stt.provider, stt.model, uri, false, controller.signal);
+          }
           if (!dropped.current) await deliver(text, st().translate, controller.signal);
         } catch (e: any) {
           if (!dropped.current && !controller.signal.aborted) Alert.alert('Could not transcribe', e?.message ?? 'Try again.');
@@ -333,7 +344,7 @@ function EndpointEngine() {
         }
       })();
     }
-  }, [signal.n, signal.kind, recorder]);
+  }, [signal.n, signal.kind, recorder, local]);
 
   return null;
 }

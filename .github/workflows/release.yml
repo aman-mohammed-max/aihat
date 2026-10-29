@@ -114,6 +114,23 @@ jobs:
           merge-multiple: true
           path: dist
 
+      # The rolling beta is replaced on every push: a phone build that failed this time keeps the last good APK or IPA
+      # instead of disappearing from the page until the next good build.
+      - name: Keep the last beta's phone app when this build of it failed
+        if: ${{ needs.plan.outputs.rolling == 'true' && (needs.android.result != 'success' || needs.ios.result != 'success') }}
+        env:
+          ANDROID_OK: ${{ needs.android.result == 'success' }}
+          IOS_OK: ${{ needs.ios.result == 'success' }}
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || exit 0
+          kept=()
+          if [[ "$ANDROID_OK" != true ]] && gh release download "$TAG" --pattern '*.apk' --dir dist --clobber; then kept+=(Android); fi
+          if [[ "$IOS_OK" != true ]] && gh release download "$TAG" --pattern '*.ipa' --dir dist --clobber; then kept+=(iPhone/iPad); fi
+          if (( ${#kept[@]} )); then
+            echo "The ${kept[*]} app in this release is from the previous beta build: this build of it didn't finish." > carried-over.txt
+            cat carried-over.txt
+          fi
+
       - name: Check something was built
         run: '[ -n "$(ls -A dist 2>/dev/null)" ] || { echo "::error::No app was built, so there is nothing to publish."; exit 1; }'
 
@@ -126,6 +143,10 @@ jobs:
             fi
             if [[ "$ROLLING" == true ]]; then
               echo "**Latest beta build** of \`main\` at commit \`${GITHUB_SHA::7}\`, built $(date -u '+%Y-%m-%d %H:%M UTC'). This release is replaced by a fresh build on every push. For a fixed version, use a numbered release."
+              echo
+            fi
+            if [[ -f carried-over.txt ]]; then
+              echo "> $(cat carried-over.txt)"
               echo
             fi
             echo '## Install'

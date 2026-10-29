@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import * as haptic from '@/lib/haptics';
 import { resolveRoute } from '@/lib/endpoints';
 import { phoneRecognitionAvailable } from '@/lib/speechrec';
+import { phononReady, phononSupported } from '@/lib/local/phonon';
 import { stopSpeaking } from '@/lib/tts';
 import { toast } from '@/store/toast';
 import { useSettings } from '@/store/settings';
@@ -11,7 +12,7 @@ export type DictationPhase = 'idle' | 'starting' | 'listening' | 'working';
 
 type State = {
   phase: DictationPhase;
-  engine: 'phone' | 'endpoint';
+  engine: 'phone' | 'endpoint' | 'phonon';
   /** What has been heard so far (phone engine only; the endpoint engine has no live text). */
   text: string;
   /** Microphone level, 0 to 1. */
@@ -44,11 +45,18 @@ export const useDictation = create<State>((set, get) => ({
     if (phase === 'listening') return get().finish();
     if (phase === 'starting' || phase === 'working') return get().cancel();
     const s = useSettings.getState();
+    // Phonon-2 on the device: it needs its download, and a device that can run it (else the phone's own service listens).
+    let chosen = s.dictationEngine;
+    if (chosen === 'phonon' && !phononSupported()) chosen = 'phone';
+    else if (chosen === 'phonon' && !phononReady()) {
+      toast('Download Phonon-2 in Settings › Voice & speech first');
+      return;
+    }
     stopSpeaking(); // the microphone would hear a reply being read aloud
     haptic.tap();
     // No speech service on this phone (Expo Go, Siri & Dictation off, no Google speech service): use the endpoint instead.
-    const fallback = s.dictationEngine === 'phone' && !phoneRecognitionAvailable();
-    const useEndpoint = fallback || s.dictationEngine === 'endpoint';
+    const fallback = chosen === 'phone' && !phoneRecognitionAvailable();
+    const useEndpoint = fallback || chosen === 'endpoint';
     if (useEndpoint && !resolveRoute('transcription').provider) {
       toast('Choose a transcription endpoint in Voice & speech settings first');
       return;
@@ -57,7 +65,7 @@ export const useDictation = create<State>((set, get) => ({
     set({
       ...IDLE,
       phase: 'starting',
-      engine: fallback ? 'endpoint' : s.dictationEngine,
+      engine: fallback ? 'endpoint' : chosen,
       translate: o?.translate ?? s.translateTo !== 'English',
       signal: { n: get().signal.n + 1, kind: null },
     });
