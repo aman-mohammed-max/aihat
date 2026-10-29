@@ -269,7 +269,7 @@ export async function accessToken(id: string, force = false): Promise<string | n
 
 async function register(d: Discovery, redirect: string) {
   if (!d.registrationEndpoint) {
-    throw new OAuthError('unsupported', 'This service doesn’t let apps sign themselves up, so browser sign-in isn’t possible here. Use an access token instead.');
+    throw new OAuthError('unsupported', 'This service doesn’t let apps sign themselves up. Add your own app’s client ID under Browser sign-in, or use an access token.');
   }
   const method = !d.authMethods.length || d.authMethods.includes('none') ? 'none' : d.authMethods.includes('client_secret_post') ? 'client_secret_post' : 'client_secret_basic';
   const res = await timedFetch(d.registrationEndpoint, {
@@ -283,15 +283,23 @@ async function register(d: Discovery, redirect: string) {
   return { clientId: String(data.client_id), secret: data.client_secret ? String(data.client_secret) : null, method: (given === 'client_secret_post' ? 'post' : given === 'client_secret_basic' ? 'basic' : 'none') as Method };
 }
 
+/** An app you registered with the service yourself (for services that don't let apps sign themselves up). */
+export type OwnClient = { clientId: string; secret?: string };
+
 /** Run the whole browser sign-in for a server and keep the tokens. Throws OAuthError. */
-export async function signIn(id: string, mcpUrl: string): Promise<void> {
+export async function signIn(id: string, mcpUrl: string, own?: OwnClient): Promise<void> {
   const d = await discover(mcpUrl);
   const redirect = redirectUri();
 
-  // Reuse the registration from an earlier sign-in to the same service.
+  // Your own app when you gave one, else the registration from an earlier sign-in to the same service, else a new one.
   const prev = await readMeta(id);
   let client: { clientId: string; method: Method; secret: string | null };
-  if (prev && prev.issuer === d.issuer && prev.redirect === redirect) {
+  if (own?.clientId.trim()) {
+    const secret = own.secret?.trim() || null;
+    client = { clientId: own.clientId.trim(), method: secret ? 'post' : 'none', secret };
+    if (secret) await setApiKey(tokenKey(id, 'secret'), secret);
+    else await deleteApiKey(tokenKey(id, 'secret')).catch(() => {});
+  } else if (prev && prev.issuer === d.issuer && prev.redirect === redirect) {
     client = { clientId: prev.clientId, method: prev.method, secret: await getApiKey(tokenKey(id, 'secret')) };
   } else {
     client = await register(d, redirect);

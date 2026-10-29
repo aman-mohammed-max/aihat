@@ -1,15 +1,18 @@
 import { connect, listTools } from '@/api/mcp';
-import { forget, isSignedIn, signIn, signOut } from '@/api/oauth';
+import { forget, isSignedIn, signIn, signOut, type OwnClient } from '@/api/oauth';
 import { deleteApiKey, setApiKey } from '@/lib/keys';
 import { useLibrary, type McpServer } from '@/store/library';
 
 /** Make sure a server added with browser sign-in has a valid sign-in, opening the browser when it doesn't. */
-async function ensureSignedIn(id: string, url: string) {
-  if (!(await isSignedIn(id))) await signIn(id, url);
+async function ensureSignedIn(id: string, url: string, own?: OwnClient) {
+  if (own?.clientId.trim() || !(await isSignedIn(id))) await signIn(id, url, own);
 }
 
-/** Save (or update) a server, then handshake and fetch its tools. Returns the saved id or throws. */
-export async function addAndConnect(s: Partial<McpServer> & { name: string; url: string }, token?: string) {
+/**
+ * Save (or update) a server, then handshake and fetch its tools. Returns the saved id or throws. `own`: your own app's
+ * client ID for a browser sign-in.
+ */
+export async function addAndConnect(s: Partial<McpServer> & { name: string; url: string }, token?: string, own?: OwnClient) {
   const lib = useLibrary.getState();
   const before = s.id ? lib.servers.find((x) => x.id === s.id) : undefined;
   const id = await lib.saveServer({ ...s, connected: false });
@@ -20,7 +23,7 @@ export async function addAndConnect(s: Partial<McpServer> & { name: string; url:
   try {
     // A server that moved to another address needs a new sign-in.
     if (before && before.url !== s.url) await signOut(id);
-    if (s.auth === 'oauth') await ensureSignedIn(id, s.url);
+    if (s.auth === 'oauth') await ensureSignedIn(id, s.url, own);
     await connect({ url: s.url, id });
     const prev = useLibrary.getState().servers.find((x) => x.id === id)?.tools ?? [];
     const tools = await listTools({ url: s.url, id }, prev);

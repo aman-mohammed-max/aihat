@@ -67,12 +67,17 @@ export default function Backup() {
   };
 
   return (
-    <Screen header={{ title: 'Sync & backup' }} gap={16} footer={<Button label="Back up now" flex height={48} onPress={run} />}>
+    <Screen header={{ title: 'Sync & backup' }} gap={16}>
       <View>
         <SectionTitle>Save to</SectionTitle>
-        <Target letter="F" label="A .json file" sub={isDesktop ? 'Saved to your Downloads folder' : `Share it to Drive, iCloud or any app${last ? ` · last ${last}` : ''}`} on={s.backupTarget === 'file'} onPress={() => s.set({ backupTarget: 'file' })} />
+        <Target letter="F" label="A .json file" sub={isDesktop ? 'Saved to your Downloads folder' : 'Share it to Drive, iCloud or any app'} on={s.backupTarget === 'file'} onPress={() => s.set({ backupTarget: 'file' })} />
         <Target letter="D" label="Google Drive" sub="Back up straight to your Drive" soon />
         <Target letter="i" label="iCloud Drive" sub="Apple devices only" soon last />
+      </View>
+      {/* In the page, not pinned under it, so it shows on every phone, tablet and window size. */}
+      <View style={{ gap: 8 }}>
+        <Button label="Back up now" height={48} onPress={run} />
+        <Text size={12.5} color="muted" style={{ textAlign: 'center' }}>{last ? `Last backup ${last}` : 'No backup yet'}</Text>
       </View>
       <View>
         <SectionTitle>Include</SectionTitle>

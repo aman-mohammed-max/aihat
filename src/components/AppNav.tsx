@@ -140,17 +140,11 @@ export function AppSidebar({ onCollapse, onNavigate }: { onCollapse?: () => void
       <View style={{ height: 1, backgroundColor: colors.hairline, marginHorizontal: 4, marginBottom: 8 }} />
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Settings"
+        accessibilityState={{ selected: inSettings }}
         onPress={go(openSettings)}
-        style={(s) => ({ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 8, borderRadius: 14, borderWidth: 1, borderColor: inSettings ? colors.border : colors.hairline, backgroundColor: inSettings ? colors.surface2 : rowBg(s, false, colors) === 'transparent' ? colors.surface : rowBg(s, false, colors) })}>
-        <View style={{ width: 34, height: 34, borderRadius: 10, backgroundColor: inSettings ? colors.accentSoft : colors.surface2, alignItems: 'center', justifyContent: 'center' }}>
-          <Icon name="settings" size={17} color={inSettings ? colors.accent : colors.text} />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text size={14} weight="medium" numberOfLines={1}>Settings</Text>
-          <Text size={11.5} color="muted" numberOfLines={1}>Providers, memory, appearance</Text>
-        </View>
-        <Kbd k="," />
+        style={(s) => ({ height: ROW, flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 10, borderRadius: 10, backgroundColor: rowBg(s, inSettings, colors) })}>
+        <Icon name="settings" size={17} color={inSettings ? colors.text : colors.text2} />
+        <Text size={14} color={inSettings ? 'text' : 'text2'} style={{ flex: 1 }}>Settings</Text>
       </Pressable>
     </View>
   );

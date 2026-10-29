@@ -658,7 +658,8 @@ export const useChats = create<State>((set, get) => ({
         update({ error: assistant.content.trim() ? 'The model only thought and gave no answer. Try again, or turn reasoning down in Model settings.' : 'The model sent back an empty reply. Try again, or pick another model.' });
       }
     } catch (e: any) {
-      if (e?.name !== 'AbortError') {
+      // Stopped by the user (Stop, /stop or a new chat): what arrived so far stays, without an error.
+      if (e?.name !== 'AbortError' && !ctl.signal.aborted) {
         // Keep the real reason: a timeout, a dropped connection or a broken reply each need a different fix.
         const why = String(e?.message ?? e ?? '').slice(0, 300);
         const network = /network request failed|failed to fetch|load failed|timed? ?out|ECONN|ENOTFOUND|aborted/i.test(why);

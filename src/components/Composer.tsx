@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import { Platform, Pressable, TextInput, View, type TextInputKeyPressEvent } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -36,6 +37,9 @@ type Props = {
   onSlash?: () => void;
   /** Computers: offered each key press first; returns true when the open command list used it (arrows, Enter, Tab, Esc). */
   onNavKey?: (e: NavKey) => boolean;
+  /** A reply is coming: the send button becomes Stop. Enter never stops it. */
+  streaming?: boolean;
+  onStop?: () => void;
 };
 
 function RoundButton({ label, onPress, children, bg, size = 38 }: { label: string; onPress?: () => void; children: React.ReactNode; bg?: string; size?: number }) {
@@ -92,11 +96,21 @@ function onWebKey(e: TextInputKeyPressEvent, send: () => void, nav?: (e: NavKey)
 export function Composer({
   value, onChangeText, onSend, placeholder = 'Message', files = [], onRemoveFile,
   searchOn, imageOn, uiOn, onToggleSearch, onToggleImage, onToggleUi, onImageOptions, imageLabel, onAdd, onTools, onVoice, voiceActive, onSlash, onNavKey,
+  streaming, onStop,
 }: Props) {
   const { colors, body } = useTheme();
   const insets = useSafeAreaInsets();
   const keyboard = useKeyboardVisible();
   const sendWithEnter = useSettings((s) => s.sendWithEnter);
+  const lastEnter = useRef(0);
+  // Enter sends, never stops. Android hands a keyboard's Enter to the box twice (key down and key up), so a second
+  // one right after the first is the same press.
+  const enter = () => {
+    const at = Date.now();
+    if (at - lastEnter.current < 400) return;
+    lastEnter.current = at;
+    if (!streaming) onSend();
+  };
   return (
     <View style={{ paddingTop: 8, paddingHorizontal: 12, paddingBottom: keyboard ? 8 : Math.max(insets.bottom, 12) + 4, backgroundColor: colors.bg }}>
       <View style={{ backgroundColor: colors.surface, borderRadius: radii.composer, padding: 8, gap: 4 }}>
@@ -127,8 +141,8 @@ export function Composer({
           selectionColor={colors.accent}
           multiline
           submitBehavior={sendWithEnter ? 'submit' : 'newline'}
-          onSubmitEditing={sendWithEnter ? onSend : undefined}
-          onKeyPress={Platform.OS === 'web' ? (e) => onWebKey(e, onSend, onNavKey) : undefined}
+          onSubmitEditing={sendWithEnter ? enter : undefined}
+          onKeyPress={Platform.OS === 'web' ? (e) => onWebKey(e, enter, onNavKey) : undefined}
           style={{ color: colors.text, fontSize: body, fontFamily: fonts.ui, paddingHorizontal: 8, paddingVertical: 8, maxHeight: 140 }}
         />
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
@@ -148,9 +162,15 @@ export function Composer({
           <RoundButton label={voiceActive ? 'Stop dictating' : 'Dictate'} onPress={onVoice} bg={voiceActive ? colors.accentSoft : undefined}>
             <Icon name="mic" size={19} color={voiceActive ? colors.accent : colors.text2} />
           </RoundButton>
-          <RoundButton label="Send" onPress={onSend} bg={colors.accent}>
-            <Icon name="send" size={18} color={colors.onAccent} strokeWidth={2.2} />
-          </RoundButton>
+          {streaming ? (
+            <RoundButton label="Stop the reply" onPress={onStop} bg={colors.accent}>
+              <View style={{ width: 12, height: 12, borderRadius: 3, backgroundColor: colors.onAccent }} />
+            </RoundButton>
+          ) : (
+            <RoundButton label="Send" onPress={onSend} bg={colors.accent}>
+              <Icon name="send" size={18} color={colors.onAccent} strokeWidth={2.2} />
+            </RoundButton>
+          )}
         </View>
       </View>
     </View>

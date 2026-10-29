@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import { Pressable, View } from 'react-native';
 
 import { Button, ListRow, Note, Screen, SectionTitle, Text } from '@/components';
-import { isSignedIn, OAuthError, signOut } from '@/api/oauth';
+import { isSignedIn, OAuthError, probeAuth, signOut } from '@/api/oauth';
 import { useCommandList } from '@/lib/commands';
 import { reconnect, removeServer } from '@/lib/mcp-connect';
 import { pick } from '@/lib/pick';
@@ -47,10 +47,16 @@ export default function McpDetail() {
       setSigned(true);
       setMsg({ ok: true, text: `Connected · ${n} tools` });
     } catch (e: any) {
+      // A server added without a sign-in that now asks for one: switch it to the browser sign-in when it allows that.
+      if (e?.status === 401 && s.auth === 'none' && (await probeAuth(s.url)) === 'oauth') {
+        await useLibrary.getState().saveServer({ ...s, auth: 'oauth', connected: false });
+        setMsg({ ok: true, text: 'This server needs a sign-in. Tap Sign in to open your browser.' });
+        return;
+      }
       await useLibrary.getState().saveServer({ ...s, connected: false });
       setSigned(await isSignedIn(id));
       setMs(null);
-      setMsg({ ok: false, text: e instanceof OAuthError ? e.message : e.status === 401 ? (s.auth === 'oauth' ? 'Signed out. Sign in again.' : 'Sign-in needed') : e.message });
+      setMsg({ ok: false, text: e instanceof OAuthError ? e.message : e.status === 401 ? (s.auth === 'oauth' ? 'Signed out. Sign in again.' : 'This server needs a sign-in. Edit it to add an access token or your own app’s client ID.') : e.message });
     }
   };
   const signOutNow = async () => {

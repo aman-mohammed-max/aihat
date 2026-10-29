@@ -9,6 +9,7 @@ import { success, tap } from '@/lib/haptics';
 import { explainError } from '@/lib/errors';
 import { messageMenu } from '@/lib/menus';
 import { isDesktop } from '@/lib/device';
+import { useSelectableText } from '@/lib/layout';
 import { speak, stopSpeaking } from '@/lib/tts';
 import { openOutput } from '@/skill-exec/outputs';
 import { useSettings } from '@/store/settings';
@@ -89,6 +90,7 @@ const steps = (s: string) =>
  */
 function Reasoning({ text, live }: { text: string; live: boolean }) {
   const { colors } = useTheme();
+  const selectable = useSelectableText();
   const [open, setOpen] = useState(false);
   const started = useRef<number | null>(null);
   const [secs, setSecs] = useState(0);
@@ -143,7 +145,7 @@ function Reasoning({ text, live }: { text: string; live: boolean }) {
                 <View style={{ width: 7, height: 7, borderRadius: 4, marginTop: 7, backgroundColor: i === list.length - 1 && live ? colors.accent : colors.border }} />
                 {i < list.length - 1 ? <View style={{ flex: 1, width: 1.5, backgroundColor: colors.hairline, marginTop: 3 }} /> : null}
               </View>
-              <Text size={13.5} color="muted" selectable={Platform.OS === 'web'} style={{ flex: 1, lineHeight: 20.5, paddingBottom: i < list.length - 1 ? 12 : 0 }}>{step}</Text>
+              <Text size={13.5} color="muted" selectable={selectable} style={{ flex: 1, lineHeight: 20.5, paddingBottom: i < list.length - 1 ? 12 : 0 }}>{step}</Text>
             </View>
           ))}
         </Animated2.View>
@@ -227,6 +229,7 @@ type Props = {
 
 export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpoint, onSwitchModel, onRetry, column, onSources }: Props) {
   const { colors } = useTheme();
+  const selectable = useSelectableText();
   const showStats = useSettings((s) => s.showStats);
   const list = useRef<FlatList<Message>>(null);
   const followsOutput = useRef(true);
@@ -305,7 +308,7 @@ export function ChatView({ chatId, messages, streaming, onRegenerate, onFixEndpo
                     {a.meta ? <Text size={11.5} color="muted">{a.meta}</Text> : null}
                   </View>
                 ))}
-                {m.content ? <Text selectable={Platform.OS === 'web'}>{m.content}</Text> : null}
+                {m.content ? <Text selectable={selectable}>{m.content}</Text> : null}
               </View>
               <View style={{ flexDirection: 'row', justifyContent: 'flex-end' }}>
                 {m.content ? <ActionButton icon="copy" label="Copy prompt" onPress={() => { success(); Clipboard.setStringAsync(m.content); }} /> : null}

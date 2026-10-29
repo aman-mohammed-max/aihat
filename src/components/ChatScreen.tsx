@@ -123,15 +123,17 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
   });
 
   const send = async () => {
-    const text = draft.text.trim();
-    if (!text && draft.files.length === 0) return;
+    // What is in the box right now (not when the screen last drew), so a fast second press can't send it twice.
+    const d = useDraft.getState();
+    const text = d.text.trim();
+    if (!text && d.files.length === 0) return;
 
     // A command still being typed ("/the"): Send and Enter use the best match instead of sending that text as a message.
-    const best = palette.open && draft.files.length === 0 ? palette.shown[palette.active] : undefined;
+    const best = palette.open && d.files.length === 0 ? palette.shown[palette.active] : undefined;
     if (best) return palette.choose(best);
 
     // Slash commands: "/image a cabin", "/effort high", "/search …" run instead of being sent as text.
-    if (text.startsWith('/') && draft.files.length === 0) {
+    if (text.startsWith('/') && d.files.length === 0) {
       draft.set({ text: '' });
       try {
         if (await runCommandText(text, { chatId, ensureChat })) return;
@@ -143,9 +145,9 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
     }
 
     if (!provider) return router.push('/welcome');
+    const files = [...d.files];
+    const opts = { search: d.searchOn, ui: d.uiOn, image: d.imageOn };
     const id = await ensureChat();
-    const files = [...draft.files];
-    const opts = { search: draft.searchOn, ui: draft.uiOn, image: draft.imageOn };
     if (opts.ui) draft.set({ uiOn: false }); // the UI chip applies to one message
     draft.reset();
     await submit(id, text.startsWith('//') ? text.slice(1) : text, { files, ...opts, search: opts.search && !opts.image });
@@ -253,7 +255,9 @@ export function ChatScreen({ chatId }: { chatId?: string }) {
           <Composer
             value={draft.text}
             onChangeText={(text) => draft.set({ text })}
-            onSend={streaming && chatId ? () => useChats.getState().stop(chatId) : send}
+            onSend={send}
+            streaming={streaming && !!chatId}
+            onStop={() => { if (chatId) useChats.getState().stop(chatId); }}
             placeholder={`Message ${modelId ?? ''}`.trim()}
             files={draft.files.map((f) => ({ id: f.id, ext: (f.name.split('.').pop() ?? '').slice(0, 4).toUpperCase(), label: f.name, meta: f.meta }))}
             onRemoveFile={draft.removeFile}

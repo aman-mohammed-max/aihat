@@ -55,8 +55,21 @@ function abortError() {
 function withTimeout(ms = 60000) {
   const ctl = new AbortController();
   let expired = false;
-  const t = setTimeout(() => { expired = true; ctl.abort(); }, ms);
-  return { signal: ctl.signal, abort: () => ctl.abort(), done: () => clearTimeout(t), timedOut: () => expired };
+  const fire = () => { expired = true; ctl.abort(); };
+  let t = setTimeout(fire, ms);
+  return {
+    signal: ctl.signal,
+    abort: () => ctl.abort(),
+    /** Something arrived: the wait starts over, so a long reply is fine as long as it keeps coming. */
+    touch: () => { clearTimeout(t); t = setTimeout(fire, ms); },
+    done: () => clearTimeout(t),
+    timedOut: () => expired,
+  };
+}
+
+/** A request the user stopped. Expo's fetch reports that as a plain error ("fetch failed: … canceled"). */
+function stoppedError() {
+  return Object.assign(new Error('Stopped'), { name: 'AbortError' });
 }
 
 async function check(res: Response) {
@@ -109,7 +122,9 @@ export async function* streamChat(
   req: { model: string; messages: ChatMessage[]; tools?: ToolDef[]; params?: Params; signal?: AbortSignal },
 ): AsyncGenerator<StreamEvent> {
   const started = Date.now();
-  const t = withTimeout(p.timeoutMs ?? 60000);
+  // The time allowed for the first answer and for each pause in the stream, not for the whole reply.
+  const wait = p.timeoutMs || 60000;
+  const t = withTimeout(wait);
   const abort = () => t.abort();
   if (req.signal?.aborted) t.abort();
   else req.signal?.addEventListener('abort', abort, { once: true });
@@ -158,6 +173,7 @@ export async function* streamChat(
     while (true) {
       const { value, done } = await reader.read();
       if (done) break;
+      t.touch();
       buf += decoder.decode(value, { stream: true });
       let nl: number;
       while ((nl = buf.indexOf('\n')) >= 0) {
@@ -197,6 +213,10 @@ export async function* streamChat(
     const assembled = Object.values(calls);
     if (assembled.length) yield { type: 'tool_calls', calls: assembled };
     yield { type: 'done', tokens, ms: Date.now() - started };
+  } catch (e) {
+    if (req.signal?.aborted) throw stoppedError();
+    if (t.timedOut()) throw new ApiError(408, `Nothing came back for ${Math.round(wait / 1000)} seconds, so AI Hat stopped waiting. The model may still be loading, or the endpoint is busy.`);
+    throw e;
   } finally {
     req.signal?.removeEventListener('abort', abort);
     t.done();

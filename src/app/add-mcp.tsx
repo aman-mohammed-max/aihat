@@ -2,8 +2,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { TextInput, View } from 'react-native';
 
-import { OAuthError } from '@/api/oauth';
-import { Banner, Button, Field, Note, Screen, SectionTitle, Segmented } from '@/components';
+import { OAuthError, probeAuth, redirectUri } from '@/api/oauth';
+import { Banner, Button, Field, LinkRow, Note, Screen, SectionTitle, Segmented, Text } from '@/components';
 import { getApiKey } from '@/lib/keys';
 import { addAndConnect, removeServer } from '@/lib/mcp-connect';
 import { useLibrary, type McpServer } from '@/store/library';
@@ -42,6 +42,9 @@ export default function AddMcp() {
   const [url, setUrl] = useState(existing?.url ?? '');
   const [auth, setAuth] = useState<Auth>(existing?.auth ?? 'none');
   const [token, setToken] = useState('');
+  // Your own app at the service, for services that don't let apps sign themselves up (GitHub, Google, Slack…).
+  const [ownOpen, setOwnOpen] = useState(false);
+  const [own, setOwn] = useState({ clientId: '', secret: '' });
   const [json, setJson] = useState('{\n  "mcpServers": {\n    "name": { "url": "https://…/mcp" }\n  }\n}');
   const [status, setStatus] = useState<{ ok: boolean; text: string } | null>(null);
   const [busy, setBusy] = useState(false);
@@ -61,9 +64,23 @@ export default function AddMcp() {
         n = cfg.name ?? n;
         u = cfg.url;
       }
+      let how: Auth = auth === 'token' && !token ? 'none' : auth;
+      // Many servers only say they need a sign-in when asked: ask first, and sign in with the browser when they allow it.
+      if (how === 'none') {
+        const need = await probeAuth(u.trim());
+        if (need === 'oauth') {
+          how = 'oauth';
+          setAuth('oauth');
+          setStatus({ ok: true, text: 'This server needs a sign-in. Your browser opens now…' });
+        } else if (need === 'token') {
+          setAuth('token');
+          throw new Error('This server needs a sign-in, and it doesn’t let apps sign themselves up. Paste an access token, or choose Browser sign-in and add your own app’s client ID.');
+        }
+      }
       const r = await addAndConnect(
-        { id, name: n.trim() || 'server', url: u.trim(), auth: auth === 'token' && !token ? 'none' : auth, transport: 'http' },
-        auth === 'oauth' ? undefined : auth === 'token' ? token : '',
+        { id, name: n.trim() || 'server', url: u.trim(), auth: how, transport: 'http' },
+        how === 'oauth' ? undefined : how === 'token' ? token : '',
+        how === 'oauth' && ownOpen && own.clientId.trim() ? own : undefined,
       );
       setStatus({ ok: true, text: `Connected · ${r.tools} tools found` });
       setTimeout(() => router.replace({ pathname: '/mcp-detail', params: { id: r.id } }), 600);
@@ -137,7 +154,18 @@ export default function AddMcp() {
         <SectionTitle space={0}>Sign-in</SectionTitle>
         <Segmented<Auth> options={[{ value: 'none', label: 'None' }, { value: 'token', label: 'Access token' }, { value: 'oauth', label: 'Browser sign-in' }]} value={auth} onChange={setAuth} />
         {auth === 'token' && <Field label="Access token" value={token} onChangeText={setToken} secureTextEntry hint={`Sent as “Authorization: Bearer …”. Stored only in ${keyPlace}.`} />}
-        {auth === 'oauth' && <Note>Your browser opens so you can sign in to the service. AI Hat registers itself with the service automatically. Works with servers that allow it (Notion, Linear, Sentry, Vercel, Stripe and many more); others need an access token.</Note>}
+        {auth === 'oauth' && <Note>Your browser opens so you can sign in to the service. AI Hat registers itself with the service automatically where the service allows it (Notion, Linear, Sentry, Vercel, Stripe and many more).</Note>}
+        {auth === 'oauth' && !ownOpen ? <LinkRow label="Use your own app’s client ID" onPress={() => setOwnOpen(true)} /> : null}
+        {auth === 'oauth' && ownOpen ? (
+          <View style={{ gap: 12, paddingTop: 4 }}>
+            <Field label="Client ID" value={own.clientId} onChangeText={(clientId) => setOwn((o) => ({ ...o, clientId }))} mono autoCorrect={false} />
+            <Field label="Client secret, if the app has one" value={own.secret} onChangeText={(secret) => setOwn((o) => ({ ...o, secret }))} secureTextEntry hint={`Stored only in ${keyPlace}.`} />
+            <View style={{ gap: 4, paddingHorizontal: 4 }}>
+              <Text size={12} color="muted">When you create the app at the service, give it this redirect (callback) address:</Text>
+              <Text mono size={12.5} selectable>{redirectUri()}</Text>
+            </View>
+          </View>
+        ) : null}
       </View>
       {status ? status.ok ? <Note color="accent">{status.text}</Note> : <Banner tone="danger">{status.text}</Banner> : null}
     </Screen>

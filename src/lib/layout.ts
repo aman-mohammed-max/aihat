@@ -15,6 +15,15 @@ export function useLayout() {
   return { kind, width, height, wide: kind !== 'phone', panel: width >= 1280 };
 }
 
+/**
+ * Chat text can be selected where it is: on computers, and on Android tablets and Chromebooks, where a mouse drag
+ * selects. Phones use Select text instead, and so do iPhone and iPad, whose text can only be copied whole.
+ */
+export function useSelectableText() {
+  const { wide } = useLayout();
+  return Platform.OS === 'web' || (Platform.OS === 'android' && wide);
+}
+
 export const RAIL = 64;
 export const SIDEBAR = 272;
 /** Chats and pages keep a readable line length on big screens. */

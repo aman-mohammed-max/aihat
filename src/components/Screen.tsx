@@ -1,5 +1,6 @@
 import { usePathname } from 'expo-router';
 import { KeyboardAvoidingView, ScrollView, View, type ViewStyle } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { useKeyboardVisible } from '@/lib/keyboard';
 import { COLUMN, useLayout } from '@/lib/layout';
@@ -48,6 +49,7 @@ export function Screen({ header, children, footer, scroll = true, maxWidth, gap 
   const { wide } = useLayout();
   const pathname = usePathname();
   const column = useColumn(maxWidth);
+  const insets = useSafeAreaInsets();
   const pad = wide ? 24 : 16;
   return (
     <PageShell>
@@ -59,7 +61,8 @@ export function Screen({ header, children, footer, scroll = true, maxWidth, gap 
         ) : (
           <View style={[{ flex: 1, paddingHorizontal: pad, paddingTop: 4, gap }, column]}>{children}</View>
         )}
-        {footer ? <View style={[{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: keyboard ? 12 : 30, flexDirection: 'row', gap: 8 }, column]}>{footer}</View> : null}
+        {/* Above the system's navigation bar or home indicator, which the app draws under. */}
+        {footer ? <View style={[{ paddingHorizontal: 16, paddingTop: 10, paddingBottom: keyboard ? 12 : Math.max(30, insets.bottom + 12), flexDirection: 'row', gap: 8 }, column]}>{footer}</View> : null}
       </KeyboardAvoidingView>
     </PageShell>
   );
