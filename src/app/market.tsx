@@ -7,11 +7,13 @@ import {
   compact, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
 } from '@/lib/market';
+import { LocalModelsTab } from '@/components/LocalModels';
+import { isDesktop } from '@/lib/device';
 import { useLayout, useNavWidth } from '@/lib/layout';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
 
-type Tab = 'skills' | 'mcp';
+type Tab = 'skills' | 'mcp' | 'models';
 type Source = 'popular' | 'skillssh' | 'github';
 
 type Page<T> = { items: T[]; next?: string; total?: number };
@@ -358,13 +360,15 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
 export default function Market() {
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>(params.tab === 'mcp' ? 'mcp' : 'skills');
+  const [tab, setTab] = useState<Tab>(params.tab === 'mcp' ? 'mcp' : params.tab === 'models' && !isDesktop ? 'models' : 'skills');
   // Each tab keeps its own search text.
-  const [qs, setQs] = useState<Record<Tab, string>>({ skills: '', mcp: '' });
+  const [qs, setQs] = useState<Record<'skills' | 'mcp', string>>({ skills: '', mcp: '' });
+  // Models that run on the device: phones and tablets (the desktop app uses endpoints for now).
+  const options: { value: Tab; label: string }[] = [{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP servers' }, ...(isDesktop ? [] : [{ value: 'models' as Tab, label: 'Local models' }])];
   return (
     <Screen header={{ title: 'Marketplace' }} maxWidth={GRID} gap={16}>
-      <Segmented<Tab> options={[{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP servers' }]} value={tab} onChange={setTab} />
-      {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} />}
+      <Segmented<Tab> options={options} value={tab} onChange={setTab} />
+      {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : tab === 'mcp' ? <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} /> : <LocalModelsTab />}
     </Screen>
   );
 }

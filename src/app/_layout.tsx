@@ -26,6 +26,7 @@ import { Toast } from '@/components/Toast';
 import { useChats } from '@/store/chats';
 import { useCommands } from '@/store/commands';
 import { useLibrary } from '@/store/library';
+import { useLocalModels } from '@/store/localModels';
 import { useProviders } from '@/store/providers';
 import { useSettings } from '@/store/settings';
 import { useTheme } from '@/theme';
@@ -47,6 +48,8 @@ export default function RootLayout() {
 
   useEffect(() => {
     Promise.all([useSettings.getState().load(), useProviders.getState().load(), useLibrary.getState().load(), useCommands.getState().load()])
+      // Models downloaded to the phone or tablet (the desktop app has none).
+      .then(() => (isDesktop ? undefined : useLocalModels.getState().load().catch(() => {})))
       .then(() => useChats.getState().housekeeping())
       .then(() => autoBackupIfDue())
       .catch(() => {})

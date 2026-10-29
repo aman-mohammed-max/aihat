@@ -15,6 +15,7 @@ import { ensureNotifyPermission, notifyReply, previewOf } from '@/lib/notify';
 import { cleanTitle, initialTitle, isTrivial, shouldRetitle, titleMessages } from '@/lib/titles';
 import { getDb, json } from '@/db';
 import { now, uid } from '@/lib/id';
+import { isLocalProvider } from '@/lib/local/provider';
 
 import { fileNote, normPath, skillMenu } from '@/lib/skills';
 import { genUiSystemPrompt } from '@/genui/catalog';
@@ -143,7 +144,8 @@ export async function generateTitle(chatId: string): Promise<string | null> {
   const { providers, models } = useProviders.getState();
   const modelId = st.titleModelId ?? chat.modelId;
   const provider = providers.find((p) => p.id === models.find((m) => m.id === modelId)?.providerId) ?? providers.find((p) => p.id === chat.providerId);
-  if (!provider || !modelId) return null;
+  // A model on the device would spend a reply's worth of battery on a title: the first message's words stay the title.
+  if (!provider || !modelId || isLocalProvider(provider)) return null;
   try {
     let out = '';
     for await (const ev of streamChat(provider, {
@@ -689,7 +691,9 @@ export const useChats = create<State>((set, get) => ({
       else if (assistant.content) {
         haptic.success();
         const memoryChat = get().chats.find((item) => item.id === chatId);
-        if (!ctl.signal.aborted && memoryChat) {
+        // The extra memory request would run a second reply on the device; it runs only when it goes to an endpoint.
+        const memoryOnDevice = isLocalProvider(provider) && !useSettings.getState().memoryFallbackRoute.model;
+        if (!ctl.signal.aborted && memoryChat && !memoryOnDevice) {
           void learnFromTurn(memoryChat, userMsg.content, assistant.content, () => get().chats.find((item) => item.id === chatId)?.memoryEnabled === true);
         }
         void maybeRetitle(chatId);

@@ -40,6 +40,7 @@
     "expo-system-ui": "~58.0.6",
     "expo-web-browser": "~58.0.6",
     "fflate": "^0.8.3",
+    "llama.rn": "0.13.0-rc.8",
     "prismjs": "^1.30.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",

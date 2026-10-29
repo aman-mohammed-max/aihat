@@ -2,6 +2,9 @@ import { fetch as expoFetch } from 'expo/fetch';
 
 import { readBytes } from '@/lib/files';
 import { getApiKey } from '@/lib/keys';
+import { streamLocal } from '@/lib/local/engine';
+import { readIndex } from '@/lib/local/files';
+import { isLocalProvider } from '@/lib/local/provider';
 
 export type ProviderConn = {
   id: string;
@@ -83,6 +86,11 @@ async function check(res: Response) {
 
 /** GET {base}/models. Also measures latency, used for the provider status dot. `raw` keeps any metadata the server sends. */
 export async function listModels(p: ProviderConn) {
+  // "On this phone": the models downloaded to the device.
+  if (isLocalProvider(p)) {
+    const list = await readIndex();
+    return { ids: list.map((m) => m.id), raw: list.map((m) => ({ id: m.id, name: m.name })) as Record<string, any>[], latencyMs: 0 };
+  }
   const t = withTimeout(p.timeoutMs ?? 15000);
   const started = Date.now();
   try {
@@ -121,6 +129,10 @@ export async function* streamChat(
   p: ProviderConn,
   req: { model: string; messages: ChatMessage[]; tools?: ToolDef[]; params?: Params; signal?: AbortSignal },
 ): AsyncGenerator<StreamEvent> {
+  if (isLocalProvider(p)) {
+    yield* streamLocal(req.model, req.messages, req.params, req.signal);
+    return;
+  }
   const started = Date.now();
   // The time allowed for the first answer and for each pause in the stream, not for the whole reply.
   const wait = p.timeoutMs || 60000;

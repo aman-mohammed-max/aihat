@@ -2,6 +2,7 @@ import { create } from 'zustand';
 
 import { listModels, type Params } from '@/api/openai';
 import { getDb, json } from '@/db';
+import { isLocalProvider } from '@/lib/local/provider';
 import { classifyModel, type ModelKind } from '@/lib/models';
 import { uid } from '@/lib/id';
 import { deleteApiKey, setApiKey } from '@/lib/keys';
@@ -123,7 +124,10 @@ export const useProviders = create<State>((set, get) => ({
         seen.add(mid);
         const kind = classifyModel(rec);
         const lower = mid.toLowerCase();
-        const guess: Caps = { kind, embeddings: kind === 'embedding', vision: /vl|vision|llava|4o|gemini|claude|pixtral/.test(lower), tools: kind === 'chat' };
+        // Models on the device read text only and don't use tools.
+        const guess: Caps = isLocalProvider(p)
+          ? { kind: 'chat', tools: false, vision: false }
+          : { kind, embeddings: kind === 'embedding', vision: /vl|vision|llava|4o|gemini|claude|pixtral/.test(lower), tools: kind === 'chat' };
         const prev = existing.get(mid);
         if (prev) {
           // A kind the user chose by hand wins over detection; everything else is refreshed.

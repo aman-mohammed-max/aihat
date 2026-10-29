@@ -61,6 +61,7 @@ const paths: Record<string, string[]> = {
   stack: [],
   slashes: ['M9 4L5 20M19 4l-4 16'],
   cloud: ['M7 18a5 5 0 01-.6-10A6 6 0 0118 9a4.5 4.5 0 01-.5 9z'],
+  chip: ['M9 9h6v6H9z', 'M7 5h10a2 2 0 012 2v10a2 2 0 01-2 2H7a2 2 0 01-2-2V7a2 2 0 012-2z', 'M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3'],
   more: [],
 };
 

@@ -1,0 +1,163 @@
+import type { LlamaContext } from 'llama.rn';
+import { AppState, Platform, TurboModuleRegistry } from 'react-native';
+
+import type { ChatMessage, Params, StreamEvent } from '@/api/openai';
+
+import { modelFileOf } from './files';
+
+/**
+ * Runs downloaded GGUF models on the device with llama.rn (llama.cpp). Its native part is in the AI Hat app from the
+ * Releases page, not in Expo Go: there the engine reports itself unavailable instead of failing.
+ */
+type Llama = typeof import('llama.rn');
+let lib: Llama | null | undefined;
+
+function llama(): Llama | null {
+  if (lib !== undefined) return lib;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    lib = TurboModuleRegistry.get('RNLlama') ? (require('llama.rn') as Llama) : null;
+  } catch {
+    lib = null;
+  }
+  return lib;
+}
+
+export const localEngineAvailable = () => llama() !== null;
+
+export const UNAVAILABLE = 'Models on this device need the AI Hat app from the Releases page; Expo Go can’t run them.';
+
+// One model is kept loaded (loading takes a few seconds), and one reply runs at a time.
+let loaded: { id: string; ctx: LlamaContext } | null = null;
+let chain: Promise<unknown> = Promise.resolve();
+const serial = <T,>(job: () => Promise<T>): Promise<T> => {
+  const run = chain.then(job, job);
+  chain = run.catch(() => undefined);
+  return run;
+};
+
+let watching = false;
+/** A loaded model holds a lot of memory: let it go when the app goes to the background, so the system doesn't close the app. */
+function releaseInBackground() {
+  if (watching) return;
+  watching = true;
+  AppState.addEventListener('change', (s) => {
+    if (s === 'background') void serial(unloadNow);
+  });
+}
+
+async function unloadNow() {
+  const old = loaded;
+  loaded = null;
+  await old?.ctx.release().catch(() => {});
+}
+
+/** Free the model's memory now (when it is deleted, or another one is about to load). */
+export const unloadModel = () => serial(unloadNow);
+
+async function contextFor(id: string) {
+  if (loaded?.id === id) return loaded.ctx;
+  const l = llama();
+  if (!l) throw new Error(UNAVAILABLE);
+  const file = modelFileOf(id);
+  if (!file.exists) throw new Error('This model is no longer on the device. Download it again in Marketplace › Local models.');
+  await unloadNow();
+  releaseInBackground();
+  const ctx = await l.initLlama({
+    model: file.uri,
+    n_ctx: 4096,
+    // iPhone and iPad run the model on the GPU (Metal); Android stays on the CPU, which works on every phone.
+    n_gpu_layers: Platform.OS === 'ios' ? 99 : 0,
+    use_mlock: false,
+    use_mmap: true,
+  });
+  loaded = { id, ctx };
+  return ctx;
+}
+
+/** The chat as plain text messages: pictures can't be read by these models, and tool rounds become ordinary text. */
+function plain(messages: ChatMessage[]) {
+  const out: { role: 'system' | 'user' | 'assistant'; content: string }[] = [];
+  for (const m of messages) {
+    const text = typeof m.content === 'string' ? m.content : (m.content ?? []).map((p) => (p.type === 'text' ? p.text : '')).join('\n');
+    if (m.role === 'tool') out.push({ role: 'user', content: `Tool result:\n${text}` });
+    else if (text.trim()) out.push({ role: m.role, content: text });
+  }
+  return out;
+}
+
+const STOP = ['</s>', '<|end|>', '<|eot_id|>', '<|end_of_text|>', '<|im_end|>', '<|EOT|>', '<|END_OF_TURN_TOKEN|>', '<|end_of_turn|>', '<|endoftext|>', '<end_of_turn>'];
+
+/** A reply from a model on the device, streamed the same way as one from an endpoint. */
+export async function* streamLocal(modelId: string, messages: ChatMessage[], params: Params = {}, signal?: AbortSignal): AsyncGenerator<StreamEvent> {
+  const started = Date.now();
+  const pieces: string[] = [];
+  let done = false;
+  let failure: unknown = null;
+  let result: { tokens_predicted?: number; interrupted?: boolean } | null = null;
+  let wake: (() => void) | null = null;
+  const ping = () => {
+    const w = wake;
+    wake = null;
+    w?.();
+  };
+
+  let ctxRef: LlamaContext | null = null;
+  const stop = () => void ctxRef?.stopCompletion().catch(() => {});
+  if (signal?.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
+  signal?.addEventListener('abort', stop, { once: true });
+
+  serial(async () => {
+    const ctx = await contextFor(modelId);
+    ctxRef = ctx;
+    if (signal?.aborted) return null;
+    return ctx.completion(
+      {
+        messages: plain(messages),
+        jinja: true,
+        // The reply keeps its <think>…</think> part, which the chat shows as thinking.
+        reasoning_format: 'none',
+        n_predict: params.maxTokens ?? 2048,
+        temperature: params.temperature ?? 0.7,
+        top_p: params.topP ?? 0.95,
+        stop: STOP,
+      },
+      (data) => {
+        if (data.token) {
+          pieces.push(data.token);
+          ping();
+        }
+      },
+    );
+  }).then(
+    (r) => {
+      result = r;
+      done = true;
+      ping();
+    },
+    (e) => {
+      failure = e;
+      done = true;
+      ping();
+    },
+  );
+
+  try {
+    while (true) {
+      if (pieces.length) {
+        yield { type: 'delta', text: pieces.splice(0).join('') };
+        continue;
+      }
+      if (done) break;
+      await new Promise<void>((resolve) => {
+        wake = resolve;
+        if (pieces.length || done) ping();
+      });
+    }
+    if (failure) throw failure;
+    if (signal?.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
+    yield { type: 'done', tokens: (result as { tokens_predicted?: number } | null)?.tokens_predicted, ms: Date.now() - started };
+  } finally {
+    signal?.removeEventListener('abort', stop);
+  }
+}

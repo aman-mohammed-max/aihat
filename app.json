@@ -87,6 +87,12 @@
         }
       ],
       [
+        "llama.rn",
+        {
+          "enableEntitlements": false
+        }
+      ],
+      [
         "expo-build-properties",
         {
           "android": {

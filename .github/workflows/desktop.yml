@@ -14,6 +14,10 @@ on:
         type: string
         default: ''
 
+# The on-device model engine's native libraries (llama.rn) are only needed by the phone builds.
+env:
+  RNLLAMA_SKIP_POSTINSTALL: '1'
+
 jobs:
   desktop:
     name: ${{ matrix.name }}
