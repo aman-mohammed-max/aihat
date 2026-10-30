@@ -97,9 +97,8 @@ jobs:
           xcodebuild build \
             -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Debug \
             -destination 'generic/platform=iOS Simulator' \
-            -arch arm64 ONLY_ACTIVE_ARCH=YES \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
-            CODE_SIGNING_ALLOWED=NO
+            CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES
       - uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-app
