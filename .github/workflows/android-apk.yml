@@ -59,7 +59,7 @@ jobs:
           packages: 'platform-tools ndk;27.1.12297006'
 
       - name: Install Android 17 preview SDK required by Expo SDK 58
-        run: sdkmanager --channel=3 --install 'platforms;android-37' 'build-tools;37.0.0'
+        run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
 
       - name: Install dependencies
         run: npm ci

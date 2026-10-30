@@ -51,7 +51,7 @@ jobs:
           accept-android-sdk-licenses: true
           packages: 'platform-tools ndk;27.1.12297006'
       - name: Install Android 17 preview SDK required by Expo SDK 58
-        run: sdkmanager --channel=3 --install 'platforms;android-37' 'build-tools;37.0.0'
+        run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
       - run: npm ci
       - name: Verify llama.rn Android native artifacts
         run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
