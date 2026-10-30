@@ -7,7 +7,7 @@ import {
   compact, FEATURED_MCP, parseGithubRef, parseSiteRef, pluginSkills, rememberMcp, rememberSkill, repoSkills, searchMcp, siteSkills, siteSourceLabel, skillSourceLabel, skillsShSearch, SKILL_SITES, SKILL_SOURCES,
   type McpListing, type SkillListing,
 } from '@/lib/market';
-import { LocalModelsTab } from '@/components/LocalModels';
+import { FilterChip, ModelsTab, Pill } from '@/components/LocalModels';
 import { isDesktop } from '@/lib/device';
 import { useLayout, useNavWidth } from '@/lib/layout';
 import { useLibrary } from '@/store/library';
@@ -70,7 +70,7 @@ function Tile({ name }: { name: string }) {
   const pick = TILE[[...name].reduce((a, c) => a + c.charCodeAt(0), 0) % TILE.length];
   const tint = pick === 'accent' || !isDark ? colors.accentSoft : pick;
   return (
-    <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
+    <View style={{ width: 44, height: 44, borderRadius: 12, backgroundColor: tint, alignItems: 'center', justifyContent: 'center' }}>
       <Text weight="semi" size={16} style={{ color: colors.text }}>{(name.trim()[0] ?? '?').toUpperCase()}</Text>
     </View>
   );
@@ -93,10 +93,14 @@ function useCardWidth() {
 function Results({ children }: { children: React.ReactNode }) {
   const card = useCardWidth();
   const { colors } = useTheme();
-  return card ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View> : <View style={{ backgroundColor: colors.surface, borderRadius: 16, overflow: 'hidden' }}>{children}</View>;
+  return card ? <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>{children}</View> : <View style={{ borderTopWidth: 1, borderTopColor: colors.hairline }}>{children}</View>;
 }
 
-function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: string; meta?: string; badge?: string; onPress: () => void; last?: boolean }) {
+/**
+ * One listing. `added` shows the design's Add / Added button (adding happens on the listing's page, after you read it);
+ * rows that only lead somewhere (a source to browse) show a chevron.
+ */
+function Row({ title, sub, meta, added, onPress, last }: { title: string; sub?: string; meta?: string; added?: boolean; onPress: () => void; last?: boolean }) {
   const { colors } = useTheme();
   const card = useCardWidth();
   if (card) {
@@ -109,11 +113,7 @@ function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: 
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <Tile name={title} />
           <Text weight="semi" size={15} numberOfLines={1} style={{ flex: 1 }}>{title}</Text>
-          {badge ? (
-            <View style={{ height: 22, borderRadius: 6, paddingHorizontal: 7, justifyContent: 'center', backgroundColor: colors.accentSoft }}>
-              <Text size={11} color="accent" weight="semi">{badge}</Text>
-            </View>
-          ) : null}
+          {added === undefined ? null : <Pill label={added ? 'Added' : 'Add'} tone={added ? 'muted' : 'accent'} onPress={onPress} />}
         </View>
         <Text size={13} color="text2" numberOfLines={3} style={{ flex: 1, lineHeight: 19 }}>{sub ?? ''}</Text>
         {meta ? <Text size={11.5} color="faint" numberOfLines={1}>{meta}</Text> : null}
@@ -125,20 +125,27 @@ function Row({ title, sub, meta, badge, onPress, last }: { title: string; sub?: 
       accessibilityRole="button"
       accessibilityLabel={`${title}. ${sub ?? ''} ${meta ?? ''}`}
       onPress={onPress}
-      style={({ pressed }) => ({ minHeight: 72, paddingHorizontal: 14, paddingVertical: 10, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairline })}>
+      style={({ pressed }) => ({ minHeight: 72, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 12, opacity: pressed ? 0.7 : 1, borderBottomWidth: last ? 0 : 1, borderBottomColor: colors.hairline })}>
       <Tile name={title} />
-      <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+      <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
         <Text size={15} weight="medium" numberOfLines={1}>{title}</Text>
         {sub ? <Text size={12.5} color="muted" numberOfLines={2} style={{ lineHeight: 17 }}>{sub}</Text> : null}
         {meta ? <Text size={11.5} color="faint" numberOfLines={1}>{meta}</Text> : null}
       </View>
-      {badge ? (
-        <View style={{ height: 24, borderRadius: 12, paddingHorizontal: 9, justifyContent: 'center', backgroundColor: colors.accentSoft }}>
-          <Text size={11.5} color="accent" weight="medium">{badge}</Text>
-        </View>
-      ) : (
-        <Icon name="chevronRight" size={16} color={colors.faint} strokeWidth={2} />
-      )}
+      {added === undefined ? <Icon name="chevronRight" size={16} color={colors.faint} strokeWidth={2} /> : <Pill label={added ? 'Added' : 'Add'} tone={added ? 'muted' : 'accent'} onPress={onPress} />}
+    </Pressable>
+  );
+}
+
+/** The design's featured card at the top of a tab. */
+function FeaturedCard({ kicker, name, desc, meta, onPress }: { kicker: string; name: string; desc: string; meta: string; onPress: () => void }) {
+  const { colors } = useTheme();
+  return (
+    <Pressable accessibilityRole="button" accessibilityLabel={`${kicker}: ${name}. ${desc}`} onPress={onPress} style={(s) => ({ gap: 8, padding: 16, borderRadius: 18, backgroundColor: colors.accentSoft, borderWidth: 1, borderColor: (s as { hovered?: boolean }).hovered ? colors.accent : colors.border })}>
+      <Text size={11.5} weight="semi" color="accent" style={{ letterSpacing: 0.7, textTransform: 'uppercase' }}>{kicker}</Text>
+      <Text size={19} weight="semi">{name}</Text>
+      <Text size={13.5} color="text2" style={{ lineHeight: 20 }}>{desc}</Text>
+      <Text size={12} color="muted">{meta}</Text>
     </Pressable>
   );
 }
@@ -207,7 +214,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
       <SearchBar value={q} onChangeText={setQ} placeholder={placeholder} keyboardType={src === 'github' ? 'url' : 'default'} onSubmit={() => setApplied(q.trim())} />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0 }}>
         {sources.map((s) => (
-          <Chip key={s.id} label={s.label} selected={src === s.id} onPress={() => { setSrc(s.id); setQ(''); setApplied(''); }} />
+          <FilterChip key={s.id} label={s.label} on={src === s.id} onPress={() => { setSrc(s.id); setQ(''); setApplied(''); }} />
         ))}
       </ScrollView>
       <Text size={12.5} color="muted" style={{ paddingHorizontal: 4, lineHeight: 19 }}>
@@ -258,7 +265,7 @@ function SkillsTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
                   title={l.name}
                   sub={l.description}
                   meta={meta(l)}
-                  badge={isAdded(l) ? 'Added' : undefined}
+                  added={isAdded(l)}
                   last={i === list.items.length - 1}
                   onPress={() => open(l)}
                 />
@@ -315,12 +322,13 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         Servers that run online, from the official MCP registry. Anyone can publish to the registry, so add only ones you trust. Actions that change things ask you first.
       </Text>
 
-      {featured.length > 0 && (
+      {!applied && featured[0] ? <FeaturedCard kicker="Featured server" name={featured[0].title} desc={featured[0].description} meta={`${featured[0].publisher} · ${isAdded(featured[0]) ? 'added' : 'no sign-in needed'}`} onPress={() => open(featured[0])} /> : null}
+      {featured.length > (applied ? 0 : 1) && (
         <View>
           <SectionTitle space={8}>Good to start with</SectionTitle>
           <Results>
-            {featured.map((l, i) => (
-              <Row key={l.id} title={l.title} sub={l.description} meta={(l as (typeof FEATURED_MCP)[number]).category} badge={isAdded(l) ? 'Added' : undefined} last={i === featured.length - 1} onPress={() => open(l)} />
+            {featured.slice(applied ? 0 : 1).map((l, i, all) => (
+              <Row key={l.id} title={l.title} sub={l.description} meta={(l as (typeof FEATURED_MCP)[number]).category} added={isAdded(l)} last={i === all.length - 1} onPress={() => open(l)} />
             ))}
           </Results>
         </View>
@@ -331,7 +339,7 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
         {list.items.length > 0 && (
           <Results>
             {list.items.map((l, i) => (
-              <Row key={l.id} title={l.title} sub={l.description} meta={l.publisher} badge={isAdded(l) ? 'Added' : undefined} last={i === list.items.length - 1} onPress={() => open(l)} />
+              <Row key={l.id} title={l.title} sub={l.description} meta={l.publisher} added={isAdded(l)} last={i === list.items.length - 1} onPress={() => open(l)} />
             ))}
           </Results>
         )}
@@ -364,11 +372,11 @@ export default function Market() {
   // Each tab keeps its own search text.
   const [qs, setQs] = useState<Record<'skills' | 'mcp', string>>({ skills: '', mcp: '' });
   // Models that run on the device: phones and tablets (the desktop app uses endpoints for now).
-  const options: { value: Tab; label: string }[] = [{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP servers' }, ...(isDesktop ? [] : [{ value: 'models' as Tab, label: 'Local models' }])];
+  const options: { value: Tab; label: string }[] = [{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP' }, ...(isDesktop ? [] : [{ value: 'models' as Tab, label: 'Models' }])];
   return (
-    <Screen header={{ title: 'Marketplace' }} maxWidth={GRID} gap={16}>
+    <Screen header={isDesktop ? { title: 'Marketplace' } : { title: 'Marketplace', right: 'text', rightText: 'Installed', onRightText: () => router.push('/device-models') }} maxWidth={GRID} gap={16}>
       <Segmented<Tab> options={options} value={tab} onChange={setTab} />
-      {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : tab === 'mcp' ? <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} /> : <LocalModelsTab />}
+      {tab === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : tab === 'mcp' ? <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} /> : <ModelsTab />}
     </Screen>
   );
 }

@@ -34,3 +34,15 @@ export function fitLabel(f: Fit, size: number) {
   if (f === 'no') return `Too big for this ${name}: needs about ${gb(needs(size))} of memory`;
   return 'Couldn’t check this device’s memory';
 }
+
+/**
+ * The biggest model, in billions of parameters at the usual 4-bit size (about 0.62 GB per billion), that runs well
+ * here, and the biggest that fits at all ("up to about 4B, or 8B slowly").
+ */
+export function capacity(memory = thisDevice().memory) {
+  if (!memory) return null;
+  const budget = memory * (Platform.OS === 'ios' ? 0.5 : 0.55);
+  const sizes = [0.5, 1, 2, 3, 4, 7, 8, 12, 14, 27, 32];
+  const largest = (limit: number) => sizes.filter((b) => needs(b * 0.62e9) <= limit).pop() ?? 0;
+  return { good: largest(budget * 0.6), ok: largest(budget) };
+}

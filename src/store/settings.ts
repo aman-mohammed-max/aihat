@@ -32,6 +32,9 @@ export type Settings = {
   autoTitle: boolean;
   titleModelId: string | null;
   sendWithEnter: boolean;
+  /** Models on the device: run on the GPU (iPhone and iPad), and let the model go after 5 minutes without a reply. */
+  localGpu: boolean;
+  localUnloadIdle: boolean;
   showStats: boolean;
   showReasoning: boolean;
   /** Use saved personal context in chats with any configured provider. */
@@ -128,6 +131,8 @@ export const DEFAULT_SETTINGS: Settings = {
   autoTitle: true,
   titleModelId: null,
   sendWithEnter: false,
+  localGpu: true,
+  localUnloadIdle: true,
   showStats: true,
   showReasoning: true,
   memoryEnabled: true,

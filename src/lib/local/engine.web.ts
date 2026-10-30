@@ -7,6 +7,8 @@ export const UNAVAILABLE = 'Models on the device aren’t available in the deskt
 
 export const unloadModel = async () => {};
 
+export const loadedModel = (): string | null => null;
+
 export async function* streamLocal(_modelId: string, _messages: ChatMessage[], _params?: Params, _signal?: AbortSignal): AsyncGenerator<StreamEvent> {
   throw new Error(UNAVAILABLE);
 }

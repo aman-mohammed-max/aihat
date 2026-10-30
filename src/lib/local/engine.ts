@@ -2,6 +2,7 @@ import type { LlamaContext } from 'llama.rn';
 import { AppState, Platform, TurboModuleRegistry } from 'react-native';
 
 import type { ChatMessage, Params, StreamEvent } from '@/api/openai';
+import { useSettings } from '@/store/settings';
 
 import { modelFileOf } from './files';
 
@@ -55,6 +56,16 @@ async function unloadNow() {
 /** Free the model's memory now (when it is deleted, or another one is about to load). */
 export const unloadModel = () => serial(unloadNow);
 
+/** The model the engine has in memory, if any. */
+export const loadedModel = () => loaded?.id ?? null;
+
+let idle: ReturnType<typeof setTimeout> | null = null;
+/** "Free memory when idle": five minutes after the last reply, the model is let go (the next reply loads it again). */
+function unloadLater() {
+  if (idle) clearTimeout(idle);
+  idle = useSettings.getState().localUnloadIdle ? setTimeout(() => void serial(unloadNow), 5 * 60_000) : null;
+}
+
 async function contextFor(id: string) {
   if (loaded?.id === id) return loaded.ctx;
   const l = llama();
@@ -66,8 +77,9 @@ async function contextFor(id: string) {
   const ctx = await l.initLlama({
     model: file.uri,
     n_ctx: 4096,
-    // iPhone and iPad run the model on the GPU (Metal); Android stays on the CPU, which works on every phone.
-    n_gpu_layers: Platform.OS === 'ios' ? 99 : 0,
+    // iPhone and iPad run the model on the GPU (Metal) unless it is turned off; Android stays on the CPU, which works on
+    // every phone.
+    n_gpu_layers: Platform.OS === 'ios' && useSettings.getState().localGpu ? 99 : 0,
     use_mlock: false,
     use_mmap: true,
   });
@@ -107,6 +119,7 @@ export async function* streamLocal(modelId: string, messages: ChatMessage[], par
   if (signal?.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
   signal?.addEventListener('abort', stop, { once: true });
 
+  if (idle) clearTimeout(idle);
   serial(async () => {
     const ctx = await contextFor(modelId);
     ctxRef = ctx;
@@ -159,5 +172,6 @@ export async function* streamLocal(modelId: string, messages: ChatMessage[], par
     yield { type: 'done', tokens: (result as { tokens_predicted?: number } | null)?.tokens_predicted, ms: Date.now() - started };
   } finally {
     signal?.removeEventListener('abort', stop);
+    unloadLater();
   }
 }

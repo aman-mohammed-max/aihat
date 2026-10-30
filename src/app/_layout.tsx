@@ -15,6 +15,7 @@ import { AlertHost } from '@/components/AlertHost';
 import { ContextMenuHost } from '@/components/ContextMenu';
 import { PrivacyShield } from '@/components/PrivacyShield';
 import { autoBackupIfDue } from '@/lib/backup';
+import { reportLastCrash } from '@/lib/crashlog';
 import { updateSkillsIfDue } from '@/lib/skill-updates';
 import { SkillRuntimeHost } from '@/skill-exec/runtime';
 import { isDesktop } from '@/lib/device';
@@ -62,7 +63,9 @@ export default function RootLayout() {
   const ready = (fontsLoaded || fontError) && dataReady;
   useEffect(() => (ready ? initNotifications() : undefined), [ready]);
   useEffect(() => {
-    if (ready) SplashScreen.hideAsync();
+    if (!ready) return;
+    SplashScreen.hideAsync();
+    reportLastCrash();
   }, [ready]);
   if (!ready) return null;
 
@@ -97,6 +100,8 @@ export default function RootLayout() {
             <Stack.Screen name="images" />
             <Stack.Screen name="market" />
             <Stack.Screen name="market-mcp" />
+            <Stack.Screen name="market-model" />
+            <Stack.Screen name="device-models" />
             <Stack.Screen name="market-skill" />
             <Stack.Screen name="memory" />
             <Stack.Screen name="oauth/mcp" />

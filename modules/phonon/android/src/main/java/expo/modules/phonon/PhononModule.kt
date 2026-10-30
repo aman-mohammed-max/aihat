@@ -1,5 +1,6 @@
 package expo.modules.phonon
 
+import android.app.ActivityManager
 import android.media.MediaCodec
 import android.media.MediaExtractor
 import android.media.MediaFormat
@@ -46,6 +47,9 @@ class PhononException(message: String) : CodedException(message)
  * Phonon-2 speech recognition on the device (English). The model download is unpacked here, built once into the
  * engine, and kept until the app lets it go.
  */
+private const val MIN_TOTAL = 3L shl 30
+private const val MIN_FREE = 1L shl 30
+
 class PhononModule : Module() {
   private var handle = 0L
   private var vocab: Array<String> = emptyArray()
@@ -55,7 +59,7 @@ class PhononModule : Module() {
     Name("Phonon")
 
     Function("isSupported") {
-      Build.VERSION.SDK_INT >= 26 && Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a") && PhononNative.loaded
+      Build.VERSION.SDK_INT >= 26 && Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a") && PhononNative.loaded && memory().totalMem >= MIN_TOTAL
     }
 
     AsyncFunction("prepare") Coroutine { archive: String, dir: String ->
@@ -73,6 +77,10 @@ class PhononModule : Module() {
     Function("unload") { release() }
 
     OnDestroy { release() }
+  }
+
+  private fun memory() = ActivityManager.MemoryInfo().also { info ->
+    appContext.reactContext?.getSystemService(ActivityManager::class.java)?.getMemoryInfo(info)
   }
 
   private fun path(uri: String): String = if (uri.startsWith("file://")) Uri.parse(uri).path ?: uri else uri
@@ -165,6 +173,11 @@ class PhononModule : Module() {
   private fun loadModel(dir: File) = synchronized(lock) {
     if (handle != 0L) return@synchronized
     if (!PhononNative.loaded) throw PhononException("Phonon-2 isn't part of this build of the app.")
+    // The engine holds about 0.7 GB once built and ends the whole app if an allocation fails, so it only starts with
+    // room to spare.
+    val mem = memory()
+    if (mem.totalMem in 1 until MIN_TOTAL) throw PhononException("Phonon-2 needs a phone or tablet with at least 3 GB of memory.")
+    if (mem.availMem in 1 until MIN_FREE) throw PhononException("Not enough free memory to start Phonon-2 (it needs about 1 GB). Close some other apps and try again.")
     val config = JSONObject(File(dir, "config.json").readText())
     val words = config.optJSONObject("joint")?.optJSONArray("vocabulary") ?: config.getJSONArray("labels")
     vocab = Array(words.length()) { words.getString(it) }
