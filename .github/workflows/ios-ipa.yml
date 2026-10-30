@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   ipa:
-    runs-on: macos-latest
+    runs-on: macos-26
     timeout-minutes: 90
     env:
       IOS_CERT_P12_BASE64: ${{ secrets.IOS_CERT_P12_BASE64 }}

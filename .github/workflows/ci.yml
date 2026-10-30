@@ -49,7 +49,9 @@ jobs:
       - uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-          packages: 'platform-tools platforms;android-37 build-tools;37.0.0 ndk;27.1.12297006'
+          packages: 'platform-tools ndk;27.1.12297006'
+      - name: Install Android 17 preview SDK required by Expo SDK 58
+        run: sdkmanager --channel=3 --install 'platforms;android-37' 'build-tools;37.0.0'
       - run: npm ci
       - name: Verify llama.rn Android native artifacts
         run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
@@ -73,7 +75,7 @@ jobs:
 
   ios-simulator-build:
     name: iOS simulator build
-    runs-on: macos-15
+    runs-on: macos-26
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -122,6 +124,7 @@ jobs:
       - run: npm run test:local-stream
       - run: npm run test:local-runtime
       - run: npm run test:local-models
+      - run: npm run test:phonon-download
       - run: npm run test:marketplace
       - run: npm run docs:check
 

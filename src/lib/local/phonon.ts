@@ -1,9 +1,10 @@
-import { Directory, File, Paths, type DownloadTask } from 'expo-file-system';
+import { Directory, DownloadTask, File, Paths, type DownloadPauseState, type DownloadTask as DownloadTaskType } from 'expo-file-system';
 import { AppState, Platform } from 'react-native';
 import { create } from 'zustand';
 
 import { PhononNative } from '../../../modules/phonon';
-import { validateDownloadedPart } from './download-core.mjs';
+import { finishDownloadTask, recoverAtomicFile, validateDownloadedPart, writeAtomicFile } from './download-core.mjs';
+import { createPhononResumeRecord, parsePhononResumeRecord, phononTransferProgress } from './phonon-download-core.mjs';
 
 /**
  * Phonon-2 by Fermion Research: English speech recognition that runs on the phone (CC-BY-4.0 weights, from NVIDIA's
@@ -36,6 +37,65 @@ const root = () => new Directory(Paths.document, 'phonon');
 /** The folder the engine reads: the Core ML package (iOS), or the unpacked model.fermion and config.json (Android). */
 const modelDir = () => new Directory(root(), REPO);
 const partFile = (p: Part) => new File(Platform.OS === 'ios' ? modelDir() : root(), ...p.path.split('/'));
+const resumeFile = () => new File(root(), 'download-state.json');
+const resumeBackup = () => new File(root(), 'download-state.json.previous');
+const resumeNext = () => new File(root(), 'download-state.json.next');
+const resumeLimit = 1_048_576;
+
+function resumeFileOps() {
+  const paths = PARTS.map((part) => part.path);
+  return {
+    exists: (uri: string) => new File(uri).exists,
+    isValid: async (uri: string) => {
+      try {
+        const file = new File(uri);
+        if ((file.size ?? Number.POSITIVE_INFINITY) > resumeLimit) return false;
+        return parsePhononResumeRecord(JSON.parse(await file.text()), paths) !== null;
+      } catch {
+        return false;
+      }
+    },
+    move: async (from: string, to: string) => new File(from).move(new File(to)),
+    remove: (uri: string) => {
+      const file = new File(uri);
+      if (file.exists) file.delete();
+    },
+  };
+}
+
+async function readPausedPhononTask() {
+  const file = resumeFile();
+  await recoverAtomicFile({ target: file.uri, backup: resumeBackup().uri, next: resumeNext().uri, ...resumeFileOps() });
+  if (!file.exists || (file.size ?? Number.POSITIVE_INFINITY) > resumeLimit) return null;
+  try {
+    return parsePhononResumeRecord(JSON.parse(await file.text()), PARTS.map((part) => part.path));
+  } catch {
+    return null;
+  }
+}
+
+async function savePausedPhononTask(path: string, state: DownloadPauseState) {
+  const record = createPhononResumeRecord(path, state, PARTS.map((part) => part.path));
+  const content = JSON.stringify(record);
+  if (content.length > resumeLimit) throw new Error('The paused speech-model download state is too large to save safely. Retry the download.');
+  const file = resumeFile();
+  const ops = resumeFileOps();
+  await recoverAtomicFile({ target: file.uri, backup: resumeBackup().uri, next: resumeNext().uri, ...ops });
+  await writeAtomicFile({
+    target: file.uri,
+    backup: resumeBackup().uri,
+    next: resumeNext().uri,
+    content,
+    write: async (uri, value) => new File(uri).write(value),
+    ...ops,
+  });
+}
+
+async function clearPausedPhononTask() {
+  for (const file of [resumeFile(), resumeBackup(), resumeNext()]) {
+    if (file.exists) file.delete();
+  }
+}
 
 export const phononSupported = () => {
   try {
@@ -98,12 +158,48 @@ type State = {
   remove: () => void;
 };
 
-let task: DownloadTask | null = null;
+let task: DownloadTaskType | null = null;
+let taskPath: string | null = null;
 let cancelled = false;
 let preserveArchiveOnCancel = false;
 let loaded = false;
+let refreshPromise: Promise<void> | null = null;
 
 export const usePhonon = create<State>((set, get) => {
+  function taskOptions(path: string) {
+    const index = PARTS.findIndex((part) => part.path === path);
+    const base = PARTS.slice(0, Math.max(index, 0)).reduce((total, part) => total + part.size, 0);
+    return {
+      sessionType: 'background' as const,
+      deferBackgroundSessionCompletion: Platform.OS === 'ios',
+      onProgress: ({ bytesWritten }: { bytesWritten: number }) => set({ written: base + bytesWritten }),
+    };
+  }
+
+  async function restorePausedTask() {
+    const saved = await readPausedPhononTask();
+    if (!saved) return false;
+    try {
+      const restored = DownloadTask.fromSavable(saved.state as DownloadPauseState, taskOptions(saved.path));
+      if (restored.state !== 'paused') {
+        restored.release();
+        await clearPausedPhononTask();
+        return false;
+      }
+      task = restored;
+      taskPath = saved.path;
+      const sizes = Object.fromEntries(PARTS.map((part) => [part.path, partFile(part).size ?? 0]));
+      set({ phase: 'paused', written: phononTransferProgress(PARTS, sizes), error: '' });
+      return true;
+    } catch {
+      task?.release();
+      task = null;
+      taskPath = null;
+      await clearPausedPhononTask();
+      return false;
+    }
+  }
+
   /** Download the parts one after another; the bytes of finished parts count towards the progress. */
   async function fetchParts(resume: boolean) {
     let done = 0;
@@ -124,42 +220,48 @@ export const usePhonon = create<State>((set, get) => {
           done += p.size;
           continue;
         }
-        const resumablePartial = resume && task?.state === 'paused' && target.size < p.size;
-        if (!resumablePartial) {
-          if (resume && task) {
-            try {
-              task.cancel();
-            } catch {
-              /* the old task may already be finished */
-            }
-            task.release();
-            task = null;
-            resume = false;
-          }
-          target.delete();
+      }
+      const resumablePartial = resume && task?.state === 'paused' && taskPath === p.path && target.exists && (target.size ?? 0) < p.size;
+      if (resume && task && !resumablePartial) {
+        try {
+          task.cancel();
+        } catch {
+          /* the old task may already be finished */
         }
+        task.release();
+        task = null;
+        taskPath = null;
+        resume = false;
+        await clearPausedPhononTask();
       }
+      if (target.exists && !resumablePartial) target.delete();
       target.parentDirectory.create({ intermediates: true, idempotent: true });
-      const base = done;
       if (!resume || !task) {
-        task = File.createDownloadTask(`${HF}/${REPO}/resolve/${REVISION}/${p.path}?download=true`, target, {
-          onProgress: ({ bytesWritten }) => set({ written: base + bytesWritten }),
-        });
+        task = File.createDownloadTask(`${HF}/${REPO}/resolve/${REVISION}/${p.path}?download=true`, target, taskOptions(p.path));
+        taskPath = p.path;
       }
-      const got = await (resume && task.state === 'paused' ? task.resumeAsync() : task.downloadAsync());
+      const activeTask = task;
+      const got = await (resume && activeTask.state === 'paused' ? activeTask.resumeAsync() : activeTask.downloadAsync());
       resume = false;
       if (!got) return false; // paused
-      task.release();
-      task = null;
       try {
         validateDownloadedPart({ size: target.size, expectedSize: p.size, sha256: await target.digest('SHA-256'), expectedSha256: p.sha256 });
       } catch (error) {
         target.delete();
         throw error;
+      } finally {
+        task = null;
+        taskPath = null;
+        await finishDownloadTask(activeTask, Platform.OS);
+        await clearPausedPhononTask();
       }
       done += p.size;
       set({ written: done });
     }
+    if (task?.state === 'paused') task.release();
+    task = null;
+    taskPath = null;
+    await clearPausedPhononTask();
     return true;
   }
 
@@ -167,7 +269,12 @@ export const usePhonon = create<State>((set, get) => {
     cancelled = false;
     set({ phase: 'downloading', error: '' });
     try {
-      if (!(await fetchParts(resume))) return set({ phase: 'paused' });
+      if (!(await fetchParts(resume))) {
+        if (!task || task.state !== 'paused' || !taskPath) throw new Error('The speech-model download paused without resumable state. Retry it.');
+        await savePausedPhononTask(taskPath, task.savable());
+        set({ phase: 'paused' });
+        return;
+      }
       if (Platform.OS !== 'ios') {
         set({ phase: 'preparing' });
         await PhononNative!.prepare(partFile(PARTS[0]).uri, modelDir().uri);
@@ -176,8 +283,12 @@ export const usePhonon = create<State>((set, get) => {
       installedResult = ready;
       set({ phase: ready ? 'ready' : 'failed', error: ready ? '' : 'The model files are incomplete. Delete them and download again.' });
     } catch (e: any) {
-      task?.release();
+      const failedTask = task;
       task = null;
+      taskPath = null;
+      if (failedTask?.state === 'paused') failedTask.release();
+      else await finishDownloadTask(failedTask ?? undefined, Platform.OS);
+      await clearPausedPhononTask().catch(() => {});
       if (cancelled) {
         if (preserveArchiveOnCancel) set({ phase: 'none', error: '', extractWritten: 0, extractTotal: 0 });
         else get().remove();
@@ -197,13 +308,24 @@ export const usePhonon = create<State>((set, get) => {
 
     refresh() {
       if (['verifying', 'downloading', 'preparing', 'paused'].includes(get().phase)) return;
-      void phononReady().then((ready) => {
-        if (['verifying', 'downloading', 'preparing', 'paused'].includes(get().phase)) return;
-        set({ phase: ready ? 'ready' : 'none' });
+      if (refreshPromise) return;
+      refreshPromise = (async () => {
+        const ready = await phononReady();
+        if (ready) {
+          await clearPausedPhononTask();
+          set({ phase: 'ready' });
+          return;
+        }
+        if (!(await restorePausedTask())) set({ phase: 'none' });
+      })().catch((error: unknown) => {
+        set({ phase: 'failed', error: error instanceof Error ? error.message : 'Could not check the speech model.' });
+      }).finally(() => {
+        refreshPromise = null;
       });
     },
 
     async download() {
+      if (refreshPromise) await refreshPromise;
       if (!phononSupported()) throw new Error('Phonon-2 can’t run on this device.');
       if (get().phase === 'verifying') throw new Error('Checking the installed Phonon-2 files. Try again in a moment.');
       if (get().phase === 'downloading' || get().phase === 'preparing') return;
@@ -217,7 +339,9 @@ export const usePhonon = create<State>((set, get) => {
         verificationGeneration += 1;
         installedResult = undefined;
         installedCheck = null;
-        await run(get().phase === 'paused');
+        const resume = get().phase === 'paused' && task?.state === 'paused';
+        if (resume) await clearPausedPhononTask();
+        await run(resume);
       } finally {
         progress?.remove();
       }
@@ -248,6 +372,7 @@ export const usePhonon = create<State>((set, get) => {
       if (active) return;
       task?.release();
       task = null;
+      taskPath = null;
       get().remove();
     },
 
@@ -261,6 +386,7 @@ export const usePhonon = create<State>((set, get) => {
       verificationGeneration += 1;
       installedResult = false;
       installedCheck = null;
+      void clearPausedPhononTask().catch(() => {});
       try {
         const r = root();
         if (r.exists) r.delete();

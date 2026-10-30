@@ -15,7 +15,7 @@ npx expo start -c        # Expo Go is for a JavaScript-only preview
 
 Expo Go does not include AI Hat's custom native modules (`llama.rn`, Phonon, and crash logging). Use an AI Hat development or release build to test local models and speech. The GitHub Actions workflows generate native projects and build the Android APK and iOS simulator app; local Android Studio and Xcode are not required.
 
-Before sending changes: `npx tsc --noEmit`, `npx expo lint`, `npm run test:expo-cli-compat`, `npm run test:local-stream`, `npm run test:local-runtime`, `npm run test:local-models`, `npm run test:marketplace`, and `npm run docs:check` (the **Check** workflow runs these).
+Before sending changes: `npx tsc --noEmit`, `npx expo lint`, `npm run test:expo-cli-compat`, `npm run test:navigation`, `npm run test:local-stream`, `npm run test:local-runtime`, `npm run test:local-models`, `npm run test:phonon-download`, `npm run test:marketplace`, and `npm run docs:check` (the **Check** workflow runs these).
 
 **The desktop app** needs [Bun](https://bun.sh) as well:
 
