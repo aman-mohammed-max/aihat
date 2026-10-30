@@ -32,7 +32,7 @@ jobs:
         run: npm audit --omit=dev --audit-level=high
 
   android-build:
-    name: Android debug build (arm64 + x86_64)
+    name: Android debug build (arm64-v8a)
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -58,16 +58,16 @@ jobs:
       - run: npx expo prebuild --platform android --no-install --clean
       - name: Run Android unit tests
         working-directory: android
-        run: ./gradlew testDebugUnitTest --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+        run: ./gradlew testDebugUnitTest --no-daemon -PreactNativeArchitectures=arm64-v8a
       - name: Assemble Android debug APK
         working-directory: android
-        run: ./gradlew :app:assembleDebug --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+        run: ./gradlew :app:assembleDebug --no-daemon -PreactNativeArchitectures=arm64-v8a
       - name: Validate Android release APK
         working-directory: android
-        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
       - uses: actions/upload-artifact@v7
         with:
-          name: android-apk-arm64-x86_64
+          name: android-apk-arm64
           path: |
             android/app/build/outputs/apk/debug/*.apk
             android/app/build/outputs/apk/release/*.apk

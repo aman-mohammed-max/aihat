@@ -76,6 +76,7 @@ jobs:
     needs: plan
     uses: ./.github/workflows/android-apk.yml
     with:
+      abis: arm64-v8a
       label: ${{ needs.plan.outputs.tag }}
     secrets: inherit
 

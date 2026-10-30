@@ -1,11 +1,11 @@
 name: Android APK
 
-# Builds installable release APKs for llama.rn's supported Android ABIs plus a universal one.
-#   AI-Hat-<label>.apk                  universal: 64-bit ARM and x86_64 devices
+# Builds installable release APKs for llama.rn's supported Android ABIs.
+#   AI-Hat-<label>.apk                  universal: 64-bit ARM and x86_64 (multi-ABI runs)
 #   AI-Hat-<label>-Android-arm64.apk    64-bit ARM (arm64-v8a)
 #   AI-Hat-<label>-Android-x86_64.apk   64-bit Intel/AMD (x86_64)
-#   By hand: GitHub → Actions → "Android APK" → Run workflow. The APKs are under the run's Artifacts.
-#   For a public release, push a tag instead (see release.yml), which builds this and the other apps together.
+#   Manual runs default to both ABIs; main-branch/tag releases target arm64-v8a for the ARM Chromebook.
+#   For a public release, push a tag (see release.yml), which builds this and the other apps together.
 #
 # With no secrets it is signed with the debug key Expo generates: fine for installing on your own phone.
 # For a key of your own, add these repository secrets (Settings → Secrets and variables → Actions):
@@ -16,13 +16,13 @@ on:
   workflow_dispatch:
     inputs:
       abis:
-        description: CPU architectures to build (comma separated; fewer is faster). Each gets its own APK, plus a universal one.
+        description: CPU architectures to build (comma separated; fewer is faster). Multiple ABIs produce per-ABI and universal APKs.
         default: arm64-v8a,x86_64
   workflow_call:
     inputs:
       abis:
         type: string
-        default: arm64-v8a,x86_64
+        default: arm64-v8a
       label:
         description: Used in the file name, for example the release tag
         type: string
@@ -103,7 +103,7 @@ jobs:
           open(p, 'w').write(s)
           PY
 
-      - name: One APK per architecture, plus a universal one
+      - name: Configure ABI splits for multi-architecture builds
         env:
           ABIS: ${{ inputs.abis || 'arm64-v8a,x86_64' }}
         run: |
@@ -147,6 +147,7 @@ jobs:
       - name: Name the files
         env:
           LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
+          ABIS: ${{ inputs.abis || 'arm64-v8a,x86_64' }}
         run: |
           mkdir -p out
           cd android/app/build/outputs/apk/release
@@ -159,7 +160,12 @@ jobs:
               cp "app-$abi-release.apk" "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL-Android-$name.apk"
             done
           else
-            cp app-release.apk "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL.apk"
+            case "$ABIS" in
+              arm64-v8a) name=arm64 ;;
+              x86_64) name=x86_64 ;;
+              *) name=single ;;
+            esac
+            cp app-release.apk "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL-Android-$name.apk"
           fi
           ls -lh "$GITHUB_WORKSPACE/out"
 
