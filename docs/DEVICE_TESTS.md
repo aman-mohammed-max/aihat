@@ -12,6 +12,19 @@ Run these checks against an APK or IPA built from the same commit being validate
 4. Start a download, background the app, and reopen it. Then repeat while force-stopping the app. A completed `.part` file should be verified on relaunch; an incomplete active transfer should be retryable from the beginning. An explicitly paused transfer should remain resumable when its saved native task state is available.
 5. Update an installed model and confirm that the old file remains available until the verified replacement is committed.
 
+## Android: GPU and NPU backend reporting
+
+1. On a physical device, record the Android SoC/GPU and select **Marketplace → Models → Version**. Q4_0 and Q6_K files are OpenCL candidates; the featured Q4_K_M files use CPU on Android.
+2. With **My Models → How models run → Auto**, load a Q4_0 or Q6_K GGUF only if the app reports an OpenCL GPU. Confirm the loaded row names `GPU · OpenCL`. Repeat with Q4_K_M and confirm the app names CPU and explains the fallback.
+3. Select CPU and confirm the loaded row names CPU. Select GPU on a device without an enumerated OpenCL GPU and confirm the app stays usable on CPU with a reason.
+4. Only on a Snapdragon 8 Gen 1 class (SM8450) or newer device with a reported HTP device, select NPU and test the experimental Hexagon path. Confirm the loaded row reports HTP; otherwise confirm CPU fallback.
+5. Test the ARM64 Chromebook independently. Record whether ChromeOS exposes OpenCL/HTP through its Android runtime. ARM64 ABI support does not establish GPU or NPU availability.
+
+## iOS: Metal backend reporting
+
+1. Set **My Models → How models run → GPU** (or Auto) and load a small GGUF. Confirm that the loaded row reports `GPU · Metal` when the context uses Metal.
+2. Select CPU and confirm CPU inference. Record fallback reasons on devices where Metal is unavailable; iOS simulator results do not establish physical GPU performance.
+
 ## Android: Phonon archive extraction
 
 Phonon-2 is the Android path that unpacks the publisher's Zstandard-compressed tar archive; a GGUF download is a single file and is not extracted.

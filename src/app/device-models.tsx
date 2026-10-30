@@ -3,7 +3,7 @@ import { router } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, Platform, Pressable, View } from 'react-native';
 
-import { Button, Icon, ListRow, Screen, SectionTitle, Text } from '@/components';
+import { Button, Icon, ListRow, Screen, SectionTitle, Segmented, Text } from '@/components';
 import { startChatWith } from '@/components/LocalModels';
 import { device } from '@/lib/device';
 import { gb } from '@/lib/local/catalog';
@@ -12,7 +12,7 @@ import { isLocalProvider } from '@/lib/local/provider';
 import { useLocalInference } from '@/store/localInference';
 import { useLocalModels } from '@/store/localModels';
 import { useProviders } from '@/store/providers';
-import { useSettings } from '@/store/settings';
+import { useSettings, type Settings } from '@/store/settings';
 import { useTheme } from '@/theme';
 
 /** Models on this phone or tablet: storage, downloads, what is installed, and how the models run. */
@@ -24,6 +24,13 @@ export default function DeviceModels() {
   const refresh = usePhonon((s) => s.refresh);
   useEffect(() => refresh(), [refresh]);
   const s = useSettings();
+  const computePreference = Platform.OS === 'ios' && s.localCompute === 'npu' ? 'auto' : s.localCompute;
+  const computeOptions: { value: Settings['localCompute']; label: string }[] = [
+    { value: 'auto', label: 'Auto' },
+    { value: 'cpu', label: 'CPU' },
+    { value: 'gpu', label: 'GPU' },
+    ...(Platform.OS === 'android' ? [{ value: 'npu' as const, label: 'NPU' }] : []),
+  ];
   const local = useProviders((st) => st.providers.find(isLocalProvider));
   const running = Object.values(jobs);
 
@@ -131,7 +138,7 @@ export default function DeviceModels() {
             const isDefault = !!local && s.defaultProviderId === local.id && s.defaultModelId === m.id;
             const isRemoving = inference.removing.includes(m.id);
             const runtimeLabel = isRemoving ? 'Removing' : inference.modelId === m.id
-              ? inference.phase === 'loaded' ? 'Loaded in memory' : inference.phase === 'loading' ? 'Loading' : inference.phase === 'error' ? 'Load failed' : ''
+              ? inference.phase === 'loaded' ? `Loaded · ${inference.backendLabel ?? 'backend unknown'}` : inference.phase === 'loading' ? 'Loading' : inference.phase === 'error' ? 'Load failed' : ''
               : '';
             return (
               <View key={m.id} style={{ minHeight: 64, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: colors.hairline }}>
@@ -145,6 +152,7 @@ export default function DeviceModels() {
                     ) : null}
                   </View>
                   <Text size={12} color="muted">{`Chat · ${gb(m.size)}${runtimeLabel ? ` · ${runtimeLabel}` : ''}`}</Text>
+                  {inference.modelId === m.id && inference.phase === 'loaded' && inference.fallbackReason ? <Text size={11.5} color="muted" numberOfLines={2}>{inference.fallbackReason}</Text> : null}
                   {inference.modelId === m.id && inference.phase === 'error' && inference.error ? <Text size={11.5} color="danger" numberOfLines={1}>{inference.error}</Text> : null}
                 </Pressable>
                 <Pressable accessibilityRole="button" accessibilityLabel={isRemoving ? `Removing ${m.name}` : `Delete ${m.name}`} disabled={isRemoving} onPress={() => ask(m.name, m.size, () => void remove(m.id).catch((error: Error) => Alert.alert('Couldn’t remove model', error.message)))} style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', opacity: isRemoving ? 0.5 : 1 }}>
@@ -178,8 +186,16 @@ export default function DeviceModels() {
 
       <View style={{ gap: 6 }}>
         <SectionTitle space={0}>How models run</SectionTitle>
-        <View style={{ backgroundColor: colors.surface, borderRadius: 16, paddingHorizontal: 12 }}>
-          {Platform.OS === 'ios' ? <ListRow label="Use the GPU" sub="Faster. Turn off if the phone gets hot" height={56} toggle={{ on: s.localGpu, onChange: (localGpu) => s.set({ localGpu }) }} /> : null}
+        <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: 12, gap: 8 }}>
+          <Text size={13} weight="medium">Preferred hardware</Text>
+          <Segmented
+            options={computeOptions}
+            value={computePreference}
+            onChange={(localCompute) => s.set({ localCompute })}
+          />
+          <Text size={12} color="muted" style={{ lineHeight: 17 }}>{Platform.OS === 'ios'
+            ? 'Auto uses Metal when available. This GGUF engine does not use Apple Neural Engine. Unsupported choices fall back to CPU.'
+            : 'Auto checks each model and available hardware. Android GPU needs OpenCL and Q4_0 or Q6_K; experimental Hexagon NPU is opt-in. Unsupported choices fall back to CPU.'}</Text>
           <ListRow label="Free memory when idle" sub="Lets the model go after 5 minutes without a reply" height={56} toggle={{ on: s.localUnloadIdle, onChange: (localUnloadIdle) => s.set({ localUnloadIdle }) }} />
         </View>
       </View>

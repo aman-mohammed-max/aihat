@@ -83,7 +83,7 @@ export default function MarketModel() {
   const updateAvailable = !!(have && chosen?.revision && have.revision !== chosen.revision);
   const isRemoving = !!id && inference.removing.includes(id);
   const runtimeLabel = have && inference.modelId === have.id
-    ? inference.phase === 'loaded' ? 'Loaded in memory' : inference.phase === 'loading' ? 'Loading model' : inference.phase === 'error' ? 'Model load failed' : ''
+    ? inference.phase === 'loaded' ? `Loaded · ${inference.backendLabel ?? 'backend unknown'}` : inference.phase === 'loading' ? 'Loading model' : inference.phase === 'error' ? 'Model load failed' : ''
     : '';
 
   const download = () => {
@@ -186,7 +186,7 @@ export default function MarketModel() {
                   <View style={{ width: 18, height: 18, borderRadius: 9, borderWidth: on ? 5 : 2, borderColor: on ? colors.accent : colors.border }} />
                   <View style={{ flex: 1, gap: 2 }}>
                     <Text mono size={13.5}>{q}</Text>
-                    <Text size={12} color={vf === 'no' ? 'danger' : 'muted'}>{vf === 'no' ? `Too big for this ${device}` : quantNote(q) || v.path}</Text>
+                    <Text size={12} color={vf === 'no' ? 'danger' : 'muted'}>{vf === 'no' ? `Too big for this ${device}` : `${quantNote(q) || v.path}${q === 'Q4_0' || q === 'Q6_K' ? ' · Android OpenCL candidate' : ''}`}</Text>
                   </View>
                   <Text size={13} color="text2">{gb(v.size)}</Text>
                 </Pressable>
@@ -215,7 +215,7 @@ export default function MarketModel() {
         </View>
         <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.hairline }}>
           <Text size={15} style={{ flex: 1 }}>Hardware</Text>
-          <Text size={13} color="muted">CPU · optional iOS Metal</Text>
+          <Text size={13} color="muted">iOS Metal · Android OpenCL · experimental Hexagon</Text>
         </View>
         <View style={{ minHeight: 48, flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: colors.hairline }}>
           <Text size={15} style={{ flex: 1 }}>Install status</Text>
@@ -234,8 +234,9 @@ export default function MarketModel() {
           <Text size={13} color="muted">{`llama.cpp on this ${device}`}</Text>
         </View>
       </View>
+      {have && inference.modelId === have.id && inference.phase === 'loaded' && inference.fallbackReason ? <Text size={12} color="muted" style={{ lineHeight: 18 }}>{inference.fallbackReason}</Text> : null}
       <Text size={12} color="muted" style={{ lineHeight: 18 }}>
-        GGUF format and an adequate memory estimate do not guarantee that this model’s architecture is supported by the installed engine version.
+        Android OpenCL acceleration is limited to Q4_0 and Q6_K GGUF models on compatible Qualcomm Adreno GPUs. Backend availability and model support are verified from the device at load time; format and memory checks alone cannot guarantee compatibility.
       </Text>
     </Screen>
   );

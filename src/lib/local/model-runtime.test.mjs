@@ -10,8 +10,12 @@ test('tracks model loading, loaded, failed, and unloaded states', () => {
   state = transitionModelRuntime(state, { type: 'load-success', id: 'model-a' });
   assert.equal(state.phase, 'loaded');
 
+  state = transitionModelRuntime(state, { type: 'load-success', id: 'model-a', backendLabel: 'GPU · OpenCL' });
+  assert.equal(state.backendLabel, 'GPU · OpenCL');
+
   state = transitionModelRuntime(state, { type: 'unloaded', id: 'model-a' });
   assert.deepEqual({ modelId: state.modelId, phase: state.phase }, { modelId: null, phase: 'idle' });
+  assert.equal(state.backendLabel, undefined);
 
   state = transitionModelRuntime(state, { type: 'load-start', id: 'model-a' });
   state = transitionModelRuntime(state, { type: 'load-failure', id: 'model-a', error: 'Insufficient memory' });

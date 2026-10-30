@@ -32,8 +32,8 @@ export type Settings = {
   autoTitle: boolean;
   titleModelId: string | null;
   sendWithEnter: boolean;
-  /** Models on the device: run on the GPU (iPhone and iPad), and let the model go after 5 minutes without a reply. */
-  localGpu: boolean;
+  /** Preferred local LLM backend; the runtime checks the model and falls back to CPU when needed. */
+  localCompute: 'auto' | 'cpu' | 'gpu' | 'npu';
   localUnloadIdle: boolean;
   showStats: boolean;
   showReasoning: boolean;
@@ -131,7 +131,7 @@ export const DEFAULT_SETTINGS: Settings = {
   autoTitle: true,
   titleModelId: null,
   sendWithEnter: false,
-  localGpu: true,
+  localCompute: 'auto',
   localUnloadIdle: true,
   showStats: true,
   showReasoning: true,
@@ -219,12 +219,15 @@ export const useSettings = create<Store>((set, get) => ({
   load: async () => {
     const db = await getDb();
     const row = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'settings');
-    const saved = json<Partial<Omit<Settings, 'imageEngine'>> & { imageEngine?: string; memoryAutoSave?: boolean }>(row?.value, {});
+    const saved = json<Partial<Omit<Settings, 'imageEngine' | 'localCompute'>> & { imageEngine?: string; localCompute?: string; localGpu?: boolean; memoryAutoSave?: boolean }>(row?.value, {});
     const fallbackDefault = await db.getFirstAsync<{ value: string }>('SELECT value FROM kv WHERE key = ?', 'memory_auto_save_default_on_v1');
     const applyMemoryFallbackDefault = !fallbackDefault;
     // Older builds saved 'openai' for the OpenAI-compatible image engine.
     if (saved.imageEngine === 'openai') saved.imageEngine = 'provider';
-    const { memoryAutoSave: _legacyMemoryAutoSave, ...currentSaved } = saved;
+    const localCompute = ['auto', 'cpu', 'gpu', 'npu'].includes(saved.localCompute ?? '')
+      ? saved.localCompute as Settings['localCompute']
+      : saved.localGpu === false ? 'cpu' : 'auto';
+    const { memoryAutoSave: _legacyMemoryAutoSave, localGpu: _legacyLocalGpu, ...currentSaved } = saved;
     const memoryItems = Array.isArray(currentSaved.memoryItems)
       ? currentSaved.memoryItems.slice(0, 40).flatMap((item, index) => {
           if (!item || typeof item !== 'object' || typeof item.text !== 'string') return [];
@@ -239,6 +242,7 @@ export const useSettings = create<Store>((set, get) => ({
     const loadedSettings: Settings = {
       ...DEFAULT_SETTINGS,
       ...(currentSaved as Partial<Settings>),
+      localCompute,
       memoryItems,
       memoryFallbackRoute: { ...DEFAULT_SETTINGS.memoryFallbackRoute, ...(currentSaved.memoryFallbackRoute ?? {}) },
       routes: { ...DEFAULT_SETTINGS.routes, ...(currentSaved.routes ?? {}) },

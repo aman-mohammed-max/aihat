@@ -74,6 +74,7 @@
     "test:navigation": "node scripts/test-navigation.mjs",
     "test:local-stream": "node src/lib/local/generation-lifecycle.test.mjs",
     "test:local-runtime": "node src/lib/local/model-runtime.test.mjs",
+    "test:local-backends": "node src/lib/local/backend-selector.test.mjs",
     "test:local-models": "node src/lib/local/download-core.test.mjs",
     "test:phonon-download": "node src/lib/local/phonon-download-core.test.mjs",
     "test:marketplace": "node src/lib/local/mcp-market-core.test.mjs",

@@ -123,6 +123,7 @@ jobs:
       - run: npm run test:navigation
       - run: npm run test:local-stream
       - run: npm run test:local-runtime
+      - run: npm run test:local-backends
       - run: npm run test:local-models
       - run: npm run test:phonon-download
       - run: npm run test:marketplace

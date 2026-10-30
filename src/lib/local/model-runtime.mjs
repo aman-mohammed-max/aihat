@@ -2,6 +2,8 @@ export const initialModelRuntime = {
   modelId: null,
   phase: 'idle',
   error: undefined,
+  backendLabel: undefined,
+  fallbackReason: undefined,
   removing: [],
 };
 
@@ -12,18 +14,18 @@ export function transitionModelRuntime(state, action) {
   switch (action.type) {
     case 'load-start':
       if (state.removing.includes(action.id)) return state;
-      return { ...state, modelId: action.id, phase: 'loading', error: undefined };
+      return { ...state, modelId: action.id, phase: 'loading', error: undefined, backendLabel: undefined, fallbackReason: undefined };
     case 'load-success':
       return state.modelId === action.id && !state.removing.includes(action.id)
-        ? { ...state, phase: 'loaded', error: undefined }
+        ? { ...state, phase: 'loaded', error: undefined, backendLabel: action.backendLabel, fallbackReason: action.fallbackReason }
         : state;
     case 'load-failure':
       return state.modelId === action.id && !state.removing.includes(action.id)
-        ? { ...state, phase: 'error', error: action.error }
+        ? { ...state, phase: 'error', error: action.error, backendLabel: undefined, fallbackReason: undefined }
         : state;
     case 'unloaded':
       return state.modelId === action.id
-        ? { ...state, modelId: null, phase: 'idle', error: undefined }
+        ? { ...state, modelId: null, phase: 'idle', error: undefined, backendLabel: undefined, fallbackReason: undefined }
         : state;
     case 'remove-start':
       return {
@@ -31,6 +33,8 @@ export function transitionModelRuntime(state, action) {
         modelId: state.modelId === action.id ? null : state.modelId,
         phase: state.modelId === action.id ? 'idle' : state.phase,
         error: state.modelId === action.id ? undefined : state.error,
+        backendLabel: state.modelId === action.id ? undefined : state.backendLabel,
+        fallbackReason: state.modelId === action.id ? undefined : state.fallbackReason,
         removing: state.removing.includes(action.id) ? state.removing : [...state.removing, action.id],
       };
     case 'remove-success':
@@ -39,6 +43,8 @@ export function transitionModelRuntime(state, action) {
         modelId: state.modelId === action.id ? null : state.modelId,
         phase: state.modelId === action.id ? 'idle' : state.phase,
         error: state.modelId === action.id ? undefined : state.error,
+        backendLabel: state.modelId === action.id ? undefined : state.backendLabel,
+        fallbackReason: state.modelId === action.id ? undefined : state.fallbackReason,
         removing: state.removing.filter((id) => id !== action.id),
       };
     case 'remove-failure':

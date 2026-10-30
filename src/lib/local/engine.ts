@@ -13,6 +13,7 @@ import { assessModelMemory } from './fit-core.mjs';
 import type { LocalGenerationRequest, LocalInferenceProvider } from './inference';
 import { createGenerationLifecycle } from './generation-lifecycle.mjs';
 import { canLoadModel, shouldUnloadModel } from './model-runtime.mjs';
+import { accelerationFailureReason, actualBackend, createBackendPlan } from './backend-selector.mjs';
 
 /**
  * Runs downloaded GGUF models on the device with llama.rn (llama.cpp). Its native part is in the AI Hat app from the
@@ -37,7 +38,7 @@ export const localEngineAvailable = () => llama() !== null;
 export const UNAVAILABLE = 'Models on this device need the AI Hat app from the Releases page; Expo Go can’t run them.';
 
 // One model is kept loaded (loading takes a few seconds), and one reply runs at a time.
-let loaded: { id: string; ctx: LlamaContext } | null = null;
+let loaded: { id: string; ctx: LlamaContext; backendLabel: string; fallbackReason?: string } | null = null;
 let chain: Promise<unknown> = Promise.resolve();
 const serial = <T,>(job: () => Promise<T>): Promise<T> => {
   const run = chain.then(job, job);
@@ -97,7 +98,7 @@ async function contextFor(id: string) {
   const runtime = useLocalInference.getState();
   if (!canLoadModel(runtime, id)) throw new Error('This model is being removed. Wait for removal to finish, then download it again if needed.');
   if (loaded?.id === id) {
-    runtime.dispatch({ type: 'load-success', id });
+    runtime.dispatch({ type: 'load-success', id, backendLabel: loaded.backendLabel, fallbackReason: loaded.fallbackReason });
     return loaded.ctx;
   }
   runtime.dispatch({ type: 'load-start', id });
@@ -123,18 +124,42 @@ async function contextFor(id: string) {
     });
     if (!memory.allowed) throw new Error(memoryError(memory.reason));
 
-    const ctx = await l.initLlama({
-      model: file.uri,
-      n_ctx: memory.contextSize,
-      // iPhone and iPad run the model on the GPU (Metal) unless it is turned off; Android stays on the CPU, which works on
-      // every phone.
-      n_gpu_layers: Platform.OS === 'ios' && useSettings.getState().localGpu ? 99 : 0,
-      use_mlock: false,
-      use_mmap: true,
+    const modelInfo = await l.loadLlamaModelInfo(file.uri);
+    const backendDevices = await l.getBackendDevicesInfo();
+    const preference = useSettings.getState().localCompute;
+    const plan = createBackendPlan({
+      platform: Platform.OS,
+      preference: Platform.OS === 'ios' && preference === 'npu' ? 'auto' : preference,
+      devices: backendDevices,
+      modelInfo,
     });
-    loaded = { id, ctx };
-    runtime.dispatch({ type: 'load-success', id });
-    return ctx;
+    let fallbackReason = plan.fallbackReason;
+    let initialized: { ctx: LlamaContext; backendLabel: string } | null = null;
+    for (const candidate of plan.candidates) {
+      try {
+        const ctx = await l.initLlama({
+          model: file.uri,
+          n_ctx: memory.contextSize,
+          n_gpu_layers: candidate.kind === 'cpu' ? 0 : 99,
+          ...(candidate.devices.length ? { devices: candidate.devices } : {}),
+          use_mlock: false,
+          use_mmap: true,
+        });
+        const actual = actualBackend({ platform: Platform.OS, candidate, context: ctx });
+        if (candidate.kind !== 'cpu' && actual.kind === 'cpu') {
+          fallbackReason = actual.reason ?? fallbackReason ?? `${candidate.label} was not used by the runtime; using CPU.`;
+        }
+        initialized = { ctx, backendLabel: actual.label };
+        break;
+      } catch (error) {
+        if (candidate.kind === 'cpu') throw error;
+        fallbackReason = accelerationFailureReason(candidate, error);
+      }
+    }
+    if (!initialized) throw new Error('Could not initialize a CPU or accelerated local inference backend.');
+    loaded = { id, ctx: initialized.ctx, backendLabel: initialized.backendLabel, fallbackReason };
+    runtime.dispatch({ type: 'load-success', id, backendLabel: initialized.backendLabel, fallbackReason });
+    return initialized.ctx;
   } catch (error) {
     runtime.dispatch({ type: 'load-failure', id, error: error instanceof Error ? error.message : 'Could not load this model.' });
     throw error;

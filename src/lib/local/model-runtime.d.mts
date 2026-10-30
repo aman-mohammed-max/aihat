@@ -1,6 +1,6 @@
 export type ModelRuntimeAction =
   | { type: 'load-start'; id: string }
-  | { type: 'load-success'; id: string }
+  | { type: 'load-success'; id: string; backendLabel?: string; fallbackReason?: string }
   | { type: 'load-failure'; id: string; error: string }
   | { type: 'unloaded'; id: string }
   | { type: 'remove-start'; id: string }
@@ -11,6 +11,8 @@ export type ModelRuntimeSnapshot = {
   modelId: string | null;
   phase: 'idle' | 'loading' | 'loaded' | 'error';
   error?: string;
+  backendLabel?: string;
+  fallbackReason?: string;
   removing: string[];
 };
 
