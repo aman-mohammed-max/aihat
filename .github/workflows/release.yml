@@ -3,7 +3,7 @@ name: Build & Release
 # Builds the Android APKs, the iOS IPA and the desktop apps (macOS, Windows, Linux) and puts them on the Releases page.
 #
 # Architectures:
-#   Android   universal APK, plus one each for arm64-v8a, armeabi-v7a (32-bit ARM), x86_64 and x86 (32-bit Intel)
+#   Android   universal APK, plus one each for arm64-v8a and x86_64 (llama.rn native targets)
 #   iOS       arm64 (every iPhone and iPad; Apple has no other kind)
 #   macOS     arm64 (Apple Silicon) and x64 (Intel)
 #   Windows   x64 and arm64
@@ -35,6 +35,9 @@ on:
         description: 'Release tag to publish, for example v0.1.0-beta.2. Leave empty to update the "latest beta build".'
         required: false
         default: ''
+
+permissions:
+  contents: read
 
 concurrency:
   group: build-release-${{ github.ref }}
@@ -104,11 +107,11 @@ jobs:
       ROLLING: ${{ needs.plan.outputs.rolling }}
       PRERELEASE: ${{ needs.plan.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           pattern: AI-Hat-*
           merge-multiple: true
@@ -152,7 +155,7 @@ jobs:
             echo '## Install'
             echo
             if compgen -G 'dist/*.apk' >/dev/null; then cat <<NOTE
-          **Android:** \`AI-Hat-$TAG.apk\` is the universal one: it installs on any Android phone, tablet or Chromebook. The smaller \`-Android-\` files each suit one kind of processor: **arm64** for nearly every phone from the last several years, **arm32** for older 32-bit phones, **x86_64** and **x86** for Chromebooks, tablets and emulators with Intel or AMD chips. Not sure? Take the universal one. Open the file on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
+          **Android:** \`AI-Hat-$TAG.apk\` is the universal one for supported 64-bit ARM and x86_64 devices. Smaller \`-Android-\` files target one processor: **arm64** for Android phones and tablets or **x86_64** for compatible Chromebooks and emulators. The local model engine requires one of these 64-bit ABIs. Open the file on your phone and allow installs from that app when asked ("Install unknown apps"). Android may show a Play Protect warning because the app isn't from the Play Store.
 
           NOTE
             fi

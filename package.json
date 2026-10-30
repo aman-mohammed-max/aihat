@@ -5,12 +5,12 @@
   "dependencies": {
     "@expo-google-fonts/geist": "^0.4.2",
     "@expo-google-fonts/geist-mono": "^0.4.3",
-    "@expo/ui": "~58.0.23",
+    "@expo/ui": "~58.0.25",
     "@json-render/core": "^0.21.3",
     "@json-render/react-native": "^0.21.3",
     "@react-native-community/slider": "5.2.1",
     "@react-navigation/drawer": "^7.14.4",
-    "expo": "~58.0.19",
+    "expo": "~58.0.21",
     "expo-asset": "~58.0.18",
     "expo-audio": "~58.0.10",
     "expo-build-properties": "~58.0.11",
@@ -19,32 +19,33 @@
     "expo-crypto": "~58.0.7",
     "expo-device": "~58.0.5",
     "expo-document-picker": "~58.0.4",
+    "expo-file-system": "~58.0.11",
     "expo-font": "~58.0.10",
     "expo-glass-effect": "~58.0.5",
     "expo-haptics": "~58.0.7",
-    "expo-image": "~58.0.17",
+    "expo-image": "~58.0.18",
     "expo-image-picker": "~58.0.10",
-    "expo-linking": "~58.0.14",
+    "expo-linking": "~58.0.15",
     "expo-local-authentication": "~58.0.2",
-    "expo-notifications": "~58.1.6",
-    "expo-router": "~58.0.26",
+    "expo-notifications": "~58.1.7",
+    "expo-router": "~58.0.28",
     "expo-screen-orientation": "~58.0.3",
     "expo-secure-store": "~58.0.2",
-    "expo-sharing": "~58.0.20",
+    "expo-sharing": "~58.0.21",
     "expo-speech": "~58.0.3",
     "expo-speech-recognition": "^58.0.0",
-    "expo-splash-screen": "~58.0.11",
+    "expo-splash-screen": "~58.0.12",
     "expo-sqlite": "~58.0.14",
     "expo-status-bar": "~58.0.4",
     "expo-symbols": "~58.0.4",
-    "expo-system-ui": "~58.0.6",
-    "expo-web-browser": "~58.0.6",
+    "expo-system-ui": "~58.0.7",
+    "expo-web-browser": "~58.0.7",
     "fflate": "^0.8.3",
     "llama.rn": "0.13.0-rc.8",
     "prismjs": "^1.30.0",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-native": "0.88.0",
+    "react-native": "0.88.1",
     "react-native-gesture-handler": "~3.3.0",
     "react-native-reanimated": "4.7.1",
     "react-native-safe-area-context": "~5.10.1",
@@ -68,7 +69,14 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "lint": "expo lint"
+    "lint": "expo lint",
+    "test:expo-cli-compat": "node scripts/test-expo-cli-zod.mjs",
+    "test:navigation": "node scripts/test-navigation.mjs",
+    "test:local-stream": "node src/lib/local/generation-lifecycle.test.mjs",
+    "test:local-runtime": "node src/lib/local/model-runtime.test.mjs",
+    "test:local-models": "node src/lib/local/download-core.test.mjs",
+    "test:marketplace": "node src/lib/local/mcp-market-core.test.mjs",
+    "docs:check": "node scripts/validate-limitations.mjs"
   },
   "private": true,
   "description": "AI Hat: a dark-first mobile chat client for any OpenAI-compatible endpoint.",
@@ -77,5 +85,13 @@
     "type": "git",
     "url": "git+https://github.com/aman-mohammed-max/aihat.git"
   },
-  "homepage": "https://github.com/aman-mohammed-max/aihat"
+  "homepage": "https://github.com/aman-mohammed-max/aihat",
+  "overrides": {
+    "node-forge": "^1.4.2",
+    "expo": {
+      "@expo/cli": {
+        "zod": "^4.6.7"
+      }
+    }
+  }
 }

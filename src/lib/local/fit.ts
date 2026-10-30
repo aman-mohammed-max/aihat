@@ -4,6 +4,9 @@ import { Platform } from 'react-native';
 import { device } from '@/lib/device';
 
 import { gb } from './catalog';
+import { fitModel, modelCapacity, needs, safeContextSize as calculateSafeContextSize } from './fit-core.mjs';
+
+export { needs };
 
 export type Fit = 'good' | 'ok' | 'no' | 'unknown';
 
@@ -12,18 +15,17 @@ export function thisDevice() {
   return { name: Device.modelName || (Platform.OS === 'ios' ? 'iPhone' : `Android ${device}`), memory: Device.totalMemory ?? 0 };
 }
 
-/** Memory a model needs while it runs: the file (read into memory) plus room for the conversation. */
-export const needs = (size: number) => size * 1.15 + 600e6;
+/** Conservative llama context-size tiers; no portable free-memory API exists. */
+export function safeContextSize(memory = thisDevice().memory, modelSize = 0) {
+  return calculateSafeContextSize(memory, modelSize);
+}
 
 /**
  * Whether a model of this size runs here. An app gets roughly half the memory before the system closes it (iOS is
  * stricter), and a model that fills that leaves no room for anything else, so "good" keeps a margin.
  */
 export function fit(size: number, memory = thisDevice().memory): Fit {
-  if (!memory || !size) return 'unknown';
-  const budget = memory * (Platform.OS === 'ios' ? 0.5 : 0.55);
-  const need = needs(size);
-  return need <= budget * 0.6 ? 'good' : need <= budget ? 'ok' : 'no';
+  return fitModel(size, memory, Platform.OS);
 }
 
 /** The words for a fit, about this device. */
@@ -40,9 +42,5 @@ export function fitLabel(f: Fit, size: number) {
  * here, and the biggest that fits at all ("up to about 4B, or 8B slowly").
  */
 export function capacity(memory = thisDevice().memory) {
-  if (!memory) return null;
-  const budget = memory * (Platform.OS === 'ios' ? 0.5 : 0.55);
-  const sizes = [0.5, 1, 2, 3, 4, 7, 8, 12, 14, 27, 32];
-  const largest = (limit: number) => sizes.filter((b) => needs(b * 0.62e9) <= limit).pop() ?? 0;
-  return { good: largest(budget * 0.6), ok: largest(budget) };
+  return modelCapacity(memory, Platform.OS);
 }

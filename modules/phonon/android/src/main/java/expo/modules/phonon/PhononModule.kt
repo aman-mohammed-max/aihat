@@ -49,21 +49,52 @@ class PhononException(message: String) : CodedException(message)
  */
 private const val MIN_TOTAL = 3L shl 30
 private const val MIN_FREE = 1L shl 30
+private const val MAX_METADATA_BYTES = 1L shl 20
+
+internal class ProgressThrottle(private val total: Long) {
+  private val step = max(1L, total / 100)
+  private var lastReported = 0L
+
+  init {
+    require(total >= 0)
+  }
+
+  fun shouldReport(written: Long): Boolean {
+    val progress = written.coerceIn(0, total)
+    if (progress < total && progress - lastReported < step) return false
+    lastReported = progress
+    return true
+  }
+}
 
 class PhononModule : Module() {
   private var handle = 0L
   private var vocab: Array<String> = emptyArray()
+  @Volatile private var prepareGeneration = 0L
+  @Volatile private var cancelledGeneration = -1L
+  private val prepareLock = Any()
   private val lock = Any()
 
   override fun definition() = ModuleDefinition {
     Name("Phonon")
+    Events("onPrepareProgress")
 
     Function("isSupported") {
       Build.VERSION.SDK_INT >= 26 && Build.SUPPORTED_64_BIT_ABIS.contains("arm64-v8a") && PhononNative.loaded && memory().totalMem >= MIN_TOTAL
     }
 
     AsyncFunction("prepare") Coroutine { archive: String, dir: String ->
-      withContext(Dispatchers.IO) { unpack(File(path(archive)), File(path(dir))) }
+      val generation = synchronized(this@PhononModule) { ++prepareGeneration }
+      withContext(Dispatchers.IO) {
+        synchronized(prepareLock) {
+          checkPrepareCancellation(generation)
+          unpack(File(path(archive)), File(path(dir)), generation)
+        }
+      }
+    }
+
+    Function("cancelPrepare") {
+      synchronized(this@PhononModule) { cancelledGeneration = prepareGeneration }
     }
 
     AsyncFunction("load") Coroutine { dir: String ->
@@ -107,10 +138,11 @@ class PhononModule : Module() {
     return true
   }
 
-  private fun skip(input: InputStream, count: Long) {
+  private fun skip(input: InputStream, count: Long, generation: Long?) {
     var left = count
     val buf = ByteArray(64 * 1024)
     while (left > 0) {
+      checkPrepareCancellation(generation)
       val n = input.read(buf, 0, min(buf.size.toLong(), left).toInt())
       if (n < 0) throw PhononException("The download ended early. Delete it and download again.")
       left -= n
@@ -118,54 +150,153 @@ class PhononModule : Module() {
   }
 
   /** The release archive is a tar compressed with zstd: bps_manifest.json, config.json and model.fermion, stored as they are. */
-  private fun unpack(archive: File, dir: File) {
+  internal fun unpack(
+    archive: File,
+    dir: File,
+    generation: Long? = null,
+    emitProgress: Boolean = true,
+    availableSpaceOverride: Long? = null,
+  ) {
     if (!archive.exists()) throw PhononException("The download is missing.")
-    dir.mkdirs()
+    val parent = dir.absoluteFile.parentFile ?: throw PhononException("The model folder is invalid.")
+    if (!parent.exists() && !parent.mkdirs()) throw PhononException("Could not create the model folder.")
+    val staging = File(parent, "${dir.name}.installing")
+    val backup = File(parent, "${dir.name}.previous")
+    if (!dir.exists() && backup.exists() && !backup.renameTo(dir)) {
+      throw PhononException("Could not restore the existing model. Free storage and try again.")
+    }
+    staging.deleteRecursively()
+    if (!staging.mkdirs()) throw PhononException("Could not prepare a temporary model folder.")
     val sums = mutableMapOf<String, String>()
-    ZstdInputStream(BufferedInputStream(FileInputStream(archive), 1 shl 16)).use { zin ->
-      val header = ByteArray(512)
-      while (readFully(zin, header)) {
-        if (header.all { it == 0.toByte() }) break
-        val name = String(header, 0, 100, Charsets.US_ASCII).substringBefore('\u0000').substringAfterLast('/')
-        val sizeField = String(header, 124, 12, Charsets.US_ASCII).substringBefore('\u0000').trim()
-        val size = if (sizeField.isEmpty()) 0L else sizeField.toLong(8)
-        val type = header[156].toInt().toChar()
-        val padding = (512 - size % 512) % 512
-        if ((type == '0' || type == '\u0000') && name in wanted) {
-          val digest = MessageDigest.getInstance("SHA-256")
-          val part = File(dir, "$name.part")
-          FileOutputStream(part).use { out ->
-            var left = size
-            val buf = ByteArray(1 shl 16)
-            while (left > 0) {
-              val n = zin.read(buf, 0, min(buf.size.toLong(), left).toInt())
-              if (n < 0) throw PhononException("The download ended early. Delete it and download again.")
-              out.write(buf, 0, n)
-              digest.update(buf, 0, n)
-              left -= n
+    try {
+      ZstdInputStream(BufferedInputStream(FileInputStream(archive), 1 shl 16)).use { zin ->
+        val header = ByteArray(512)
+        var ended = false
+        while (readFully(zin, header)) {
+          checkPrepareCancellation(generation)
+          if (header.all { it == 0.toByte() }) {
+            val endMarker = ByteArray(512)
+            if (!readFully(zin, endMarker) || endMarker.any { it != 0.toByte() }) {
+              throw PhononException("The model archive is incomplete.")
+            }
+            ended = true
+            break
+          }
+          verifyTarHeader(header)
+          val path = String(header, 0, 100, Charsets.US_ASCII).substringBefore('\u0000')
+          if (path.startsWith('/') || path.contains('\\') || path.split('/').any { it == ".." }) {
+            throw PhononException("The model archive contains an unsafe path.")
+          }
+          // Common tar writers prefix every member with ./; normalize that harmless form before matching.
+          val name = path.split('/').filter { it.isNotEmpty() && it != "." }.joinToString("/")
+          val sizeField = String(header, 124, 12, Charsets.US_ASCII).substringBefore('\u0000').trim()
+          val size = if (sizeField.isEmpty()) 0L else sizeField.toLongOrNull(8)
+            ?: throw PhononException("The model archive contains an invalid file size.")
+          if (size < 0) throw PhononException("The model archive contains an invalid file size.")
+          if (name == "bps_manifest.json" || name == "config.json") {
+            if (size > MAX_METADATA_BYTES) throw PhononException("The model archive metadata is too large to read safely.")
+          }
+          if (name == "model.fermion") {
+            val reserve = 16L shl 20
+            if (size > Long.MAX_VALUE - reserve) throw PhononException("The model archive contains an invalid file size.")
+            val free = availableSpaceOverride ?: parent.usableSpace
+            if (free >= 0 && free < size + reserve) {
+              throw PhononException("There isn’t enough free storage to extract the speech model.")
             }
           }
-          sums[name] = digest.digest().joinToString("") { "%02x".format(it) }
-          part.renameTo(File(dir, name))
-        } else {
-          skip(zin, size)
+          val type = header[156].toInt().toChar()
+          if (type == '1' || type == '2') throw PhononException("The model archive contains a link, which is not allowed.")
+          val padding = (512 - size % 512) % 512
+          if ((type == '0' || type == '\u0000') && name in wanted) {
+            if (sums.containsKey(name)) throw PhononException("The model archive contains a duplicate $name file.")
+            val digest = MessageDigest.getInstance("SHA-256")
+            val part = File(staging, "$name.part")
+            val progress = if (name == "model.fermion") ProgressThrottle(size) else null
+            FileOutputStream(part).use { out ->
+              var left = size
+              var written = 0L
+              val buf = ByteArray(1 shl 16)
+              while (left > 0) {
+                checkPrepareCancellation(generation)
+                val n = zin.read(buf, 0, min(buf.size.toLong(), left).toInt())
+                if (n < 0) throw PhononException("The download ended early. Delete it and download again.")
+                out.write(buf, 0, n)
+                digest.update(buf, 0, n)
+                left -= n
+                written += n
+                if (emitProgress && progress?.shouldReport(written) == true) {
+                  sendEvent("onPrepareProgress", mapOf("file" to name, "written" to written, "total" to size))
+                }
+              }
+            }
+            val finalFile = File(staging, name)
+            if (!part.renameTo(finalFile)) throw PhononException("Could not finish extracting $name.")
+            sums[name] = digest.digest().joinToString("") { "%02x".format(it) }
+          } else {
+            skip(zin, size, generation)
+          }
+          skip(zin, padding, generation)
         }
-        skip(zin, padding)
+        if (!ended) throw PhononException("The model archive is incomplete.")
       }
-    }
-    // The manifest lists each file's SHA-256: a damaged download is refused before the engine reads it.
-    val manifest = JSONObject(File(dir, "bps_manifest.json").readText())
-    val files = manifest.getJSONArray("files")
-    for (i in 0 until files.length()) {
-      val f = files.getJSONObject(i)
-      val name = f.getString("path")
-      if (name in wanted && sums[name] != null && sums[name] != f.getString("original_sha256")) {
-        File(dir, name).delete()
-        throw PhononException("The download is damaged ($name). Delete it and download again.")
+      // Require every expected model file and its published digest before exposing the install.
+      if (sums.keys != wanted) throw PhononException("The download doesn't contain every required model file.")
+      val manifest = JSONObject(File(staging, "bps_manifest.json").readText())
+      val expected = mutableMapOf<String, String>()
+      val files = manifest.getJSONArray("files")
+      for (i in 0 until files.length()) {
+        val f = files.getJSONObject(i)
+        val name = f.optString("path")
+        if (name in wanted) expected[name] = f.optString("original_sha256")
       }
+      for (name in wanted - setOf("bps_manifest.json")) {
+        val hash = expected[name]
+        if (hash == null || !hash.matches(Regex("[0-9a-fA-F]{64}")) || sums[name] != hash.lowercase()) {
+          throw PhononException("The download is damaged or unverifiable ($name). Delete it and download again.")
+        }
+      }
+      val config = JSONObject(File(staging, "config.json").readText())
+      if (!config.has("joint") && !config.has("labels")) throw PhononException("The model configuration is invalid.")
+      if (!File(staging, "model.fermion").isFile || File(staging, "model.fermion").length() == 0L) {
+        throw PhononException("The download doesn't contain a usable model.")
+      }
+
+      backup.deleteRecursively()
+      checkPrepareCancellation(generation)
+      val hadPrevious = dir.exists()
+      if (hadPrevious && !dir.renameTo(backup)) throw PhononException("Could not preserve the existing model.")
+      if (!staging.renameTo(dir)) {
+        if (hadPrevious) backup.renameTo(dir)
+        throw PhononException("Could not install the verified model.")
+      }
+      backup.deleteRecursively()
+      // Keep the verified install even if best-effort cleanup is blocked by the filesystem.
+      archive.delete()
+    } catch (e: PhononException) {
+      throw e
+    } catch (_: Exception) {
+      throw PhononException("The model archive is damaged or could not be extracted. Keep the download and try again.")
+    } finally {
+      staging.deleteRecursively()
+      if (backup.exists() && !dir.exists()) backup.renameTo(dir)
     }
-    if (!File(dir, "model.fermion").exists() || !File(dir, "config.json").exists()) throw PhononException("The download doesn't contain the model.")
-    archive.delete()
+  }
+
+  internal fun unpackForTest(archive: File, dir: File, availableSpace: Long? = null) =
+    unpack(archive, dir, generation = null, emitProgress = false, availableSpaceOverride = availableSpace)
+
+  private fun checkPrepareCancellation(generation: Long?) {
+    if (generation != null && (cancelledGeneration == generation || prepareGeneration != generation)) {
+      throw PhononException("Model installation was cancelled. The downloaded archive is safe to retry.")
+    }
+  }
+
+  /** Reject damaged tar headers before trusting entry names or sizes. */
+  private fun verifyTarHeader(header: ByteArray) {
+    val field = String(header, 148, 8, Charsets.US_ASCII).trim('\u0000', ' ')
+    val expected = field.toLongOrNull(8) ?: throw PhononException("The model archive has a damaged header.")
+    val actual = header.indices.sumOf { if (it in 148..155) 32L else header[it].toLong() and 0xff }
+    if (actual != expected) throw PhononException("The model archive has a damaged header.")
   }
 
   // ---------- the model ----------

@@ -7,20 +7,28 @@
  *    any public GitHub repository or folder that holds SKILL.md files. Skill text always comes from GitHub's raw files.
  */
 import * as Crypto from 'expo-crypto';
-import { gunzipSync, unzipSync } from 'fflate';
 
+import { isSafeHttpsUrl, parseSiteOrigin, resolveSafeSiteUrl } from './local/market-core.mjs';
+import {
+  buildMcpConnection as buildMarketplaceMcpConnection,
+  normalizeMcpRegistryEntry,
+  planMcp as planMarketplaceMcp,
+} from './local/mcp-market-core.mjs';
+import { normalizeArchivePath, readBoundedJson, readBoundedResponse, unpackSafe, untarSafe } from './market-safety.mjs';
 import { parseSkillMd } from './skills';
 
 // ---------- shared ----------
 
 async function getJson<T>(url: string, what: string): Promise<T> {
+  if (!isSafeHttpsUrl(url)) throw new Error(`${what} did not provide a safe HTTPS address.`);
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), 20_000);
   try {
     const res = await fetch(url, { signal: ctl.signal, headers: { Accept: 'application/json' } });
     if (res.status === 403 || res.status === 429) throw new Error(`${what} is limiting requests right now. Try again in a minute.`);
     if (!res.ok) throw new Error(`${what} answered with an error (${res.status}).`);
-    return (await res.json()) as T;
+    if (res.url && !isSafeHttpsUrl(res.url)) throw new Error(`${what} redirected to an unsafe address.`);
+    return await readBoundedJson<T>(res, 4_000_000);
   } catch (e: any) {
     if (e?.name === 'AbortError') throw new Error(`${what} took too long to answer.`);
     if (e instanceof TypeError) throw new Error(`Couldn’t reach ${what}. Check your connection.`);
@@ -64,32 +72,9 @@ export type McpListing = {
   featured?: boolean;
 };
 
-const reverseDomain = (name: string) => name.split('/')[0].split('.').reverse().join('.');
+export const normalizeRegistryEntry = (entry: unknown): McpListing | null => normalizeMcpRegistryEntry(entry) as McpListing | null;
 
-export function normalizeRegistryEntry(entry: any): McpListing | null {
-  const s = entry?.server;
-  if (!s?.name) return null;
-  const remotes: any[] = Array.isArray(s.remotes) ? s.remotes : [];
-  // Streamable HTTP is what the app's client speaks; SSE-only servers are listed but not installable.
-  const r = remotes.find((x) => x?.type === 'streamable-http') ?? remotes.find((x) => x?.type === 'sse');
-  return {
-    id: s.name,
-    title: s.title || String(s.name).split('/').pop() || s.name,
-    description: String(s.description ?? '').trim(),
-    version: String(s.version ?? ''),
-    publisher: reverseDomain(s.name),
-    repoUrl: s.repository?.url,
-    websiteUrl: s.websiteUrl,
-    remote: r?.url
-      ? {
-          type: r.type,
-          url: r.url,
-          headers: Array.isArray(r.headers) ? r.headers.filter((h: any) => h?.name) : [],
-          variables: r.variables ?? {},
-        }
-      : undefined,
-  };
-}
+export const planMcp = (listing: McpListing): McpPlan => planMarketplaceMcp(listing) as McpPlan;
 
 /** One page of registry results. Servers that only run as a program on a computer are left out: a phone can't start them. */
 export async function searchMcp(query: string, cursor?: string): Promise<{ items: McpListing[]; next?: string }> {
@@ -130,58 +115,11 @@ export const FEATURED_MCP: (McpListing & { category: string })[] = [
 export type McpField = { key: string; label: string; hint?: string; secret: boolean; required: boolean; choices?: string[]; default?: string };
 export type McpPlan = { supported: boolean; reason?: string; fields: McpField[]; headerName?: string; headerTemplate?: string };
 
-const vars = (s: string) => [...s.matchAll(/\{([A-Za-z0-9_]+)\}/g)].map((m) => m[1]);
-
-/**
- * Work out the questions to ask. The app's MCP client can send one secret in one header (`Authorization: Bearer …` or
- * a header like `X-API-Key`), and fill `{placeholders}` in the address. Anything more isn't supported.
- */
-export function planMcp(l: McpListing): McpPlan {
-  const r = l.remote;
-  if (!r) return { supported: false, reason: 'This server only runs as a program on a computer, so it can’t be used from a phone.', fields: [] };
-  if (r.type === 'sse') return { supported: false, reason: 'This server uses the older SSE connection, which the app doesn’t speak yet.', fields: [] };
-
-  const fields: McpField[] = [];
-  for (const key of vars(r.url)) {
-    const v = r.variables[key] ?? {};
-    fields.push({ key, label: key.replace(/_/g, ' '), hint: v.description, secret: !!v.isSecret, required: v.isRequired !== false, choices: v.choices, default: v.default });
-  }
-
-  const headers = r.headers;
-  const required = headers.filter((h) => h.isRequired);
-  if (headers.length > 1 && required.length !== 1) {
-    return { supported: false, reason: 'This server needs several custom headers, which the app can’t send yet.', fields };
-  }
-  const h = required[0] ?? headers[0];
-  let headerName: string | undefined;
-  let headerTemplate: string | undefined;
-  if (h) {
-    headerName = h.name;
-    const placeholders = h.value ? vars(h.value) : [];
-    if (placeholders.length > 1) return { supported: false, reason: 'This server’s sign-in needs more than one value, which the app can’t ask for yet.', fields };
-    const key = placeholders[0] ?? 'value';
-    const v = h.variables?.[key] ?? {};
-    headerTemplate = h.value ? h.value.replace(`{${key}}`, '{token}') : '{token}';
-    fields.push({
-      key: '@token',
-      label: h.name.toLowerCase() === 'authorization' ? 'Access token' : h.name,
-      hint: v.description || h.description,
-      secret: h.isSecret !== false,
-      required: !!(h.isRequired || v.isRequired),
-    });
-  }
-  return { supported: true, fields, headerName, headerTemplate };
-}
-
 export type McpConnection = { url: string; headerName?: string; headerTemplate?: string; token?: string };
 
 /** Fill in the form's answers: the final address, and the header + token to store in the keystore. */
-export function buildMcpConnection(l: McpListing, plan: McpPlan, values: Record<string, string>): McpConnection {
-  let url = l.remote!.url;
-  for (const f of plan.fields) if (f.key !== '@token') url = url.replaceAll(`{${f.key}}`, (values[f.key] ?? f.default ?? '').trim());
-  const token = (values['@token'] ?? '').trim();
-  return { url, headerName: plan.headerName, headerTemplate: plan.headerTemplate, token: token || undefined };
-}
+export const buildMcpConnection = (listing: McpListing, plan: McpPlan, values: Record<string, string>): McpConnection =>
+  buildMarketplaceMcpConnection(listing, plan, values) as McpConnection;
 
 // ---------- Skills ----------
 
@@ -244,21 +182,8 @@ export async function skillsShSearch(query: string, limit = 30): Promise<SkillLi
 
 export type SiteEntry = { name: string; description: string; type?: 'skill-md' | 'archive'; url?: string; digest?: string; files?: string[] };
 
-/** `vercel.com`, `https://docs.stripe.com/` → `https://vercel.com`. Null for GitHub links and things that aren't a website. */
-export function parseSiteRef(input: string): string | null {
-  const t = input.trim().replace(/\/+$/, '');
-  if (!t || /\s/.test(t)) return null;
-  if (/^https?:\/\//i.test(t)) {
-    try {
-      const u = new URL(t);
-      return /(^|\.)github\.com$/i.test(u.hostname) ? null : u.origin;
-    } catch {
-      return null;
-    }
-  }
-  const host = t.split('/')[0];
-  return /^([a-z0-9-]+\.)+[a-z]{2,}(:\d+)?$/i.test(host) && !/^github\.com$/i.test(host) ? `https://${host}` : null;
-}
+/** `vercel.com`, `https://docs.stripe.com/` → `https://vercel.com`. Null for insecure URLs and GitHub links. */
+export const parseSiteRef = parseSiteOrigin;
 
 const WELL_KNOWN = ['.well-known/agent-skills', '.well-known/skills'];
 
@@ -268,69 +193,93 @@ export async function siteSkills(input: string): Promise<SkillListing[]> {
   if (!origin) throw new Error('That doesn’t look like a website address.');
   for (const dir of WELL_KNOWN) {
     const indexUrl = `${origin}/${dir}/index.json`;
-    let d: { skills?: SiteEntry[] } | null = null;
+    let d: { skills?: unknown[] } | null = null;
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 20_000);
     try {
-      const res = await fetch(indexUrl, { headers: { Accept: 'application/json' } });
-      d = res.ok ? await res.json() : null;
+      const res = await fetch(indexUrl, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+      if (res.ok && (!res.url || isSafeHttpsUrl(res.url))) d = await readBoundedJson<{ skills?: unknown[] }>(res, 1_000_000);
     } catch {
       d = null;
+    } finally {
+      clearTimeout(timer);
     }
     if (!d || !Array.isArray(d.skills) || !d.skills.length) continue;
     const host = new URL(origin).host;
-    return d.skills
-      .filter((e) => e?.name && /^[\w.-]+$/.test(e.name))
-      .map((entry): SkillListing => ({ key: `site:${host}/${entry.name}`, name: entry.name, description: entry.description, source: host, dir: entry.name, from: 'site', site: { indexUrl, entry } }));
+    return d.skills.slice(0, 100).flatMap((raw) => {
+      const entry = normalizeSiteEntry(raw, indexUrl);
+      return entry ? [{
+        key: `site:${host}/${entry.name}`,
+        name: entry.name,
+        description: entry.description,
+        source: host,
+        dir: entry.name,
+        from: 'site' as const,
+        site: { indexUrl, entry },
+      }] : [];
+    });
   }
   throw new Error(`${new URL(origin).host} doesn’t publish skills this way (no /.well-known/agent-skills/index.json).`);
+}
+
+function normalizeSiteEntry(value: unknown, indexUrl: string): SiteEntry | null {
+  if (!value || typeof value !== 'object') return null;
+  const raw = value as Record<string, unknown>;
+  if (typeof raw.name !== 'string' || raw.name.length > 80 || !/^[\w.-]+$/.test(raw.name)) return null;
+  if (raw.type !== undefined && raw.type !== 'skill-md' && raw.type !== 'archive') return null;
+
+  let url: string | undefined;
+  if (raw.url !== undefined) {
+    url = resolveSafeSiteUrl(raw.url, indexUrl) ?? undefined;
+    if (!url) return null;
+  }
+
+  let digest: string | undefined;
+  if (raw.digest !== undefined) {
+    if (typeof raw.digest !== 'string' || !/^(?:sha256:)?[0-9a-f]{64}$/i.test(raw.digest)) return null;
+    digest = raw.digest;
+  }
+
+  let files: string[] | undefined;
+  if (raw.files !== undefined) {
+    if (!Array.isArray(raw.files) || raw.files.length > MAX_SKILL_FILES + 1) return null;
+    const normalized = raw.files.map((file) => normalizeArchivePath(file));
+    if (normalized.some((file) => file === null)) return null;
+    files = [...new Set(normalized as string[])];
+  }
+
+  return {
+    name: raw.name,
+    description: typeof raw.description === 'string' ? raw.description.slice(0, 1000) : '',
+    ...(raw.type ? { type: raw.type } : {}),
+    ...(url ? { url } : {}),
+    ...(digest ? { digest } : {}),
+    ...(files ? { files } : {}),
+  };
 }
 
 const sha256Hex = async (bytes: Uint8Array) => [...new Uint8Array(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes as Uint8Array<ArrayBuffer>))].map((b) => b.toString(16).padStart(2, '0')).join('');
 
 async function fetchBytes(url: string, max = 20_000_000) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`Could not download ${new URL(url).host} (${res.status}).`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
-  if (bytes.length > max) throw new Error('That download is too large.');
-  return bytes;
+  if (!isSafeHttpsUrl(url)) throw new Error('Skill files must be downloaded from a safe HTTPS address.');
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 30_000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok) throw new Error(`Could not download ${new URL(url).host} (${res.status}).`);
+    if (res.url && !isSafeHttpsUrl(res.url)) throw new Error('The skill download redirected to an unsafe address.');
+    return await readBoundedResponse(res, max);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** The files of a .tar archive (ustar, with GNU long names and pax paths). Folders and links are skipped. */
-export function untar(tar: Uint8Array): { path: string; data: Uint8Array }[] {
-  const out: { path: string; data: Uint8Array }[] = [];
-  const text = new TextDecoder();
-  const str = (a: number, b: number) => text.decode(tar.subarray(a, b)).replace(/\0.*$/s, '');
-  let longName: string | null = null;
-  let paxPath: string | null = null;
-  for (let at = 0; at + 512 <= tar.length; ) {
-    if (tar.subarray(at, at + 512).every((b) => b === 0)) break;
-    const size = parseInt(str(at + 124, at + 136).trim() || '0', 8);
-    const type = str(at + 156, at + 157) || '0';
-    const body = tar.subarray(at + 512, at + 512 + size);
-    const prefix = str(at + 345, at + 500);
-    let name = (prefix ? `${prefix}/` : '') + str(at, at + 100);
-    at += 512 + Math.ceil(size / 512) * 512;
-    if (type === 'L') { longName = text.decode(body).replace(/\0.*$/s, ''); continue; }
-    if (type === 'x') { paxPath = text.decode(body).match(/\d+ path=([^\n]+)\n/)?.[1] ?? null; continue; }
-    if (longName) { name = longName; longName = null; }
-    if (paxPath) { name = paxPath; paxPath = null; }
-    if ((type === '0' || type === '\0' || type === '7') && !name.endsWith('/')) out.push({ path: name.replace(/^\.\//, ''), data: body });
-  }
-  return out;
-}
+export const untar = untarSafe;
 
 /** Unpack a downloaded archive (.tar.gz, .tgz, .zip or .tar) into files. */
 export function unpack(bytes: Uint8Array): { path: string; data: Uint8Array }[] {
-  const MAX_UNPACKED = 80_000_000;
-  if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
-    const tar = gunzipSync(bytes);
-    if (tar.length > MAX_UNPACKED) throw new Error('That archive is too large once unpacked.');
-    return untar(tar);
-  }
-  if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
-    const files = unzipSync(bytes, { filter: (f) => f.originalSize <= 5_000_000 && !f.name.endsWith('/') });
-    return Object.entries(files).map(([path, data]) => ({ path, data }));
-  }
-  return untar(bytes);
+  return unpackSafe(bytes);
 }
 
 /** SKILL.md and its companion files from the unpacked files of an archive (the skill may sit in a folder inside it). */
@@ -357,7 +306,10 @@ const parseSkillMdBody = (md: string) => parseSkillMd(md).body;
 /** Download one skill a website publishes, check it against the checksum the site gave, and read it. */
 export async function loadSiteSkill(l: SkillListing): Promise<{ md: string; files: SkillFileData[]; omitted: number; url: string }> {
   if (!l.site) throw new Error('This skill has no download address.');
-  const { indexUrl, entry } = l.site;
+  const { indexUrl } = l.site;
+  if (!isSafeHttpsUrl(indexUrl)) throw new Error('This skill index must use a safe HTTPS address.');
+  const entry = normalizeSiteEntry(l.site.entry, indexUrl);
+  if (!entry) throw new Error('This skill index contains invalid or unsafe metadata.');
   const verify = async (bytes: Uint8Array) => {
     const want = entry.digest?.replace(/^sha256:/i, '').toLowerCase();
     if (want && (await sha256Hex(bytes)) !== want) throw new Error('The download doesn’t match the checksum the website published, so it was not used.');
@@ -365,7 +317,7 @@ export async function loadSiteSkill(l: SkillListing): Promise<{ md: string; file
   const text = new TextDecoder();
 
   if (entry.url) {
-    const url = new URL(entry.url, indexUrl).toString();
+    const url = entry.url;
     const bytes = await fetchBytes(url);
     await verify(bytes);
     if (entry.type === 'archive') return { ...skillFromFiles(unpack(bytes)), url };
@@ -427,11 +379,18 @@ const skillDirs = async (source: string, ref = 'HEAD') =>
     .sort((a, b) => a.length - b.length || a.localeCompare(b));
 
 async function fetchText(url: string): Promise<string | null> {
+  if (!isSafeHttpsUrl(url)) return null;
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20_000);
   try {
-    const res = await fetch(url);
-    return res.ok ? await res.text() : null;
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok || (res.url && !isSafeHttpsUrl(res.url))) return null;
+    const bytes = await readBoundedResponse(res, 2_000_000);
+    return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
   } catch {
     return null;
+  } finally {
+    clearTimeout(timer);
   }
 }
 

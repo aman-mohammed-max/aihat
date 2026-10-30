@@ -403,7 +403,7 @@ export function DictationBar() {
 
   if (d.phase === 'idle') return null;
   const working = d.phase === 'working';
-  const label = working ? d.note : d.phase === 'starting' ? 'Starting…' : d.text ? '' : d.engine === 'phone' ? 'Listening…' : 'Recording…';
+  const label = working ? d.note : d.phase === 'verifying' ? 'Checking Phonon-2…' : d.phase === 'starting' ? 'Starting…' : d.text ? '' : d.engine === 'phone' ? 'Listening…' : 'Recording…';
 
   const btn = (name: 'close' | 'check', text: string, onPress: () => void, primary?: boolean) => (
     <Pressable
@@ -417,9 +417,9 @@ export function DictationBar() {
 
   return (
     <View
-      accessibilityLabel={working ? d.note : `Recording, ${clock(secs)}`}
+      accessibilityLabel={d.phase === 'verifying' ? 'Checking Phonon-2' : working ? d.note : `Recording, ${clock(secs)}`}
       style={{ marginHorizontal: 12, marginBottom: 6, borderRadius: 24, backgroundColor: colors.surface2, paddingLeft: 16, paddingRight: 4 }}>
-      {d.engine === 'phone' ? <PhoneEngine /> : <EndpointEngine />}
+      {d.phase !== 'verifying' && (d.engine === 'phone' ? <PhoneEngine /> : <EndpointEngine />)}
       <View style={{ minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 10 }}>
         {working ? <PulseDots /> : <RecDot />}
         {!working && <Text mono size={13} color="text2" style={{ minWidth: 34 }}>{clock(secs)}</Text>}

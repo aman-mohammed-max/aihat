@@ -1,36 +1,135 @@
 name: Check
 
-# Type-checks and lints on every push to main and every pull request (the app, the desktop backend with its tests,
+# Type-checks and lints on every branch push and every pull request (the app, the desktop backend with its tests,
 # and the skill-script runner).
 
 on:
   push:
-    branches: [main]
   pull_request:
 
-# The on-device model engine's native libraries (llama.rn) are only needed by the phone builds.
-env:
-  RNLLAMA_SKIP_POSTINSTALL: '1'
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  dependency-audit:
+    name: Production dependency security audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      RNLLAMA_SKIP_POSTINSTALL: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Fail on high or critical production advisories
+        run: npm audit --omit=dev --audit-level=high
+
+  android-build:
+    name: Android debug build (arm64 + x86_64)
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          packages: 'platform-tools platforms;android-37 build-tools;37.0.0 ndk;27.1.12297006'
+      - run: npm ci
+      - name: Verify llama.rn Android native artifacts
+        run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
+      - run: npx expo prebuild --platform android --no-install --clean
+      - name: Run Android unit tests
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+      - name: Assemble Android debug APK
+        working-directory: android
+        run: ./gradlew :app:assembleDebug --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+      - name: Validate Android release APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a,x86_64
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apk-arm64-x86_64
+          path: |
+            android/app/build/outputs/apk/debug/*.apk
+            android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+
+  ios-simulator-build:
+    name: iOS simulator build
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Verify llama.rn iOS native artifact
+        run: test -f node_modules/llama.rn/ios/rnllama.xcframework/.llama-rn.sha256
+      - run: npx expo prebuild --platform ios --no-install --clean
+      - name: Install CocoaPods
+        working-directory: ios
+        run: pod install
+      - name: Build unsigned iOS simulator app
+        run: |
+          WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
+          SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+          xcodebuild build \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/DerivedData" \
+            CODE_SIGNING_ALLOWED=NO
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ios-simulator-app
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/*.app
+          if-no-files-found: error
+
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      RNLLAMA_SKIP_POSTINSTALL: '1'
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npx expo lint
+      - run: npm run test:expo-cli-compat
+      - run: npm run test:navigation
+      - run: npm run test:local-stream
+      - run: npm run test:local-runtime
+      - run: npm run test:local-models
+      - run: npm run test:marketplace
+      - run: npm run docs:check
 
   desktop:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: 1.4.3
@@ -47,12 +146,12 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       - run: node scripts/embed-skill-engine.mjs --check
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .skill-runtime-cache
           key: skill-runtime-${{ hashFiles('scripts/skill-runtime-manifest.mjs') }}
@@ -66,6 +165,8 @@ jobs:
     name: skill-engine-${{ matrix.engine }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 25
+    env:
+      RNLLAMA_SKIP_POSTINSTALL: '1'
     strategy:
       fail-fast: false
       matrix:
@@ -73,11 +174,11 @@ jobs:
           - { engine: chromium, runner: ubuntu-24.04 }
           - { engine: webkit, runner: macos-15 }
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: .skill-runtime-cache
           key: skill-runtime-${{ hashFiles('scripts/skill-runtime-manifest.mjs') }}

@@ -33,4 +33,9 @@ android {
 dependencies {
   // Unpacks the model download (a zstd-compressed tar).
   implementation "com.github.luben:zstd-jni:1.5.7-3@aar"
+  // Host JVM unit tests need zstd-jni's Linux native binary; the Android AAR only packages Android ABIs.
+  testImplementation "com.github.luben:zstd-jni:1.5.7-3"
+  // Use a real JSON implementation in local JVM tests instead of Android's mocked android.jar stubs.
+  testImplementation 'org.json:json:20250517'
+  testImplementation 'junit:junit:4.13.2'
 }

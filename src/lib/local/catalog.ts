@@ -3,6 +3,10 @@
  * phones and tablets comes first; any other GGUF repository can be found with search.
  */
 
+import { fileUrl as buildFileUrl, checkedRepo, checkedRevision } from './download-core.mjs';
+import { isSafeHttpsUrl, normalizeModelDescription, normalizeRepoMetadata } from './market-core.mjs';
+import { readBoundedJson, readBoundedResponse } from '../market-safety.mjs';
+
 const HF = 'https://huggingface.co';
 
 export type Picked = {
@@ -30,12 +34,24 @@ export const PICKED: Picked[] = [
 ];
 
 export type RepoHit = { id: string; downloads: number; likes: number };
-export type GgufFile = { path: string; size: number };
+export type GgufFile = { path: string; size: number; sha256?: string; revision: string };
+export type RepoInfo = { architecture?: string; parameters?: number; license?: string; revision?: string };
 
-async function getJson(url: string) {
-  const res = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!res.ok) throw new Error(res.status === 404 ? 'Not found on Hugging Face.' : `Hugging Face answered ${res.status}.`);
-  return res.json();
+async function getJson<T = any>(url: string): Promise<T> {
+  if (!isSafeHttpsUrl(url)) throw new Error('The model catalog address is not a safe HTTPS URL.');
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20_000);
+  try {
+    const res = await fetch(url, { signal: ctl.signal, headers: { Accept: 'application/json' } });
+    if (!res.ok) throw new Error(res.status === 404 ? 'Not found on Hugging Face.' : `Hugging Face answered ${res.status}.`);
+    if (res.url && !isSafeHttpsUrl(res.url)) throw new Error('The model catalog redirected to an unsafe address.');
+    return await readBoundedJson<T>(res, 8_000_000);
+  } catch (error: any) {
+    if (error?.name === 'AbortError') throw new Error('Hugging Face took too long to answer.');
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** GGUF repositories matching the words, most downloaded first. */
@@ -44,21 +60,48 @@ export async function searchRepos(q: string): Promise<RepoHit[]> {
   return list.map((m) => ({ id: String(m.id), downloads: Number(m.downloads) || 0, likes: Number(m.likes) || 0 }));
 }
 
+/** Optional publisher metadata. Missing fields stay unknown rather than being guessed from a repository name. */
+export async function repoInfo(repo: string): Promise<RepoInfo> {
+  const data: any = await getJson(`${HF}/api/models/${checkedRepo(repo)}`);
+  return normalizeRepoMetadata(data);
+}
+
+/** A short plain-text excerpt from the publisher's model card, tied to the same immutable revision as the file list. */
+export async function repoDescription(repo: string, revision = 'main'): Promise<string | undefined> {
+  const url = fileUrl(repo, 'README.md', revision);
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), 20_000);
+  try {
+    const response = await fetch(url, { signal: ctl.signal, headers: { Accept: 'text/plain' } });
+    if (!response.ok || (response.url && !isSafeHttpsUrl(response.url))) return undefined;
+    const bytes = await readBoundedResponse(response, 512_000);
+    return normalizeModelDescription(new TextDecoder().decode(bytes));
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 /**
  * The model files of a repository: single-file GGUFs, without vision projectors, draft models for speculative
  * decoding or files split into parts (llama.cpp would need every part).
  */
-export async function repoFiles(repo: string): Promise<GgufFile[]> {
-  const tree: any[] = await getJson(`${HF}/api/models/${repo}/tree/main?recursive=true`);
+export async function repoFiles(repo: string, revision = 'main'): Promise<GgufFile[]> {
+  const rev = checkedRevision(revision);
+  const tree: any[] = await getJson(`${HF}/api/models/${checkedRepo(repo)}/tree/${rev}?recursive=true`);
   return tree
     .filter((f) => f?.type === 'file' && typeof f.path === 'string' && /\.gguf$/i.test(f.path))
     .filter((f) => !/mmproj|(^|\/)(dflash|draft)[-_]|-\d{5}-of-\d{5}\.gguf$/i.test(f.path))
-    .map((f) => ({ path: String(f.path), size: Number(f.size ?? f.lfs?.size) || 0 }))
+    .map((f) => {
+      const oid = String(f.lfs?.oid ?? '').replace(/^sha256:/i, '');
+      return { path: String(f.path), size: Number(f.size ?? f.lfs?.size) || 0, revision, ...( /^[0-9a-f]{64}$/i.test(oid) ? { sha256: oid.toLowerCase() } : {}) };
+    })
     .sort((a, b) => a.size - b.size);
 }
 
-export const fileUrl = (repo: string, path: string) => `${HF}/${repo}/resolve/main/${path.split('/').map(encodeURIComponent).join('/')}?download=true`;
-export const repoUrl = (repo: string) => `${HF}/${repo}`;
+export const fileUrl = buildFileUrl;
+export const repoUrl = (repo: string) => `${HF}/${checkedRepo(repo)}`;
 
 /** `Qwen3.5-4B-Q4_K_M.gguf` → `Q4_K_M`. */
 export function quantOf(path: string) {

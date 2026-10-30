@@ -8,7 +8,7 @@ import { stopSpeaking } from '@/lib/tts';
 import { toast } from '@/store/toast';
 import { useSettings } from '@/store/settings';
 
-export type DictationPhase = 'idle' | 'starting' | 'listening' | 'working';
+export type DictationPhase = 'idle' | 'verifying' | 'starting' | 'listening' | 'working';
 
 type State = {
   phase: DictationPhase;
@@ -43,13 +43,32 @@ export const useDictation = create<State>((set, get) => ({
   begin(o) {
     const phase = get().phase;
     if (phase === 'listening') return get().finish();
-    if (phase === 'starting' || phase === 'working') return get().cancel();
+    if (phase === 'verifying' || phase === 'starting' || phase === 'working') return get().cancel();
     const s = useSettings.getState();
     // Phonon-2 on the device: it needs its download, and a device that can run it (else the phone's own service listens).
     let chosen = s.dictationEngine;
     if (chosen === 'phonon' && !phononSupported()) chosen = 'phone';
-    else if (chosen === 'phonon' && !phononReady()) {
-      toast('Download Phonon-2 in Settings › Voice & speech first');
+    else if (chosen === 'phonon') {
+      const signal = get().signal.n + 1;
+      set({
+        ...IDLE,
+        phase: 'verifying',
+        engine: chosen,
+        translate: o?.translate ?? s.translateTo !== 'English',
+        signal: { n: signal, kind: null },
+      });
+      void phononReady().then((ready) => {
+        const current = get();
+        if (current.phase !== 'verifying' || current.signal.n !== signal) return;
+        if (!ready) {
+          set({ ...IDLE });
+          toast('Download Phonon-2 in Settings › Voice & speech first');
+          return;
+        }
+        stopSpeaking();
+        haptic.tap();
+        set({ phase: 'starting' });
+      });
       return;
     }
     stopSpeaking(); // the microphone would hear a reply being read aloud
@@ -77,6 +96,7 @@ export const useDictation = create<State>((set, get) => ({
   cancel() {
     if (get().phase === 'idle') return;
     haptic.select();
+    if (get().phase === 'verifying') return set({ ...IDLE });
     set((st) => ({ signal: { n: st.signal.n + 1, kind: 'cancel' } }));
   },
   patch: (p) => set(p),

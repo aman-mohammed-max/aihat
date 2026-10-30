@@ -2,9 +2,17 @@ import type { LlamaContext } from 'llama.rn';
 import { AppState, Platform, TurboModuleRegistry } from 'react-native';
 
 import type { ChatMessage, Params, StreamEvent } from '@/api/openai';
+import { useLocalInference } from '@/store/localInference';
 import { useSettings } from '@/store/settings';
+import { DeviceMemory } from '../../../modules/devicememory';
+import type { DeviceMemorySnapshot } from '../../../modules/devicememory';
 
 import { modelFileOf } from './files';
+import { thisDevice } from './fit';
+import { assessModelMemory } from './fit-core.mjs';
+import type { LocalGenerationRequest, LocalInferenceProvider } from './inference';
+import { createGenerationLifecycle } from './generation-lifecycle.mjs';
+import { canLoadModel, shouldUnloadModel } from './model-runtime.mjs';
 
 /**
  * Runs downloaded GGUF models on the device with llama.rn (llama.cpp). Its native part is in the AI Hat app from the
@@ -50,14 +58,33 @@ function releaseInBackground() {
 async function unloadNow() {
   const old = loaded;
   loaded = null;
+  if (old) useLocalInference.getState().dispatch({ type: 'unloaded', id: old.id });
   await old?.ctx.release().catch(() => {});
 }
 
-/** Free the model's memory now (when it is deleted, or another one is about to load). */
-export const unloadModel = () => serial(unloadNow);
+/** Free model memory now; an id limits deletion cleanup to that model and leaves an unrelated model loaded. */
+export const unloadModel = (id?: string) => serial(async () => {
+  if (!shouldUnloadModel(loaded?.id ?? null, id)) return;
+  await unloadNow();
+});
 
 /** The model the engine has in memory, if any. */
 export const loadedModel = () => loaded?.id ?? null;
+
+function memorySnapshot(): DeviceMemorySnapshot | null {
+  if ((Platform.OS !== 'android' && Platform.OS !== 'ios') || !DeviceMemory) return null;
+  try {
+    return DeviceMemory.getMemoryInfo();
+  } catch {
+    return null;
+  }
+}
+
+function memoryError(reason: string | null) {
+  if (reason === 'low-memory') return 'Android is low on memory right now. Close other apps and try again.';
+  if (reason === 'available-memory') return 'There isn’t enough available memory to load this model right now. Close other apps and try again.';
+  return 'This model is estimated to need more memory than this device can safely provide. Choose a smaller model.';
+}
 
 let idle: ReturnType<typeof setTimeout> | null = null;
 /** "Free memory when idle": five minutes after the last reply, the model is let go (the next reply loads it again). */
@@ -67,24 +94,51 @@ function unloadLater() {
 }
 
 async function contextFor(id: string) {
-  if (loaded?.id === id) return loaded.ctx;
-  const l = llama();
-  if (!l) throw new Error(UNAVAILABLE);
-  const file = modelFileOf(id);
-  if (!file.exists) throw new Error('This model is no longer on the device. Download it again in Marketplace › Local models.');
-  await unloadNow();
-  releaseInBackground();
-  const ctx = await l.initLlama({
-    model: file.uri,
-    n_ctx: 4096,
-    // iPhone and iPad run the model on the GPU (Metal) unless it is turned off; Android stays on the CPU, which works on
-    // every phone.
-    n_gpu_layers: Platform.OS === 'ios' && useSettings.getState().localGpu ? 99 : 0,
-    use_mlock: false,
-    use_mmap: true,
-  });
-  loaded = { id, ctx };
-  return ctx;
+  const runtime = useLocalInference.getState();
+  if (!canLoadModel(runtime, id)) throw new Error('This model is being removed. Wait for removal to finish, then download it again if needed.');
+  if (loaded?.id === id) {
+    runtime.dispatch({ type: 'load-success', id });
+    return loaded.ctx;
+  }
+  runtime.dispatch({ type: 'load-start', id });
+  try {
+    const l = llama();
+    if (!l) throw new Error(UNAVAILABLE);
+    const file = modelFileOf(id);
+    if (!file.exists) throw new Error('This model is no longer on the device. Download it again in Marketplace › Local models.');
+
+    const platform = Platform.OS === 'ios' ? 'ios' : 'android';
+    const modelSize = file.size ?? 0;
+    await unloadNow();
+    releaseInBackground();
+    const snapshot = memorySnapshot();
+    const reportedTotal = thisDevice().memory;
+    const totalMemory = snapshot?.totalMemory && snapshot.totalMemory > 0 ? snapshot.totalMemory : reportedTotal;
+    const memory = assessModelMemory({
+      modelSize,
+      totalMemory,
+      availableMemory: snapshot?.availableMemory,
+      lowMemory: snapshot?.lowMemory,
+      platform,
+    });
+    if (!memory.allowed) throw new Error(memoryError(memory.reason));
+
+    const ctx = await l.initLlama({
+      model: file.uri,
+      n_ctx: memory.contextSize,
+      // iPhone and iPad run the model on the GPU (Metal) unless it is turned off; Android stays on the CPU, which works on
+      // every phone.
+      n_gpu_layers: Platform.OS === 'ios' && useSettings.getState().localGpu ? 99 : 0,
+      use_mlock: false,
+      use_mmap: true,
+    });
+    loaded = { id, ctx };
+    runtime.dispatch({ type: 'load-success', id });
+    return ctx;
+  } catch (error) {
+    runtime.dispatch({ type: 'load-failure', id, error: error instanceof Error ? error.message : 'Could not load this model.' });
+    throw error;
+  }
 }
 
 /** The chat as plain text messages: pictures can't be read by these models, and tool rounds become ordinary text. */
@@ -116,14 +170,16 @@ export async function* streamLocal(modelId: string, messages: ChatMessage[], par
 
   let ctxRef: LlamaContext | null = null;
   const stop = () => void ctxRef?.stopCompletion().catch(() => {});
+  const lifecycle = createGenerationLifecycle(stop);
+  const abort = () => lifecycle.close(false);
   if (signal?.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
-  signal?.addEventListener('abort', stop, { once: true });
+  signal?.addEventListener('abort', abort, { once: true });
 
   if (idle) clearTimeout(idle);
   serial(async () => {
     const ctx = await contextFor(modelId);
     ctxRef = ctx;
-    if (signal?.aborted) return null;
+    if (lifecycle.closed || signal?.aborted) return null;
     return ctx.completion(
       {
         messages: plain(messages),
@@ -136,10 +192,10 @@ export async function* streamLocal(modelId: string, messages: ChatMessage[], par
         stop: STOP,
       },
       (data) => {
-        if (data.token) {
-          pieces.push(data.token);
+        if (data.token) lifecycle.push(data.token, (token) => {
+          pieces.push(token);
           ping();
-        }
+        });
       },
     );
   }).then(
@@ -171,7 +227,42 @@ export async function* streamLocal(modelId: string, messages: ChatMessage[], par
     if (signal?.aborted) throw Object.assign(new Error('Stopped'), { name: 'AbortError' });
     yield { type: 'done', tokens: (result as { tokens_predicted?: number } | null)?.tokens_predicted, ms: Date.now() - started };
   } finally {
-    signal?.removeEventListener('abort', stop);
+    lifecycle.close(done);
+    signal?.removeEventListener('abort', abort);
     unloadLater();
   }
 }
+
+/** llama.cpp implementation registered behind the engine-neutral local inference contract. */
+export const llamaProvider: LocalInferenceProvider = {
+  id: 'llama.cpp',
+  modelFormats: ['gguf'],
+  async initialize() {
+    return localEngineAvailable();
+  },
+  async loadModel(id) {
+    await serial(() => contextFor(id));
+  },
+  unloadModel,
+  async generateText(request: LocalGenerationRequest) {
+    let output = '';
+    for await (const event of streamLocal(request.modelId, request.messages, request.params, request.signal)) {
+      if (event.type === 'delta') output += event.text;
+    }
+    return output;
+  },
+  streamTokens(request) {
+    return streamLocal(request.modelId, request.messages, request.params, request.signal);
+  },
+  async stopGeneration() {
+    await loaded?.ctx.stopCompletion().catch(() => {});
+  },
+  async readModelInfo(id) {
+    const l = llama();
+    if (!l) throw new Error(UNAVAILABLE);
+    const file = modelFileOf(id);
+    if (!file.exists) throw new Error('This model is no longer on the device. Download it again in Marketplace › Local models.');
+    return l.loadLlamaModelInfo(file.uri);
+  },
+  releaseMemory: unloadModel,
+};

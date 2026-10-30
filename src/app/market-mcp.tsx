@@ -140,6 +140,7 @@ function Hosted({ listing }: { listing: McpListing }) {
       }>
       <Header l={listing} />
       {!plan.supported && <Notice icon="info">{plan.reason ?? ''}</Notice>}
+      {plan.supported && hasUrlVariables && <Notice icon="warn">Address fields are saved as part of the server address and can be seen in server settings. Use only nonsecret identifiers here. Address fields are not stored in the secure keystore.</Notice>}
       {existing && <InfoBox icon="check" tone="accent" title="Already added" sub={existing.connected ? `${existing.tools.length} tools. Turn it on in a chat with the Tools button.` : 'Not connected right now. Open it to connect again.'} />}
 
       {plan.supported && !existing && !outcome?.ok && (

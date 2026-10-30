@@ -94,7 +94,9 @@ export function ModelPill({ repo, file, size, name }: { repo: string; file: stri
   const job = store.jobs[id];
   const have = store.models.find((m) => m.id === id);
   if (have) return <Pill label="Use" a11y={`Use ${name} in a new chat`} onPress={() => startChatWith(id, have.name)} />;
+  if (job?.state === 'queued') return <Pill label="Queued" tone="plain" a11y="Cancel queued model download" onPress={() => store.cancel(id)} />;
   if (job?.state === 'active') return <Pill label={`${job.size ? Math.round((job.written / job.size) * 100) : 0}%`} tone="plain" a11y="Pause the download" onPress={() => store.pause(id)} />;
+  if (job?.state === 'verifying' || job?.state === 'installing') return <Pill label={job.state === 'verifying' ? 'Verify' : 'Install'} tone="plain" />;
   if (job) return <Pill label={job.state === 'paused' ? 'Resume' : 'Retry'} onPress={() => void store.resume(id)} />;
   const f = fit(size);
   const start = () => store.download({ repo, file, size, name }).catch((e: Error) => Alert.alert('Couldn’t download', e.message));
@@ -139,7 +141,7 @@ function PhononRow() {
   ) : ph.phase === 'paused' ? (
     <Pill label="Resume" onPress={get} />
   ) : ph.phase === 'preparing' ? (
-    <Pill label="…" tone="plain" a11y="Unpacking" />
+    <Pill label={ph.extractTotal ? `${Math.round((ph.extractWritten / ph.extractTotal) * 100)}%` : '…'} tone="plain" a11y="Cancel installation" onPress={ph.cancel} />
   ) : (
     <Pill label={ph.phase === 'failed' ? 'Retry' : 'Get'} a11y="Download Phonon-2" onPress={get} />
   );
@@ -202,6 +204,7 @@ export function FilterChip({ label, on, onPress }: { label: string; on: boolean;
 /** Marketplace › Models: models that run on this phone or tablet, without an endpoint. */
 export function ModelsTab() {
   const [chip, setChip] = useState<ChipId>('all');
+  const [sortByName, setSortByName] = useState(false);
   const [q, setQ] = useState('');
   const [applied, setApplied] = useState('');
   const [hits, setHits] = useState<{ q: string; list: RepoHit[]; error?: string } | null>(null);
@@ -218,9 +221,11 @@ export function ModelsTab() {
     };
   }, [applied]);
 
-  const picked = chip === 'speech' ? [] : PICKED.filter((p) => chip === 'all' || p.tags.includes(chip));
-  const speech = (chip === 'all' || chip === 'speech') && Platform.OS !== 'web';
   const searching = !!applied.trim();
+  const picked = chip === 'speech' ? [] : PICKED.filter((p) => chip === 'all' || p.tags.includes(chip));
+  const sortedPicked = [...picked].sort((a, b) => sortByName ? a.name.localeCompare(b.name) : a.size - b.size);
+  const sortedHits = hits?.q === applied ? [...hits.list].sort((a, b) => sortByName ? prettyRepo(a.id).localeCompare(prettyRepo(b.id)) : b.downloads - a.downloads) : [];
+  const speech = (chip === 'all' || chip === 'speech') && Platform.OS !== 'web';
 
   return (
     <View style={{ gap: 16 }}>
@@ -232,6 +237,10 @@ export function ModelsTab() {
           {CHIPS.map((c) => <FilterChip key={c.id} label={c.label} on={chip === c.id} onPress={() => setChip(c.id)} />)}
         </ScrollView>
       ) : null}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} style={{ flexGrow: 0 }} accessibilityLabel="Sort models">
+        <FilterChip label={searching ? 'Most downloaded' : 'Smallest'} on={!sortByName} onPress={() => setSortByName(false)} />
+        <FilterChip label="Name" on={sortByName} onPress={() => setSortByName(true)} />
+      </ScrollView>
 
       {searching ? (
         <View>
@@ -240,7 +249,7 @@ export function ModelsTab() {
           {hits?.q === applied && hits.error ? <Text size={12.5} color="danger">{hits.error}</Text> : null}
           {hits?.q === applied && !hits.error && !hits.list.length ? <Text size={12.5} color="muted">Nothing found. Try another word.</Text> : null}
           {hits?.q === applied
-            ? hits.list.map((h) => (
+            ? sortedHits.map((h) => (
                 <StoreRow key={h.id} name={prettyRepo(h.id)} desc={h.id} meta={`${count(h.downloads)} downloads`} pill={<Pill label="View" tone="plain" onPress={() => openModel({ repo: h.id })} />} onPress={() => openModel({ repo: h.id })} />
               ))
             : null}
@@ -248,7 +257,7 @@ export function ModelsTab() {
       ) : (
         <View>
           <SectionTitle space={6}>{`Recommended for this ${device}`}</SectionTitle>
-          {picked.map((p) => (
+          {sortedPicked.map((p) => (
             <StoreRow
               key={p.repo}
               name={p.name}

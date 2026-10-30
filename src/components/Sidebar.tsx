@@ -41,9 +41,11 @@ export function Sidebar({ navigation }: DrawerContentComponentProps) {
     router.push(path as never);
   };
   const lib: { icon: IconName; label: string; count: string; path: string }[] = [
+    { icon: 'store', label: 'Marketplace', count: '', path: '/market' },
+    { icon: 'chip', label: 'My Models', count: '', path: '/device-models' },
     { icon: 'prompt', label: 'System prompts', count: String(prompts.length), path: '/prompts' },
-    { icon: 'sparkle', label: 'Skills', count: String(skills.length), path: '/skills' },
-    { icon: 'server', label: 'MCP servers', count: String(servers.filter((s) => !s.isConnector).length), path: '/mcp' },
+    { icon: 'sparkle', label: 'My Skills', count: String(skills.length), path: '/skills' },
+    { icon: 'server', label: 'MCP Connections', count: String(servers.filter((s) => !s.isConnector).length), path: '/mcp' },
     { icon: 'link', label: 'Connectors', count: String(servers.filter((s) => s.isConnector).length), path: '/connectors' },
     { icon: 'sparkle', label: 'Mini app', count: 'App', path: '/gen-app' },
   ];

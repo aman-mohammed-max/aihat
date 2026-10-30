@@ -5,6 +5,8 @@ export type PhononNativeModule = {
   isSupported(): boolean;
   /** Android: unpack the downloaded archive into `dir` and check it. iOS: nothing to do. */
   prepare(archive: string, dir: string): Promise<void>;
+  cancelPrepare(): void;
+  addListener(eventName: 'onPrepareProgress', listener: (event: { file: string; written: number; total: number }) => void): { remove(): void };
   /** Build the model from `dir` (once; later calls return at once). */
   load(dir: string): Promise<void>;
   /** An audio file (16 kHz mono is best) → the words in it. */

@@ -14,6 +14,9 @@ on:
         type: string
         default: ''
 
+permissions:
+  contents: read
+
 # The on-device model engine's native libraries (llama.rn) are only needed by the phone builds.
 env:
   RNLLAMA_SKIP_POSTINSTALL: '1'
@@ -40,9 +43,9 @@ jobs:
       LABEL: ${{ inputs.label || format('build-{0}', github.run_number) }}
       NAME: ${{ matrix.name }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -110,13 +113,13 @@ jobs:
         run: bun scripts/package.ts flatpak artifacts/stable-linux-*.tar.zst fp
 
       - if: startsWith(matrix.name, 'Linux-')
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: flatpak-source-${{ matrix.name }}
           path: desktop/fp
           retention-days: 1
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: AI-Hat-desktop-${{ matrix.name }}
           path: desktop/out/*
@@ -142,7 +145,7 @@ jobs:
     env:
       BUNDLE: AI-Hat-${{ inputs.label || format('build-{0}', github.run_number) }}-${{ matrix.name }}.flatpak
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           name: flatpak-source-${{ matrix.name }}
           path: fp
@@ -166,7 +169,7 @@ jobs:
           flatpak build-bundle --arch=${{ matrix.arch }} --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo fp-repo "$BUNDLE" com.amanm.aihat
           ls -la "$BUNDLE"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: AI-Hat-desktop-flatpak-${{ matrix.name }}
           path: ${{ env.BUNDLE }}

@@ -1,11 +1,9 @@
 name: Android APK
 
-# Builds installable release APKs: one for every kind of processor plus a universal one.
-#   AI-Hat-<label>.apk                  universal: installs on any Android phone, tablet or Chromebook (largest file)
-#   AI-Hat-<label>-Android-arm64.apk    64-bit ARM (arm64-v8a): nearly every phone from the last several years
-#   AI-Hat-<label>-Android-arm32.apk    32-bit ARM (armeabi-v7a): older and low-cost phones
-#   AI-Hat-<label>-Android-x86_64.apk   64-bit Intel/AMD (x86_64): Chromebooks, tablets and emulators with Intel or AMD chips
-#   AI-Hat-<label>-Android-x86.apk      32-bit Intel (x86): old Intel tablets and emulators
+# Builds installable release APKs for llama.rn's supported Android ABIs plus a universal one.
+#   AI-Hat-<label>.apk                  universal: 64-bit ARM and x86_64 devices
+#   AI-Hat-<label>-Android-arm64.apk    64-bit ARM (arm64-v8a)
+#   AI-Hat-<label>-Android-x86_64.apk   64-bit Intel/AMD (x86_64)
 #   By hand: GitHub → Actions → "Android APK" → Run workflow. The APKs are under the run's Artifacts.
 #   For a public release, push a tag instead (see release.yml), which builds this and the other apps together.
 #
@@ -19,16 +17,19 @@ on:
     inputs:
       abis:
         description: CPU architectures to build (comma separated; fewer is faster). Each gets its own APK, plus a universal one.
-        default: arm64-v8a,armeabi-v7a,x86_64,x86
+        default: arm64-v8a,x86_64
   workflow_call:
     inputs:
       abis:
         type: string
-        default: arm64-v8a,armeabi-v7a,x86_64,x86
+        default: arm64-v8a,x86_64
       label:
         description: Used in the file name, for example the release tag
         type: string
         default: ''
+
+permissions:
+  contents: read
 
 jobs:
   apk:
@@ -40,20 +41,28 @@ jobs:
       ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
       ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
 
+      - uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          packages: 'platform-tools platforms;android-37 build-tools;37.0.0 ndk;27.1.12297006'
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Verify llama.rn Android native artifacts
+        run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
 
       - name: Number this build
         run: |
@@ -93,12 +102,12 @@ jobs:
 
       - name: One APK per architecture, plus a universal one
         env:
-          ABIS: ${{ inputs.abis || 'arm64-v8a,armeabi-v7a,x86_64,x86' }}
+          ABIS: ${{ inputs.abis || 'arm64-v8a,x86_64' }}
         run: |
           python3 - <<'PY'
           import os, re
           abis = [a.strip() for a in os.environ['ABIS'].split(',') if a.strip()]
-          known = {'arm64-v8a', 'armeabi-v7a', 'x86_64', 'x86'}
+          known = {'arm64-v8a', 'x86_64'}
           assert abis and set(abis) <= known, f'unknown architecture in {abis}; use {sorted(known)}'
           if len(abis) == 1:
               print('One architecture: a single APK, no splits.')
@@ -129,7 +138,7 @@ jobs:
         working-directory: android
         run: >
           ./gradlew assembleRelease --no-daemon --stacktrace
-          -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a,armeabi-v7a,x86_64,x86' }}
+          -PreactNativeArchitectures=${{ inputs.abis || 'arm64-v8a,x86_64' }}
           -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g"
 
       - name: Name the files
@@ -141,9 +150,9 @@ jobs:
           ls -l
           if [ -f app-universal-release.apk ]; then
             cp app-universal-release.apk "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL.apk"
-            for abi in arm64-v8a armeabi-v7a x86_64 x86; do
+            for abi in arm64-v8a x86_64; do
               [ -f "app-$abi-release.apk" ] || continue
-              case "$abi" in arm64-v8a) name=arm64 ;; armeabi-v7a) name=arm32 ;; *) name=$abi ;; esac
+              case "$abi" in arm64-v8a) name=arm64 ;; *) name=$abi ;; esac
               cp "app-$abi-release.apk" "$GITHUB_WORKSPACE/out/AI-Hat-$LABEL-Android-$name.apk"
             done
           else
@@ -151,7 +160,7 @@ jobs:
           fi
           ls -lh "$GITHUB_WORKSPACE/out"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: AI-Hat-apk
           path: out/*.apk
