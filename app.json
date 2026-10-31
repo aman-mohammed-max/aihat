@@ -96,7 +96,8 @@
         "expo-build-properties",
         {
           "android": {
-            "usesCleartextTraffic": true
+            "usesCleartextTraffic": true,
+            "extraProguardRules": "# zstd-jni resolves these cursor fields by name through JNI.\n-keep class com.github.luben.zstd.ZstdInputStreamNoFinalizer { *; }\n-keep class com.github.luben.zstd.ZstdOutputStreamNoFinalizer { *; }"
           }
         }
       ],

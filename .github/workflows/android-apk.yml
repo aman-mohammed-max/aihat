@@ -80,6 +80,11 @@ jobs:
       - name: Generate the Android project
         run: npx expo prebuild --platform android --no-install --clean
 
+      - name: Verify Zstd JNI keep rules reach the release app
+        run: |
+          grep -Fq 'ZstdInputStreamNoFinalizer { *; }' android/app/proguard-rules.pro
+          grep -Fq 'ZstdOutputStreamNoFinalizer { *; }' android/app/proguard-rules.pro
+
       - name: Sign with my keystore (only when the secrets are set)
         if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' }}
         run: |
