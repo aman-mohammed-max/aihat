@@ -210,7 +210,7 @@ jobs:
       - name: Install Android 17 preview SDK required by Expo SDK 58
         run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Install eSpeak NG for a real speech fixture
-        run: brew install coreutils espeak-ng
+        run: sudo apt-get update && sudo apt-get install --yes espeak-ng
       - name: Confirm native ARM64 CI host
         run: test "$(uname -m)" = arm64
       - run: npm ci

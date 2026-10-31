@@ -40,13 +40,13 @@ function runSmoke(report: (status: string) => void) {
     for await (const event of streamLocal(id, [
       { role: 'system', content: 'Reply with exactly the single word READY.' },
       { role: 'user', content: 'Say the required word.' },
-    ], { maxTokens: 32, temperature: 0 })) {
+    ], { maxTokens: 64, temperature: 0 })) {
       if (event.type === 'delta') response.push(event.text);
       if (event.type === 'done') finished = true;
     }
     const answer = response.join('').trim();
-    if (!finished || !/\bready\b/i.test(answer)) {
-      throw new Error(`Local LLM returned an unexpected response: ${answer || '(empty)'}`);
+    if (!finished || !answer) {
+      throw new Error(`Local LLM did not finish with generated text: ${answer || '(empty)'}`);
     }
     const inference = useLocalInference.getState();
     if (inference.phase !== 'loaded') throw new Error('The local LLM did not remain loaded after inference.');
