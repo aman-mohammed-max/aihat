@@ -4,8 +4,10 @@ import com.github.luben.zstd.ZstdOutputStream
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.security.MessageDigest
 
@@ -224,6 +226,27 @@ class PhononArchiveTest {
     }
   }
 
+  /** The CI runner supplies the pinned publisher archive; ordinary local unit runs stay offline. */
+  @Test
+  fun extractsPinnedPublisherArchiveWhenProvided() {
+    val archivePath = System.getenv("PHONON_TEST_ARCHIVE")
+    assumeTrue("PHONON_TEST_ARCHIVE is only set by the real-model CI job", !archivePath.isNullOrBlank())
+    val archive = File(archivePath!!)
+    assertTrue("The downloaded Phonon archive is missing", archive.isFile)
+    assertTrue("The downloaded Phonon archive has the wrong size", archive.length() == 163_515_201L)
+    assertTrue("The downloaded Phonon archive checksum changed", sha256(archive) == "98125795b6dda72f5c6eee9ba33d19815df65dcb18b50a357bf9f73c9935309e")
+
+    withTempDir { root ->
+      val destination = File(root, "phonon/Phonon-2")
+      PhononModule().unpackForTest(archive, destination)
+
+      assertTrue("The publisher model was not extracted", File(destination, "model.fermion").length() == 177_438_361L)
+      assertTrue(File(destination, "config.json").isFile)
+      assertTrue(File(destination, "bps_manifest.json").isFile)
+      assertFalse("A successful install should consume the verified archive", archive.exists())
+    }
+  }
+
   @Test
   fun refusesEmptyArchive() {
     withTempDir { root ->
@@ -326,6 +349,19 @@ class PhononArchiveTest {
   }
 
   private fun sha256(bytes: ByteArray) = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+
+  private fun sha256(file: File): String {
+    val digest = MessageDigest.getInstance("SHA-256")
+    FileInputStream(file).use { input ->
+      val buffer = ByteArray(64 * 1024)
+      while (true) {
+        val read = input.read(buffer)
+        if (read < 0) break
+        digest.update(buffer, 0, read)
+      }
+    }
+    return digest.digest().joinToString("") { "%02x".format(it) }
+  }
 
   private fun expectFailure(block: () -> Unit) {
     try {

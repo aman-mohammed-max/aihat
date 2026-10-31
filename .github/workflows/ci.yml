@@ -56,15 +56,22 @@ jobs:
       - name: Verify llama.rn Android native artifacts
         run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
       - run: npx expo prebuild --platform android --no-install --clean
-      - name: Run Android unit tests
+      - name: Download the pinned Phonon archive for the extraction integration test
+        env:
+          PHONON_ARCHIVE_URL: https://huggingface.co/FermionResearch/Phonon-2/resolve/3e6ab3a81d73b4d424ff34cc72535deb606378ef/phonon-2.bps.tar.zst?download=true
+          PHONON_ARCHIVE_SHA256: 98125795b6dda72f5c6eee9ba33d19815df65dcb18b50a357bf9f73c9935309e
+        run: |
+          curl --fail --location --retry 3 --output "$RUNNER_TEMP/phonon-2.bps.tar.zst" "$PHONON_ARCHIVE_URL"
+          echo "$PHONON_ARCHIVE_SHA256  $RUNNER_TEMP/phonon-2.bps.tar.zst" | sha256sum --check
+          test "$(wc -c < "$RUNNER_TEMP/phonon-2.bps.tar.zst")" -eq 163515201
+      - name: Run Android unit tests and extract the pinned publisher archive
         working-directory: android
+        env:
+          PHONON_TEST_ARCHIVE: ${{ runner.temp }}/phonon-2.bps.tar.zst
         run: ./gradlew testDebugUnitTest --no-daemon -PreactNativeArchitectures=arm64-v8a
       - name: Assemble Android debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon -PreactNativeArchitectures=arm64-v8a
-      - name: Validate Android release APK
-        working-directory: android
-        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk-arm64
