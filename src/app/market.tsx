@@ -12,9 +12,8 @@ import { isDesktop } from '@/lib/device';
 import { useLayout, useNavWidth } from '@/lib/layout';
 import { useLibrary } from '@/store/library';
 import { useTheme } from '@/theme';
-import { CONNECTORS } from '@/lib/mcp-connect';
 
-type Tab = 'skills' | 'mcp' | 'models' | 'extensions';
+type Tab = 'skills' | 'mcp' | 'models';
 type Source = 'popular' | 'skillssh' | 'github';
 
 type Page<T> = { items: T[]; next?: string; total?: number };
@@ -369,8 +368,8 @@ function McpTab({ q, setQ }: { q: string; setQ: (v: string) => void }) {
 
 export default function Market() {
   const params = useLocalSearchParams<{ tab?: string }>();
-  const [tab, setTab] = useState<Tab>(params.tab === 'mcp' ? 'mcp' : params.tab === 'models' && !isDesktop ? 'models' : params.tab === 'extensions' ? 'extensions' : 'skills');
-  const routeTab: Tab | undefined = params.tab === 'mcp' ? 'mcp' : params.tab === 'models' && !isDesktop ? 'models' : params.tab === 'extensions' ? 'extensions' : params.tab === 'skills' ? 'skills' : undefined;
+  const [tab, setTab] = useState<Tab>(params.tab === 'mcp' ? 'mcp' : params.tab === 'models' && !isDesktop ? 'models' : 'skills');
+  const routeTab: Tab | undefined = params.tab === 'mcp' ? 'mcp' : params.tab === 'models' && !isDesktop ? 'models' : params.tab === 'skills' ? 'skills' : undefined;
   const selected = routeTab ?? tab;
   const selectTab = (next: Tab) => {
     setTab(next);
@@ -379,44 +378,11 @@ export default function Market() {
   // Each tab keeps its own search text.
   const [qs, setQs] = useState<Record<'skills' | 'mcp', string>>({ skills: '', mcp: '' });
   // Models that run on the device: phones and tablets (the desktop app uses endpoints for now).
-  const options: { value: Tab; label: string }[] = [{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP' }, { value: 'extensions', label: 'Extensions' }, ...(isDesktop ? [] : [{ value: 'models' as Tab, label: 'Models' }])];
+  const options: { value: Tab; label: string }[] = [{ value: 'skills', label: 'Skills' }, { value: 'mcp', label: 'MCP' }, ...(isDesktop ? [] : [{ value: 'models' as Tab, label: 'Models' }])];
   return (
     <Screen header={isDesktop ? { title: 'Marketplace' } : { title: 'Marketplace', right: 'text', rightText: 'Installed', onRightText: () => router.push('/device-models') }} maxWidth={GRID} gap={16}>
       <Segmented<Tab> options={options} value={selected} onChange={selectTab} />
-      {selected === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : selected === 'mcp' ? <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} /> : selected === 'models' ? <ModelsTab /> : <ExtensionsTab />}
+      {selected === 'skills' ? <SkillsTab q={qs.skills} setQ={(v) => setQs((s) => ({ ...s, skills: v }))} /> : selected === 'mcp' ? <McpTab q={qs.mcp} setQ={(v) => setQs((s) => ({ ...s, mcp: v }))} /> : <ModelsTab />}
     </Screen>
-  );
-}
-
-/** Ready-made integrations are managed through the app's existing MCP connector flow. */
-function ExtensionsTab() {
-  const [query, setQuery] = useState('');
-  const servers = useLibrary((s) => s.servers);
-  const items = CONNECTORS.filter((c) => `${c.name} ${c.sub}`.toLowerCase().includes(query.trim().toLowerCase()));
-  const connected = (key: string) => servers.some((s) => s.isConnector && s.name === CONNECTORS.find((c) => c.key === key)?.name && s.connected);
-  return (
-    <>
-      <SearchBar value={query} onChangeText={setQuery} placeholder="Search extensions" />
-      <Text size={12.5} color="muted" style={{ paddingHorizontal: 4, lineHeight: 19 }}>
-        Connectors extend chats with services you choose. Sign-in happens with the service or an access token; credentials stay in the device’s secure storage. Some entries require you to provide a compatible hosted MCP URL.
-      </Text>
-      <Results>
-        {items.map((c, i) => (
-          <Row
-            key={c.key}
-            title={c.name}
-            sub={c.sub}
-            meta={c.url ? 'Hosted MCP connector' : 'Bring a hosted MCP server URL'}
-            added={connected(c.key)}
-            last={i === items.length - 1}
-            onPress={() => {
-              const existing = servers.find((s) => s.isConnector && s.name === c.name);
-              router.push(existing ? { pathname: '/mcp-detail', params: { id: existing.id } } : { pathname: '/connector-auth', params: { key: c.key } });
-            }}
-          />
-        ))}
-      </Results>
-      {items.length === 0 ? <Text color="muted" size={13.5}>No extensions match that search.</Text> : null}
-    </>
   );
 }

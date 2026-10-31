@@ -51,7 +51,7 @@ Phonon-2 is the Android path that unpacks the publisher's Zstandard-compressed t
 
 ## Marketplace and regression checks
 
-1. From the side drawer, open Marketplace and visit Models, Skills, MCP, and Extensions on a phone-sized display.
+1. From the side drawer, open Marketplace and visit Models, Skills, and MCP on a phone-sized display.
 2. Install, enable, disable, and remove a skill; configure and disconnect a hosted MCP server; confirm that secret values remain masked and absent from logs.
 3. Check loading, empty, error, and offline states, and verify that returning from each install flow lands on a valid route.
 
