@@ -188,7 +188,7 @@ jobs:
 
   android-phonon-runtime:
     name: Android ARM64 release model smoke test
-    runs-on: ubuntu-24.04
+    runs-on: macos-15
     timeout-minutes: 120
     env:
       EXPO_PUBLIC_PHONON_E2E: '1'
@@ -210,7 +210,9 @@ jobs:
       - name: Install Android 17 preview SDK required by Expo SDK 58
         run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
       - name: Install eSpeak NG for a real speech fixture
-        run: sudo apt-get update && sudo apt-get install -y espeak-ng
+        run: brew install coreutils espeak-ng
+      - name: Confirm native ARM64 CI host
+        run: test "$(uname -m)" = arm64
       - run: npm ci
       - name: Verify llama.rn Android native artifacts
         run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
@@ -220,19 +222,14 @@ jobs:
       - name: Build the minified ARM64 release app with the Phonon smoke route enabled
         working-directory: android
         run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
-      - name: Enable KVM for the Android emulator
-        run: |
-          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-          sudo udevadm control --reload-rules
-          sudo udevadm trigger --name-match=kvm
       - name: Run Phonon and local LLM smoke tests
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           profile: pixel_5
-          ram-size: 6144
+          ram-size: 4096
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash .github/scripts/phonon-android-smoke.sh

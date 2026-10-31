@@ -169,9 +169,10 @@ export const usePhonon = create<State>((set, get) => {
   function taskOptions(path: string) {
     const index = PARTS.findIndex((part) => part.path === path);
     const base = PARTS.slice(0, Math.max(index, 0)).reduce((total, part) => total + part.size, 0);
+    const foregroundSmokeDownload = Platform.OS === 'ios' && process.env.EXPO_PUBLIC_PHONON_E2E === '1';
     return {
-      sessionType: 'background' as const,
-      deferBackgroundSessionCompletion: Platform.OS === 'ios',
+      sessionType: foregroundSmokeDownload ? 'foreground' as const : 'background' as const,
+      deferBackgroundSessionCompletion: Platform.OS === 'ios' && !foregroundSmokeDownload,
       onProgress: ({ bytesWritten }: { bytesWritten: number }) => set({ written: base + bytesWritten }),
     };
   }
