@@ -296,7 +296,15 @@ export const usePhonon = create<State>((set, get) => {
         preserveArchiveOnCancel = false;
         return;
       }
-      set({ phase: 'failed', error: e?.message ?? 'The download failed.' });
+      const message = e?.message ?? 'The download failed.';
+      const diagnostics = Platform.OS === 'ios' && process.env.EXPO_PUBLIC_PHONON_E2E === '1'
+        ? {
+            code: typeof e?.code === 'string' ? e.code : undefined,
+            nativeStackIOS: typeof e?.nativeStackIOS === 'string' ? e.nativeStackIOS.slice(0, 1200) : undefined,
+          }
+        : undefined;
+      const details = diagnostics && Object.values(diagnostics).some(Boolean) ? ` ${JSON.stringify(diagnostics)}` : '';
+      set({ phase: 'failed', error: `${message}${details}` });
     }
   }
 

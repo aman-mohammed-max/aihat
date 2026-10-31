@@ -231,7 +231,7 @@ jobs:
           profile: pixel_5
           ram-size: 4096
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -accel off -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash .github/scripts/phonon-android-smoke.sh
       - name: Upload Android smoke diagnostics
         if: always()

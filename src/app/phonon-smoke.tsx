@@ -78,7 +78,9 @@ function runSmoke(report: (status: string) => void) {
     await record('passed', details);
     return `PHONON_SMOKE_PASS ${transcript} LLM_SMOKE_PASS ${model.name} ${inference.backendLabel ?? 'backend unknown'} ${answer}`;
   })().catch(async (error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
+    const speechModel = usePhonon.getState();
+    const cause = error instanceof Error ? error.message : String(error);
+    const message = `${cause} (Phonon ${speechModel.phase}; downloaded ${speechModel.written}/${PHONON_DOWNLOAD} bytes)`;
     try {
       await record('failed', message);
     } catch {
