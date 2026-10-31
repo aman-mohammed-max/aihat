@@ -143,7 +143,7 @@ jobs:
 
   android-phonon-runtime:
     name: Android ARM64 release model smoke test
-    runs-on: ubuntu-24.04-arm
+    runs-on: ubuntu-24.04
     timeout-minutes: 120
     env:
       EXPO_PUBLIC_PHONON_E2E: '1'
@@ -175,15 +175,21 @@ jobs:
       - name: Build the minified ARM64 release app with the Phonon smoke route enabled
         working-directory: android
         run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+      - name: Enable KVM for the Android emulator
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
       - name: Run Phonon download, Zstd unpack, native model load, and speech transcription
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
-          api-level: 30
-          arch: arm64-v8a
-          profile: pixel_2
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_5
           ram-size: 6144
           disable-animations: true
-          emulator-options: -no-window -no-audio -no-boot-anim
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: |
             adb install android/app/build/outputs/apk/release/app-release.apk
             adb shell am start -W -a android.intent.action.VIEW -d 'aihat:///phonon-smoke' com.amanm.aihat
