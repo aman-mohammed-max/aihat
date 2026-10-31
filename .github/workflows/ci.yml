@@ -112,7 +112,7 @@ jobs:
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES
-      - name: Run Phonon download, Core ML load, and speech transcription
+      - name: Run Phonon and local LLM smoke tests
         run: |
           DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for xs in d.values() for x in xs if x.get("isAvailable") and x["name"].startswith("iPhone")))')
           xcrun simctl boot "$DEVICE_ID"
@@ -121,20 +121,66 @@ jobs:
           test -n "$APP"
           xcrun simctl install "$DEVICE_ID" "$APP"
           xcrun simctl launch "$DEVICE_ID" com.amanm.aihat
-          xcrun simctl openurl "$DEVICE_ID" 'aihat:///phonon-smoke'
+          xcrun simctl openurl "$DEVICE_ID" 'aihat://phonon-smoke'
           DATA=$(xcrun simctl get_app_container "$DEVICE_ID" com.amanm.aihat data)
           RESULT="$DATA/Documents/phonon-smoke-result.json"
-          for attempt in $(seq 1 360); do
+          echo "PHONON_SIMULATOR_ID=$DEVICE_ID" >> "$GITHUB_ENV"
+          echo "PHONON_RESULT_PATH=$RESULT" >> "$GITHUB_ENV"
+          PREVIOUS_RESULT=''
+          for attempt in $(seq 1 720); do
             if [ -f "$RESULT" ]; then
-              cat "$RESULT"
+              CURRENT_RESULT=$(cat "$RESULT")
+              if [ "$CURRENT_RESULT" != "$PREVIOUS_RESULT" ]; then
+                echo "$CURRENT_RESULT"
+                PREVIOUS_RESULT=$CURRENT_RESULT
+              fi
               if grep -q '"status":"passed"' "$RESULT"; then exit 0; fi
               if grep -q '"status":"failed"' "$RESULT"; then exit 1; fi
             fi
             sleep 5
           done
-          xcrun simctl spawn "$DEVICE_ID" log show --last 5m --style compact --predicate 'eventMessage CONTAINS "PHONON_SMOKE"' | tail -80
-          echo 'Phonon iOS runtime smoke test timed out.'
+          echo 'Mobile model smoke test timed out.'
           exit 1
+      - name: Capture iOS smoke diagnostics
+        if: failure()
+        run: |
+          if [ -n "${PHONON_RESULT_PATH:-}" ] && [ -f "$PHONON_RESULT_PATH" ]; then
+            cp "$PHONON_RESULT_PATH" "$RUNNER_TEMP/phonon-smoke-result.json"
+            cat "$PHONON_RESULT_PATH"
+          else
+            echo 'The smoke route did not create its result marker.'
+          fi
+          if [ -n "${PHONON_SIMULATOR_ID:-}" ]; then
+            python3 - "$PHONON_SIMULATOR_ID" "$RUNNER_TEMP" <<'PY'
+          import pathlib
+          import subprocess
+          import sys
+
+          device, temp = sys.argv[1:]
+          output = pathlib.Path(temp)
+          commands = [
+              (["xcrun", "simctl", "io", device, "screenshot", str(output / "phonon-smoke-screen.png")], "phonon-smoke-screenshot.txt", 20),
+              (["xcrun", "simctl", "spawn", device, "log", "show", "--last", "1m", "--style", "compact", "--predicate", 'eventMessage CONTAINS "PHONON_SMOKE"'], "phonon-smoke-log.txt", 30),
+          ]
+          for command, filename, seconds in commands:
+              try:
+                  result = subprocess.run(command, capture_output=True, text=True, timeout=seconds, check=False)
+                  output.joinpath(filename).write_text(result.stdout + result.stderr)
+              except subprocess.TimeoutExpired as error:
+                  captured = error.stdout or b""
+                  if isinstance(captured, bytes):
+                      captured = captured.decode(errors="replace")
+                  output.joinpath(filename).write_text(captured + f"\nTimed out after {seconds}s: {command!r}\n")
+          PY
+            tail -80 "$RUNNER_TEMP/phonon-smoke-log.txt" || true
+          fi
+      - name: Upload iOS smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: ios-smoke-diagnostics
+          path: ${{ runner.temp }}/phonon-smoke-*
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-app
@@ -180,7 +226,7 @@ jobs:
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run Phonon download, Zstd unpack, native model load, and speech transcription
+      - name: Run Phonon and local LLM smoke tests
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
@@ -191,6 +237,13 @@ jobs:
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash .github/scripts/phonon-android-smoke.sh
+      - name: Upload Android smoke diagnostics
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: android-smoke-diagnostics
+          path: ${{ runner.temp }}/phonon-android-*
+          if-no-files-found: ignore
 
   check:
     runs-on: ubuntu-latest
