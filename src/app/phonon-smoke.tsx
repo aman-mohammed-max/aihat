@@ -6,7 +6,7 @@ import { Text, View } from 'react-native';
 import { streamLocal } from '@/lib/local/engine';
 import { PICKED } from '@/lib/local/catalog';
 import { modelId } from '@/lib/local/files';
-import { phononTranscribe, usePhonon } from '@/lib/local/phonon';
+import { PHONON_DOWNLOAD, phononTranscribe, usePhonon } from '@/lib/local/phonon';
 import { useLocalInference } from '@/store/localInference';
 import { useLocalModels } from '@/store/localModels';
 
@@ -19,16 +19,21 @@ async function record(status: string, details?: string) {
   await marker.write(JSON.stringify({ status, details }));
 }
 
-function runSmoke() {
+function runSmoke(report: (status: string) => void) {
   if (smokeRun) return smokeRun;
   smokeRun = (async () => {
+    report('PHONON_SMOKE_DOWNLOADING');
     await record('downloading');
     await usePhonon.getState().download();
     const speechModel = usePhonon.getState();
     if (speechModel.phase !== 'ready') {
-      throw new Error(speechModel.error || `Phonon-2 download ended in the ${speechModel.phase} state.`);
+      throw new Error(
+        `${speechModel.error || `Phonon-2 download ended in the ${speechModel.phase} state.`} ` +
+        `(downloaded ${speechModel.written}/${PHONON_DOWNLOAD} bytes; extracted ${speechModel.extractWritten}/${speechModel.extractTotal})`,
+      );
     }
 
+    report('PHONON_SMOKE_TRANSCRIBING');
     await record('transcribing');
     const audio = await Asset.fromModule(require('../../assets/phonon-smoke.wav')).downloadAsync();
     if (!audio.localUri) throw new Error('The speech fixture was not copied to local storage.');
@@ -40,6 +45,7 @@ function runSmoke() {
 
     // Release the speech model before loading the chat model; both are large native runtimes.
     usePhonon.getState().remove();
+    report('PHONON_SMOKE_LLM_DOWNLOADING');
     await record('llm-downloading');
     await useLocalModels.getState().load();
     const model = PICKED[0];
@@ -50,6 +56,7 @@ function runSmoke() {
       throw new Error(downloadState.jobs[id]?.error ?? 'The downloaded chat model was not installed.');
     }
 
+    report('PHONON_SMOKE_LLM_GENERATING');
     await record('llm-generating');
     const response: string[] = [];
     let finished = false;
@@ -87,10 +94,24 @@ export default function PhononSmoke() {
 
   useEffect(() => {
     if (!enabled) return;
-    runSmoke().then(
+    let lastProgress = '';
+    const unsubscribe = usePhonon.subscribe((state) => {
+      let progress = '';
+      if (state.phase === 'downloading') {
+        progress = `PHONON_SMOKE_DOWNLOADING ${Math.min(100, Math.floor((state.written / PHONON_DOWNLOAD) * 100))}%`;
+      } else if (state.phase === 'preparing') {
+        progress = `PHONON_SMOKE_PREPARING ${state.extractWritten}/${state.extractTotal}`;
+      }
+      if (progress && progress !== lastProgress) {
+        lastProgress = progress;
+        setStatus(progress);
+      }
+    });
+    runSmoke(setStatus).then(
       setStatus,
       (error: unknown) => setStatus(`PHONON_SMOKE_FAILED ${error instanceof Error ? error.message : String(error)}`),
-    );
+    ).finally(unsubscribe);
+    return unsubscribe;
   }, []);
 
   return (

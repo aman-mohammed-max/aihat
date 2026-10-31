@@ -14,9 +14,13 @@ capture_diagnostics() {
 adb install android/app/build/outputs/apk/release/app-release.apk
 adb shell am start -W -n com.amanm.aihat/.MainActivity
 
-for attempt in $(seq 1 720); do
-  timeout 15s adb shell uiautomator dump /sdcard/phonon-smoke-window.xml >/dev/null 2>&1 || true
-  XML=$(timeout 15s adb exec-out cat /sdcard/phonon-smoke-window.xml 2>/dev/null || true)
+STARTED_AT=$SECONDS
+DEADLINE=$((STARTED_AT + 3600))
+attempt=0
+while (( SECONDS < DEADLINE )); do
+  attempt=$((attempt + 1))
+  timeout --kill-after=2s 8s adb shell uiautomator dump /sdcard/phonon-smoke-window.xml >/dev/null 2>&1 || true
+  XML=$(timeout --kill-after=2s 8s adb exec-out cat /sdcard/phonon-smoke-window.xml 2>/dev/null || true)
   if [[ "$XML" == *PHONON_SMOKE_PASS* ]]; then
     echo "$XML"
     exit 0
@@ -26,12 +30,12 @@ for attempt in $(seq 1 720); do
     capture_diagnostics
     exit 1
   fi
-  if (( attempt % 12 == 0 )); then
-    echo "Smoke still running after $((attempt * 5)) seconds: $(printf '%s' "$XML" | grep -oE 'text=\"[^\"]*\"|content-desc=\"[^\"]*\"' | tail -8 | tr '\n' ' ')"
+  if (( attempt % 6 == 0 )); then
+    echo "Smoke still running after $((SECONDS - STARTED_AT)) seconds: $(printf '%s' "$XML" | grep -oE 'text=\"[^\"]*\"|content-desc=\"[^\"]*\"' | tail -8 | tr '\n' ' ')"
   fi
   sleep 5
 done
 
 capture_diagnostics
-echo 'Mobile model smoke test timed out.'
+echo "Mobile model smoke test timed out after $((SECONDS - STARTED_AT)) seconds."
 exit 1
