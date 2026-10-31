@@ -37,6 +37,9 @@ export const localEngineAvailable = () => llama() !== null;
 
 export const UNAVAILABLE = 'Models on this device need the AI Hat app from the Releases page; Expo Go can’t run them.';
 
+// On iOS simulator smoke builds, let llama.rn probe when only the available-memory estimate rejects the model.
+const allowIosSmokeMemoryProbe = Platform.OS === 'ios' && process.env.EXPO_PUBLIC_PHONON_E2E === '1';
+
 // One model is kept loaded (loading takes a few seconds), and one reply runs at a time.
 let loaded: { id: string; ctx: LlamaContext; backendLabel: string; fallbackReason?: string } | null = null;
 let chain: Promise<unknown> = Promise.resolve();
@@ -122,7 +125,9 @@ async function contextFor(id: string) {
       lowMemory: snapshot?.lowMemory,
       platform,
     });
-    if (!memory.allowed) throw new Error(memoryError(memory.reason));
+    if (!memory.allowed && !(allowIosSmokeMemoryProbe && memory.reason === 'available-memory')) {
+      throw new Error(memoryError(memory.reason));
+    }
 
     const modelInfo = await l.loadLlamaModelInfo(file.uri);
     const backendDevices = await l.getBackendDevicesInfo();
