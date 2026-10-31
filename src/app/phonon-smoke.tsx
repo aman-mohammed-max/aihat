@@ -24,6 +24,10 @@ function runSmoke() {
   smokeRun = (async () => {
     await record('downloading');
     await usePhonon.getState().download();
+    const speechModel = usePhonon.getState();
+    if (speechModel.phase !== 'ready') {
+      throw new Error(speechModel.error || `Phonon-2 download ended in the ${speechModel.phase} state.`);
+    }
 
     await record('transcribing');
     const audio = await Asset.fromModule(require('../../assets/phonon-smoke.wav')).downloadAsync();
