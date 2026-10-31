@@ -3,7 +3,7 @@ import { File, Paths } from 'expo-file-system';
 import { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 
-import { streamLocal } from '@/lib/local/engine';
+import { streamLocal, unloadModel } from '@/lib/local/engine';
 import { PICKED } from '@/lib/local/catalog';
 import { modelId } from '@/lib/local/files';
 import { PHONON_DOWNLOAD, phononTranscribe, usePhonon } from '@/lib/local/phonon';
@@ -22,29 +22,6 @@ async function record(status: string, details?: string) {
 function runSmoke(report: (status: string) => void) {
   if (smokeRun) return smokeRun;
   smokeRun = (async () => {
-    report('PHONON_SMOKE_DOWNLOADING');
-    await record('downloading');
-    await usePhonon.getState().download();
-    const speechModel = usePhonon.getState();
-    if (speechModel.phase !== 'ready') {
-      throw new Error(
-        `${speechModel.error || `Phonon-2 download ended in the ${speechModel.phase} state.`} ` +
-        `(downloaded ${speechModel.written}/${PHONON_DOWNLOAD} bytes; extracted ${speechModel.extractWritten}/${speechModel.extractTotal})`,
-      );
-    }
-
-    report('PHONON_SMOKE_TRANSCRIBING');
-    await record('transcribing');
-    const audio = await Asset.fromModule(require('../../assets/phonon-smoke.wav')).downloadAsync();
-    if (!audio.localUri) throw new Error('The speech fixture was not copied to local storage.');
-    const transcript = await phononTranscribe(audio.localUri);
-    const normalized = transcript.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
-    if (!normalized.includes('transcribe') || !normalized.includes('sentence')) {
-      throw new Error(`Speech inference returned an unexpected transcript: ${transcript || '(empty)'}`);
-    }
-
-    // Release the speech model before loading the chat model; both are large native runtimes.
-    usePhonon.getState().remove();
     report('PHONON_SMOKE_LLM_DOWNLOADING');
     await record('llm-downloading');
     await useLocalModels.getState().load();
@@ -73,6 +50,30 @@ function runSmoke(report: (status: string) => void) {
     }
     const inference = useLocalInference.getState();
     if (inference.phase !== 'loaded') throw new Error('The local LLM did not remain loaded after inference.');
+
+    // Run the chat model while the simulator is fresh, then release it before loading Core ML speech weights.
+    await unloadModel(id);
+    report('PHONON_SMOKE_DOWNLOADING');
+    await record('downloading');
+    await usePhonon.getState().download();
+    const speechModel = usePhonon.getState();
+    if (speechModel.phase !== 'ready') {
+      throw new Error(
+        `${speechModel.error || `Phonon-2 download ended in the ${speechModel.phase} state.`} ` +
+        `(downloaded ${speechModel.written}/${PHONON_DOWNLOAD} bytes; extracted ${speechModel.extractWritten}/${speechModel.extractTotal})`,
+      );
+    }
+
+    report('PHONON_SMOKE_TRANSCRIBING');
+    await record('transcribing');
+    const audio = await Asset.fromModule(require('../../assets/phonon-smoke.wav')).downloadAsync();
+    if (!audio.localUri) throw new Error('The speech fixture was not copied to local storage.');
+    const transcript = await phononTranscribe(audio.localUri);
+    const normalized = transcript.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+    if (!normalized.includes('transcribe') || !normalized.includes('sentence')) {
+      throw new Error(`Speech inference returned an unexpected transcript: ${transcript || '(empty)'}`);
+    }
+    usePhonon.getState().remove();
 
     const details = JSON.stringify({ transcript, model: id, answer, backend: inference.backendLabel, fallback: inference.fallbackReason });
     await record('passed', details);
