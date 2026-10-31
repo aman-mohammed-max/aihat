@@ -377,9 +377,10 @@ export const useLocalModels = create<State>((set, get) => {
           if (cancelledStartingDownloads.has(id) || !get().jobs[id]) return;
           const part = partOf(id);
           if (part.exists) part.delete();
+          const foregroundSmokeDownload = Platform.OS === 'ios' && process.env.EXPO_PUBLIC_PHONON_E2E === '1';
           const task = File.createDownloadTask(fileUrl(repo, file, pinnedRevision), part, {
-            sessionType: 'background',
-            deferBackgroundSessionCompletion: Platform.OS === 'ios',
+            sessionType: foregroundSmokeDownload ? 'foreground' : 'background',
+            deferBackgroundSessionCompletion: Platform.OS === 'ios' && !foregroundSmokeDownload,
             onProgress: ({ bytesWritten, totalBytes }) => {
               if (activeReservations.has(id)) activeReservations.set(id, Math.max(0, (totalBytes > 0 ? totalBytes : expectedSize) - bytesWritten));
               setJob(id, { written: bytesWritten, ...(totalBytes > 0 ? { size: totalBytes } : {}) });
