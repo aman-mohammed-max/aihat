@@ -12,7 +12,7 @@ capture_diagnostics() {
 }
 
 adb install android/app/build/outputs/apk/release/app-release.apk
-adb shell am start -W -a android.intent.action.VIEW -d 'aihat://phonon-smoke' com.amanm.aihat
+adb shell am start -W -n com.amanm.aihat/.MainActivity
 
 for attempt in $(seq 1 720); do
   timeout 15s adb shell uiautomator dump /sdcard/phonon-smoke-window.xml >/dev/null 2>&1 || true

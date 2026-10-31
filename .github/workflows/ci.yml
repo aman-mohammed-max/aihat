@@ -121,7 +121,6 @@ jobs:
           test -n "$APP"
           xcrun simctl install "$DEVICE_ID" "$APP"
           xcrun simctl launch "$DEVICE_ID" com.amanm.aihat
-          xcrun simctl openurl "$DEVICE_ID" 'aihat://phonon-smoke'
           DATA=$(xcrun simctl get_app_container "$DEVICE_ID" com.amanm.aihat data)
           RESULT="$DATA/Documents/phonon-smoke-result.json"
           echo "PHONON_SIMULATOR_ID=$DEVICE_ID" >> "$GITHUB_ENV"
