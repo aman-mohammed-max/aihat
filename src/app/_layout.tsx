@@ -112,6 +112,7 @@ export default function RootLayout() {
             <Stack.Screen name="prompts" />
             <Stack.Screen name="provider-detail" />
             <Stack.Screen name="providers" />
+            <Stack.Screen name="phonon-smoke" />
             <Stack.Screen name="search-chats" />
             <Stack.Screen name="select-text" />
             <Stack.Screen name="settings" />

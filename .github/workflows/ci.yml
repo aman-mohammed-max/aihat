@@ -81,9 +81,11 @@ jobs:
           if-no-files-found: error
 
   ios-simulator-build:
-    name: iOS simulator build
+    name: iOS simulator model smoke test
     runs-on: macos-26
-    timeout-minutes: 60
+    timeout-minutes: 120
+    env:
+      EXPO_PUBLIC_PHONON_E2E: '1'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -91,26 +93,110 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - name: Generate a short speech fixture
+        run: |
+          say -o "$RUNNER_TEMP/phonon-smoke.aiff" 'Please transcribe this short test sentence.'
+          afconvert -f WAVE -d LEI16@16000 "$RUNNER_TEMP/phonon-smoke.aiff" assets/phonon-smoke.wav
       - name: Verify llama.rn iOS native artifact
         run: test -f node_modules/llama.rn/ios/rnllama.xcframework/.llama-rn.sha256
       - run: npx expo prebuild --platform ios --no-install --clean
       - name: Install CocoaPods
         working-directory: ios
         run: pod install
-      - name: Build unsigned iOS simulator app
+      - name: Build unsigned iOS simulator app with the Phonon smoke route enabled
         run: |
           WORKSPACE=$(ls -d ios/*.xcworkspace | head -1)
           SCHEME=$(basename "$WORKSPACE" .xcworkspace)
           xcodebuild build \
-            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Debug \
+            -workspace "$WORKSPACE" -scheme "$SCHEME" -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$RUNNER_TEMP/DerivedData" \
             CODE_SIGNING_ALLOWED=NO ONLY_ACTIVE_ARCH=YES
+      - name: Run Phonon download, Core ML load, and speech transcription
+        run: |
+          DEVICE_ID=$(xcrun simctl list devices available --json | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(x["udid"] for xs in d.values() for x in xs if x.get("isAvailable") and x["name"].startswith("iPhone")))')
+          xcrun simctl boot "$DEVICE_ID"
+          xcrun simctl bootstatus "$DEVICE_ID" -b
+          APP=$(find "$RUNNER_TEMP/DerivedData/Build/Products/Release-iphonesimulator" -maxdepth 1 -name '*.app' -print -quit)
+          test -n "$APP"
+          xcrun simctl install "$DEVICE_ID" "$APP"
+          xcrun simctl launch "$DEVICE_ID" com.amanm.aihat
+          xcrun simctl openurl "$DEVICE_ID" 'aihat:///phonon-smoke'
+          DATA=$(xcrun simctl get_app_container "$DEVICE_ID" com.amanm.aihat data)
+          RESULT="$DATA/Documents/phonon-smoke-result.json"
+          for attempt in $(seq 1 360); do
+            if [ -f "$RESULT" ]; then
+              cat "$RESULT"
+              if grep -q '"status":"passed"' "$RESULT"; then exit 0; fi
+              if grep -q '"status":"failed"' "$RESULT"; then exit 1; fi
+            fi
+            sleep 5
+          done
+          xcrun simctl spawn "$DEVICE_ID" log show --last 5m --style compact --predicate 'eventMessage CONTAINS "PHONON_SMOKE"' | tail -80
+          echo 'Phonon iOS runtime smoke test timed out.'
+          exit 1
       - uses: actions/upload-artifact@v7
         with:
           name: ios-simulator-app
-          path: ${{ runner.temp }}/DerivedData/Build/Products/Debug-iphonesimulator/*.app
+          path: ${{ runner.temp }}/DerivedData/Build/Products/Release-iphonesimulator/*.app
           if-no-files-found: error
+
+  android-phonon-runtime:
+    name: Android ARM64 release model smoke test
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 120
+    env:
+      EXPO_PUBLIC_PHONON_E2E: '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: 17
+          cache: gradle
+      - uses: android-actions/setup-android@v4
+        with:
+          accept-android-sdk-licenses: true
+          packages: 'platform-tools emulator ndk;27.1.12297006'
+      - name: Install Android 17 preview SDK required by Expo SDK 58
+        run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
+      - name: Install eSpeak NG for a real speech fixture
+        run: sudo apt-get update && sudo apt-get install -y espeak-ng
+      - run: npm ci
+      - name: Verify llama.rn Android native artifacts
+        run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
+      - name: Generate a short speech fixture
+        run: espeak-ng -v en-us -s 140 -w assets/phonon-smoke.wav 'Please transcribe this short test sentence.'
+      - run: npx expo prebuild --platform android --no-install --clean
+      - name: Build the minified ARM64 release app with the Phonon smoke route enabled
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+      - name: Run Phonon download, Zstd unpack, native model load, and speech transcription
+        uses: ReactiveCircus/android-emulator-runner@v2.38.0
+        with:
+          api-level: 30
+          arch: arm64-v8a
+          profile: pixel_2
+          ram-size: 6144
+          disable-animations: true
+          emulator-options: -no-window -no-audio -no-boot-anim
+          script: |
+            adb install android/app/build/outputs/apk/release/app-release.apk
+            adb shell am start -W -a android.intent.action.VIEW -d 'aihat:///phonon-smoke' com.amanm.aihat
+            for attempt in $(seq 1 360); do
+              adb shell uiautomator dump /sdcard/phonon-smoke-window.xml >/dev/null 2>&1 || true
+              XML=$(adb exec-out cat /sdcard/phonon-smoke-window.xml 2>/dev/null || true)
+              if [[ "$XML" == *PHONON_SMOKE_PASS* ]]; then echo "$XML"; exit 0; fi
+              if [[ "$XML" == *PHONON_SMOKE_FAILED* ]]; then echo "$XML"; adb logcat -d -t 1000 | grep -E 'PHONON_SMOKE|AndroidRuntime|FATAL|Phonon|zstd' | tail -80; exit 1; fi
+              sleep 5
+            done
+            adb logcat -d -t 1000 | grep -E 'PHONON_SMOKE|AndroidRuntime|FATAL|Phonon|zstd' | tail -80
+            echo 'Phonon Android runtime smoke test timed out.'
+            exit 1
 
   check:
     runs-on: ubuntu-latest
