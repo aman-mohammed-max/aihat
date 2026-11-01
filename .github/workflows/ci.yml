@@ -35,6 +35,8 @@ jobs:
     name: Android debug build (arm64-v8a)
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      EXPO_PUBLIC_PHONON_E2E: '1'
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -72,6 +74,9 @@ jobs:
       - name: Assemble Android debug APK
         working-directory: android
         run: ./gradlew :app:assembleDebug --no-daemon -PreactNativeArchitectures=arm64-v8a
+      - name: Build the minified ARM64 release app for runtime smoke testing
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
       - uses: actions/upload-artifact@v7
         with:
           name: android-apk-arm64
@@ -188,56 +193,44 @@ jobs:
 
   android-phonon-runtime:
     name: Android ARM64 release model smoke test
-    runs-on: ubuntu-latest
-    timeout-minutes: 180
-    env:
-      EXPO_PUBLIC_PHONON_E2E: '1'
+    needs: android-build
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
-          cache: npm
       - uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: 17
-          cache: gradle
       - uses: android-actions/setup-android@v4
         with:
           accept-android-sdk-licenses: true
-          packages: 'platform-tools emulator ndk;27.1.12297006'
-      - name: Install Android 17 preview SDK required by Expo SDK 58
-        run: sdkmanager --channel=3 --install 'platforms;android-37.0' 'build-tools;37.0.0'
-      - name: Install eSpeak NG for a real speech fixture
-        run: sudo apt-get update && sudo apt-get install --yes espeak-ng
-      - name: Confirm x86_64 host for API 35 ARM64 app translation
-        run: test "$(uname -m)" = x86_64
-      - run: npm ci
-      - name: Verify llama.rn Android native artifacts
-        run: test -f node_modules/llama.rn/android/src/main/jniLibs/.llama-rn.sha256
-      - name: Generate a short speech fixture
-        run: espeak-ng -v en-us -s 140 -w assets/phonon-smoke.wav 'Please transcribe this short test sentence.'
-      - run: npx expo prebuild --platform android --no-install --clean
-      - name: Build the minified ARM64 release app with the Phonon smoke route enabled
-        working-directory: android
-        run: ./gradlew :app:assembleRelease --no-daemon -PreactNativeArchitectures=arm64-v8a
+          packages: 'platform-tools emulator'
+      - uses: actions/download-artifact@v7
+        with:
+          name: android-apk-arm64
+          path: android/app/build/outputs/apk
       - name: Enable KVM for the Android emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
+          test "$(uname -m)" = aarch64
+          test -r /dev/kvm && test -w /dev/kvm
       - name: Run Phonon and local LLM smoke tests
         uses: ReactiveCircus/android-emulator-runner@v2.38.0
         with:
           api-level: 35
           target: google_apis
-          arch: x86_64
+          arch: arm64-v8a
           profile: pixel_5
           ram-size: 4096
-          emulator-boot-timeout: 1200
+          emulator-boot-timeout: 600
           disable-animations: true
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
+          emulator-options: -no-snapshot -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           script: bash .github/scripts/phonon-android-smoke.sh
       - name: Upload Android smoke diagnostics
         if: always()
