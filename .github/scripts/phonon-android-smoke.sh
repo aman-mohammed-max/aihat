@@ -40,8 +40,16 @@ capture_diagnostics() {
 }
 
 "$TIMEOUT_BIN" --kill-after=2s 10s adb logcat -c || true
-adb install android/app/build/outputs/apk/release/app-release.apk
-adb shell am start -W -n com.amanm.aihat/.MainActivity
+if ! adb install android/app/build/outputs/apk/release/app-release.apk; then
+  echo 'Could not install the ARM64 release APK on the Android emulator.'
+  capture_diagnostics
+  exit 1
+fi
+if ! adb shell am start -W -n com.amanm.aihat/.MainActivity; then
+  echo 'Could not launch the app activity on the Android emulator.'
+  capture_diagnostics
+  exit 1
+fi
 LAST_STATUS=''
 
 STARTED_AT=$SECONDS
