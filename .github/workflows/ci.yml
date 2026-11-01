@@ -6,8 +6,15 @@ name: Check
 on:
   push:
   pull_request:
+  workflow_dispatch:
+    inputs:
+      android_artifact_run_id:
+        description: Existing Check run ID whose ARM64 APK should be smoke-tested
+        required: false
+        type: string
 
 permissions:
+  actions: read
   contents: read
 
 concurrency:
@@ -33,6 +40,7 @@ jobs:
 
   android-build:
     name: Android debug build (arm64-v8a)
+    if: ${{ !inputs.android_artifact_run_id }}
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
@@ -194,6 +202,7 @@ jobs:
   android-phonon-runtime:
     name: Android ARM64 app smoke test (x86_64 emulator)
     needs: android-build
+    if: ${{ always() && (needs.android-build.result == 'success' || inputs.android_artifact_run_id) }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -212,6 +221,8 @@ jobs:
       - uses: actions/download-artifact@v7
         with:
           name: android-apk-arm64
+          run-id: ${{ inputs.android_artifact_run_id || github.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
           path: android/app/build/outputs/apk
       - name: Enable KVM for the Android emulator
         run: |
